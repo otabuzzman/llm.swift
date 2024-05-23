@@ -33,9 +33,9 @@ Parallelization of `matmul_backward` was strange as it slows down the execution 
 
 Using the _Grand Central Dispatch_ API `concurrentPerform` instead of `withTaskGroup` for any function that uses OpenMP on the C side yields an execution time on 25 seconds. 
 
-Execution times of measures with a high impact
+Execution times of measures with a high impact:
 
-|#|Setup|Time (seconds)|
+|#|Measure|Time (seconds)|
 |---:|:---|---:|
 |1|C, `-march=native`, OpenMP|10|
 |2|C, `-march=native`, no OpenMP|20|
