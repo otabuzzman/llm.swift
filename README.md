@@ -47,7 +47,7 @@ Execution times of measures with a high impact:
 
 ## Output samples
 
-Output of `train_gpt2.swift`:
+Output of Swift's `train_gpt2`:
 ```
 [GPT-2]
 max_seq_len: 1024
@@ -129,7 +129,7 @@ press the
 step 40: train loss 4.378439 (took 60820.064067840576 ms)
 ```
 
-Output of `test_gpt2.swift`:
+Output of Swift's `test_gpt2`:
 ```
 [GPT-2]
 max_seq_len: 1024
@@ -280,7 +280,7 @@ step 9: loss 0.37801343 (took 53648.396015167236 ms) OK = true
 overall okay: true
 ```
 
-Output of `train_gpt2.c`:
+Output of C's `train_gpt2`:
 ```
 [GPT-2]
 max_seq_len: 1024
@@ -359,7 +359,7 @@ That are
 step 40: train loss 4.377730 (took 11135.249000 ms)
 ```
 
-Output of `test_gpt2.c`:
+Output of C's `test_gpt2`:
 ```
 [GPT-2]
 max_seq_len: 1024
