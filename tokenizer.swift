@@ -103,7 +103,7 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ filename: UR
 //        _ = token_bytes_data.withUnsafeBytes { $0.copyBytes(to: token_bytes) }
         do {
             let fd = file.fileDescriptor
-            _ = try FileDescriptor(rawValue: fd).read(into: UnsafeMutableRawBufferPointer(token_bytes))
+            _ = try FileDescriptor(rawValue: fd).read(into: UnsafeMutableRawBufferPointer(start: token_bytes.baseAddress!, count: length))
         } catch { fatalError("Error reading token bytes from tokens file") }
         token_bytes[length] = 0 // add null terminator for printing
         tokenizer.pointee.token_table[i] = token_bytes
