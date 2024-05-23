@@ -8,7 +8,11 @@ A Swift port of Andrej Karpathy‘s [llm.c](https://github.com/karpathy/llm.c).
 - Clone this repository, cd into it, build and run the executables for testing and training. 
 
   ```
+  git clone https://github.com/otabuzzman/llm.swift.git
+  cd llm.swift
+  
   xcodebuild # will build for production
+  # create sym-links for convenience
   ln -s build/Release/llm.swift test_gpt2
   ln -s build/Release/llm.swift train_gpt2
   
@@ -21,21 +25,21 @@ A Swift port of Andrej Karpathy‘s [llm.c](https://github.com/karpathy/llm.c).
   ```
 
 ### Performance notes
-Preliminary conclusion is Swift porting done one-to-one with existing parallelization tools is slower than C and probably worth further investigation.
+Swift porting done one-to-one with existing parallelization tools is slower than C and probably worth further investigation (preliminary conclusion).
 
 The sequential (`NO_OMP=1`) code from the C compiler runs roughly 3 times faster than the code produced by the Swift compiler (20/ 60 seconds), measured in step duration of `test_gpt2` on a Macbook Air (2015) (Intel, 4 cores, 8 GB).
 
 Parallelization with OpenMP (`NO_OMP=0`) in C and built-in _Structured Concurrency_ in Swift (using `withTaskGroup`) cuts down execution times to a half on both sides (10/ 30 seconds).
 
-Regarding the latter, almost all of the performance gain came from parallelizing `matmul_forward`. The contribution of parallelization of the remaining functions that use OpenMP in C was marginal.
+Regarding Swift, almost all of the performance gain came from parallelizing `matmul_forward`. The contribution of parallelization of the remaining functions that use OpenMP in C was marginal.
 
-Parallelization of `matmul_backward` was strange as it slows down the execution speed (40 seconds); thus left out `matmul_backword` parallelization for later investigation.
+Parallelization of `matmul_backward` was strange as it lengthens execution time (40 seconds); thus left out `matmul_backword` parallelization for later investigation.
 
 Using the _Grand Central Dispatch_ API `concurrentPerform` instead of `withTaskGroup` for any function that uses OpenMP on the C side yields an execution time on 25 seconds. 
 
-Execution times of measures with a high impact:
+Execution times of setups with notable impact:
 
-|#|Measure|Time (seconds)|
+|#|Setup|Time (seconds)|
 |---:|:---|---:|
 |1|C, `-march=native`, OpenMP|10|
 |2|C, `-march=native`, no OpenMP|20|
