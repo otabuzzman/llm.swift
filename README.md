@@ -35,8 +35,8 @@ Using the _Grand Central Dispatch_ API `concurrentPerform` instead of `withTaskG
 
 Execution times of measures with a high impact
 
-|---:|:---|---:|
 |#|Setup|Time (seconds)|
+|---:|:---|---:|
 |1|C, `-march=native`, OpenMP|10|
 |2|C, `-march=native`, no OpenMP|20|
 |3|C, no `-march=native`, OpenMP|15|
