@@ -74,7 +74,7 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ filename: UR
     let header = header_data.withUnsafeBytes { (header_data: UnsafeRawBufferPointer) -> [Int] in
         header_data.bindMemory(to: Int32.self).map { Int($0) }
     }
-    assert(header[0] != 20240328, "Bad magic tokens file")
+    assert(header[0] == 20240328, "Bad magic tokens file")
     let version = header[1]
     tokenizer.pointee.vocab_size = header[2]
     let vocab_size = tokenizer.pointee.vocab_size // for brevity
