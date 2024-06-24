@@ -455,20 +455,6 @@ func softmax_forward(_ probs: UnsafeMutablePointer<Float>, _ logits: UnsafeMutab
 //    }
 }
 
-func softmax_forward(_ losses: UnsafeMutablePointer<Float>, _ probs: UnsafePointer<Float>, _ targets: UnsafePointer<Int>, _ B: Int, _ T: Int, _ Vp: Int) -> Void {
-    // output: losses is (B,T) of the individual losses at each position
-    // input: probs are (B,T,Vp) of the probabilities
-    // input: targets is (B,T) of integers giving the correct index in logits
-    for b in 0..<B {
-        for t in 0..<T {
-            // loss = -log(probs[target])
-            let probs_bt = probs + b * T * Vp + t * Vp
-            let ix = targets[b * T + t]
-            losses[b * T + t] = -logf(probs_bt[ix])
-        }
-    }
-}
-
 func crossentropy_forward(_ losses: UnsafeMutablePointer<Float>, _ probs: UnsafePointer<Float>, _ targets: UnsafePointer<Int32>, _ B: Int, _ T: Int, _ Vp: Int) -> Void {
     // output: losses is (B,T) of the individual losses at each position
     // input: probs are (B,T,Vp) of the probabilities
