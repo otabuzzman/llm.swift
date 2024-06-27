@@ -1180,10 +1180,10 @@ func train_gpt2(_ folder: URL?) async -> Void {
     gpt2_build_from_checkpoint(&model, folder.appending(path: "gpt2_124M.bin"))
     
     // build the DataLoaders from tokens files. for now use tiny_shakespeare if available, else tiny_stories
-    let tiny_stories_train = folder.appending(path: "data/TinyStories_train.bin")
-    let tiny_stories_val = folder.appending(path: "data/TinyStories_val.bin")
-    let tiny_shakespeare_train = folder.appending(path: "data/tiny_shakespeare_train.bin")
-    let tiny_shakespeare_val = folder.appending(path: "data/tiny_shakespeare_val.bin")
+    let tiny_stories_train = folder.appending(path: "TinyStories_train.bin")
+    let tiny_stories_val = folder.appending(path: "TinyStories_val.bin")
+    let tiny_shakespeare_train = folder.appending(path: "tiny_shakespeare_train.bin")
+    let tiny_shakespeare_val = folder.appending(path: "tiny_shakespeare_val.bin")
     let train_tokens = FileManager.default.fileExists(atPath: tiny_shakespeare_train.path()) ? tiny_shakespeare_train : tiny_stories_train
     let val_tokens = FileManager.default.fileExists(atPath: tiny_shakespeare_val.path()) ? tiny_shakespeare_val : tiny_stories_val
     let B = 4 // batch size 4 (i.e. 4 independent token sequences will be trained on)
@@ -1227,7 +1227,7 @@ func train_gpt2(_ folder: URL?) async -> Void {
         }
         
         // once in a while do model inference to print generated text
-        if step > 0 && step % 20 == 0 {
+        if step % 20 == 0 {
             // fill up gen_tokens with the GPT2_EOT, which kicks off the generation
             for i in 0..<B * T {
                 gen_tokens[i] = GPT2_EOT

@@ -2,6 +2,8 @@
 test_gpt2
 train_gpt2
 .DS_Store
+*.bin
+*.zip
 
 # Xcode
 #
