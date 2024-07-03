@@ -1158,10 +1158,10 @@ func train_gpt2(_ folder: URL?) async -> Void {
     let T = 64 // sequence length 64 (i.e. each sequence is 64 tokens long). must be <= maxT, which is 1024 for GPT-2
     var train_loader = DataLoader()
     var val_loader = DataLoader()
-    dataloader_init(&train_loader, train_tokens, B, T, 0, 1, 1)
-    dataloader_init(&val_loader, val_tokens, B, T, 0, 1, 0)
-    print("train dataset num_batches: \(train_loader.num_tokens / (B * T))")
-    print("val dataset num_batches: \(val_loader.num_tokens / (B * T))")
+    dataloader_init(&train_loader, train_tokens, B, T)//, 0, 1, 1)
+    dataloader_init(&val_loader, val_tokens, B, T)//, 0, 1, 0)
+    //print("train dataset num_batches: \(train_loader.num_tokens / (B * T))")
+    //print("val dataset num_batches: \(val_loader.num_tokens / (B * T))")
     let val_num_batches = 5
     
     // build the Tokenizer

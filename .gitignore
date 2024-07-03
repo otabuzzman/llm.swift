@@ -3,6 +3,10 @@ test_gpt2
 train_gpt2
 .DS_Store
 
+*.bin
+*.zip
+dev/
+
 # Xcode
 #
 # gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore

@@ -12,6 +12,7 @@
 		1883FC002BF6746D00F75687 /* test_gpt2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FBFD2BF6746D00F75687 /* test_gpt2.swift */; };
 		1883FC042BF677E200F75687 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC032BF677E200F75687 /* main.swift */; };
 		1883FC062BFF2D9600F75687 /* utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC052BFF2D9600F75687 /* utils.swift */; };
+		1883FC092C354E5700F75687 /* dataloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC082C354E5700F75687 /* dataloader.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -36,6 +37,7 @@
 		1883FC032BF677E200F75687 /* main.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		1883FC052BFF2D9600F75687 /* utils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = utils.swift; sourceTree = "<group>"; };
 		1883FC072BFF3A3C00F75687 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		1883FC082C354E5700F75687 /* dataloader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = dataloader.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -56,8 +58,9 @@
 				1883FC052BFF2D9600F75687 /* utils.swift */,
 				1883FBFC2BF6746D00F75687 /* README.md */,
 				1883FBFD2BF6746D00F75687 /* test_gpt2.swift */,
-				1883FBFA2BF6746D00F75687 /* tokenizer.swift */,
 				1883FBFB2BF6746D00F75687 /* train_gpt2.swift */,
+				1883FC082C354E5700F75687 /* dataloader.swift */,
+				1883FBFA2BF6746D00F75687 /* tokenizer.swift */,
 				1883FBF02BF6714200F75687 /* llm.swift */,
 				1883FBEF2BF6714200F75687 /* Products */,
 			);
@@ -140,6 +143,7 @@
 			files = (
 				1883FC062BFF2D9600F75687 /* utils.swift in Sources */,
 				1883FBFF2BF6746D00F75687 /* train_gpt2.swift in Sources */,
+				1883FC092C354E5700F75687 /* dataloader.swift in Sources */,
 				1883FC002BF6746D00F75687 /* test_gpt2.swift in Sources */,
 				1883FC042BF677E200F75687 /* main.swift in Sources */,
 				1883FBFE2BF6746D00F75687 /* tokenizer.swift in Sources */,

@@ -2,6 +2,8 @@
 // data loader lite
 // returns random batches of data from a file of integers
 
+import Foundation
+
 struct DataLoader {
     // hyperparameters
     var B = 0 // batch size

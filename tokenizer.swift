@@ -22,7 +22,7 @@ struct Tokenizer {
     var vocab_size = 0
     var token_table = UnsafeMutableBufferPointer<UnsafeMutableBufferPointer<UInt8>>.allocate(capacity: 0)
     var init_ok = 0
-    var eot_token = 0 // <|endoftext|> token id
+    var eot_token: Int32 = 0 // <|endoftext|> token id
 }
 
 func safe_printf(_ piece: UnsafeMutablePointer<UInt8>?) -> Void {
@@ -84,7 +84,7 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ filename: UR
         assert(vocab_size == 50257, "Wrong tokenizer vocabulary size") // let's be defensive here
         tokenizer.pointee.eot_token = 50256;
     } else if version == 2 {
-        tokenizer.pointee.eot_token = header[3]
+        tokenizer.pointee.eot_token = Int32(header[3])
     } else {
         fatalError("Wrong version \(version) of tokenizer file \(filename)")
     }
