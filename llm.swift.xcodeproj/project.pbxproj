@@ -13,6 +13,7 @@
 		1883FC042BF677E200F75687 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC032BF677E200F75687 /* main.swift */; };
 		1883FC062BFF2D9600F75687 /* utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC052BFF2D9600F75687 /* utils.swift */; };
 		1883FC092C354E5700F75687 /* dataloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC082C354E5700F75687 /* dataloader.swift */; };
+		1883FC0D2C355A1200F75687 /* Glob in Frameworks */ = {isa = PBXBuildFile; productRef = 1883FC0C2C355A1200F75687 /* Glob */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -45,6 +46,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1883FC0D2C355A1200F75687 /* Glob in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -99,6 +101,9 @@
 			dependencies = (
 			);
 			name = llm.swift;
+			packageProductDependencies = (
+				1883FC0C2C355A1200F75687 /* Glob */,
+			);
 			productName = llm.swift;
 			productReference = 1883FBEE2BF6714200F75687 /* llm.swift */;
 			productType = "com.apple.product-type.tool";
@@ -127,6 +132,9 @@
 				Base,
 			);
 			mainGroup = 1883FBE52BF6714200F75687;
+			packageReferences = (
+				1883FC0B2C355A1200F75687 /* XCRemoteSwiftPackageReference "Glob" */,
+			);
 			productRefGroup = 1883FBEF2BF6714200F75687 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -335,6 +343,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1883FC0B2C355A1200F75687 /* XCRemoteSwiftPackageReference "Glob" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Bouke/Glob";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.5;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1883FC0C2C355A1200F75687 /* Glob */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1883FC0B2C355A1200F75687 /* XCRemoteSwiftPackageReference "Glob" */;
+			productName = Glob;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 1883FBE62BF6714200F75687 /* Project object */;
 }

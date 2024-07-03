@@ -1,0 +1,14 @@
+{
+  "pins" : [
+    {
+      "identity" : "glob",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Bouke/Glob",
+      "state" : {
+        "revision" : "deda6e163d2ff2a8d7e138e2c3326dbd71157faf",
+        "version" : "1.0.5"
+      }
+    }
+  ],
+  "version" : 2
+}
