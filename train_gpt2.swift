@@ -134,7 +134,7 @@ func layernorm_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMu
     }
 }
 
-func matmul_forward(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Float>, _ weight: UnsafePointer<Float>, _ bias: UnsafePointer<Float>?, _ B: Int, _ T: Int, _ C: Int, _ OC: Int) async -> Void {
+func matmul_forward_naive(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Float>, _ weight: UnsafePointer<Float>, _ bias: UnsafePointer<Float>?, _ B: Int, _ T: Int, _ C: Int, _ OC: Int) async -> Void {
     // most of the running time is spent here and in matmul_backward
     // OC is short for "output channels"
     // inp is (B,T,C), weight is (OC, C), bias is (OC)
@@ -164,6 +164,52 @@ func matmul_forward(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Flo
 //            }
 //        }
 //    }
+}
+
+func matmul_forward(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Float>, _ weight: UnsafePointer<Float>, _ bias: UnsafePointer<Float>?, _ B: Int, _ T: Int, _ C: Int, _ OC: Int) async -> Void {
+    // most of the running time is spent here and in matmul_backward
+    // therefore, the implementation below is very mildly optimized
+    // this function is otherwise identical to that of matmul_forward_naive()
+    // OC is short for "output channels"
+    // inp is (B,T,C), weight is (OC, C), bias is (OC)
+    // out will be (B,T,OC)
+
+    // make sure the tiled loop will be correct or fallback to naive version
+    let LOOP_UNROLL = 8
+    if (B * T) % LOOP_UNROLL != 0 {
+        await matmul_forward_naive(out, inp, weight, bias, B, T, C, OC)
+        return
+    }
+
+    // collapse the B and T loops into one and turn it into a strided loop.
+    // then we can tile the inner loop, and reuse the loaded weight LOOP_UNROLL many times
+    // #pragma omp parallel for
+    DispatchQueue.concurrentPerform(iterations: B * T / LOOP_UNROLL) {
+        let obt = $0 * LOOP_UNROLL
+        for o in 0..<OC {
+            // we'll keep LOOP_UNROLL many results in registers
+            var result = Array<Float>(repeating: 0, count: LOOP_UNROLL)
+            // initialize the bias, if it exists
+            for ibt in 0..<LOOP_UNROLL {
+                result[ibt] = bias?[o] ?? 0
+            }
+            // inner loops. Because we do LOOP_UNROLL steps of inner bt, we can cache
+            // the value of weight[i + o * C] and reuse it.
+            // we compile with -Ofast, so the compiler will turn the inner loop into FMAs
+            for i in 0..<C {
+                let w = weight[i + o * C]
+                for ibt in 0..<LOOP_UNROLL {
+                    let bt = obt + ibt
+                    result[ibt] += inp[bt * C + i] * w
+                }
+            }
+            // write back results to main memory
+            for ibt in 0..<LOOP_UNROLL {
+                let bt = obt + ibt
+                out[bt * OC + o] = result[ibt]
+            }
+        }
+    }
 }
 
 func matmul_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMutablePointer<Float>, _ dbias : UnsafeMutablePointer<Float>?, _ dout : UnsafePointer<Float>, _ inp: UnsafePointer<Float>, _ weight: UnsafePointer<Float>, _ B: Int, _ T: Int, _ C: Int, _ OC: Int) async -> Void {
@@ -1064,86 +1110,8 @@ func gpt2_free(_ model: UnsafeMutablePointer<GPT2>) -> Void {
 
 // #ifndef TESTING
 // if we are TESTING (see test_gpt2.c), we'll skip the int main below
-
-// ----------------------------------------------------------------------------
-// data loader lite
-// returns random batches of data from a file of integers
-
-struct DataLoader {
-    // hyperparameters
-    var B = 0 // batch size
-    var T = 0 // sequence length
-    // input handling and its state
-    var tokens_file: FileHandle?
-    var file_size = 0
-    var current_position = 0
-    // output memory
-    var batch = UnsafeMutableBufferPointer<Int32>.allocate(capacity: 0)
-    var inputs = UnsafeMutablePointer<Int32>.allocate(capacity: 0)
-    var targets = UnsafeMutablePointer<Int32>.allocate(capacity: 0)
-    // convenience variables
-    var num_batches = 0
-}
-
-func dataloader_init(_ loader: UnsafeMutablePointer<DataLoader>, _ filename: URL, _ B: Int, _ T: Int) -> Void {
-    loader.pointee.B = B
-    loader.pointee.T = T
-    
-    // open the input file for reading
-    guard
-        let tokens_file = try? FileHandle(forReadingFrom: filename)
-    else { fatalError("Error opening tokens file") }
-    loader.pointee.tokens_file = tokens_file
-    
-    // determine the file size
-    loader.pointee.file_size = Int((try? tokens_file.seekToEnd()) ?? 0)
-    try? tokens_file.seek(toOffset: 0)
-    if loader.pointee.file_size < (B * T + 1) * MemoryLayout<Int32>.size {
-        fatalError("File size too small for batch size and sequence length")
-    }
-    loader.pointee.current_position = 0 // start at the beginning
-    
-    // allocate space for B * T + 1 integers to store the inputs and targets
-    // loader.pointee.batch = UnsafeMutablePointer<Int32>.allocate(capacity: B * T + 1)
-    // loader.pointee.inputs = loader.pointee.batch
-    // loader.pointee.targets = loader.pointee.batch + 1 // targets are shifted by one
-    loader.pointee.num_batches = loader.pointee.file_size / (B * T * MemoryLayout<Int32>.size)
-}
-
-func dataloader_reset(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
-    loader.pointee.current_position = 0
-}
-
-func dataloader_next_batch(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
-    let B = loader.pointee.B
-    let T = loader.pointee.T
-    // if we are at the end of the file, loop back to the beginning
-    if loader.pointee.current_position + (B * T + 1) * MemoryLayout<Int32>.size > loader.pointee.file_size {
-        loader.pointee.current_position = 0
-    }
-    // read the B * T + 1 integers from the file into batch
-    try? loader.pointee.tokens_file!.seek(toOffset: UInt64(loader.pointee.current_position))
-    guard
-        let file_data = try? loader.pointee.tokens_file!.read(upToCount: (B * T + 1) * MemoryLayout<Int32>.size)
-    else { fatalError("Error reading tokens file") }
-    var batch_data = file_data
-    loader.pointee.batch = batch_data.withUnsafeMutableBytes { $0.bindMemory(to: Int32.self) }
-    loader.pointee.inputs = loader.pointee.batch.baseAddress!
-    loader.pointee.targets = loader.pointee.batch.baseAddress! + 1
-    // advance the current position by B * T integers
-    loader.pointee.current_position += B * T * MemoryLayout<Int32>.size
-}
-
-func dataloader_free(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
-    try? loader.pointee.tokens_file!.close()
-    // loader.pointee.batch.deallocate()
-}
-
 // ----------------------------------------------------------------------------
 // sampler
-
-// the GPT-2 end-of-text token id
-let GPT2_EOT: Int32 = 50256
 
 func random_u32(_ state: UnsafeMutablePointer<UInt64>) -> UInt32 {
     // xorshift rng: https://en.wikipedia.org/wiki/Xorshift#xorshift.2A
@@ -1180,20 +1148,20 @@ func train_gpt2(_ folder: URL?) async -> Void {
     gpt2_build_from_checkpoint(&model, folder.appending(path: "gpt2_124M.bin"))
     
     // build the DataLoaders from tokens files. for now use tiny_shakespeare if available, else tiny_stories
-    let tiny_stories_train = folder.appending(path: "data/TinyStories_train.bin")
-    let tiny_stories_val = folder.appending(path: "data/TinyStories_val.bin")
-    let tiny_shakespeare_train = folder.appending(path: "data/tiny_shakespeare_train.bin")
-    let tiny_shakespeare_val = folder.appending(path: "data/tiny_shakespeare_val.bin")
+    let tiny_stories_train = folder.appending(path: "dev/data/tinystories/TinyStories_train.bin")
+    let tiny_stories_val = folder.appending(path: "dev/data/tinystories/TinyStories_val.bin")
+    let tiny_shakespeare_train = folder.appending(path: "dev/data/tinyshakespeare/tiny_shakespeare_train.bin")
+    let tiny_shakespeare_val = folder.appending(path: "dev/data/tinyshakespeare/tiny_shakespeare_val.bin")
     let train_tokens = FileManager.default.fileExists(atPath: tiny_shakespeare_train.path()) ? tiny_shakespeare_train : tiny_stories_train
     let val_tokens = FileManager.default.fileExists(atPath: tiny_shakespeare_val.path()) ? tiny_shakespeare_val : tiny_stories_val
     let B = 4 // batch size 4 (i.e. 4 independent token sequences will be trained on)
     let T = 64 // sequence length 64 (i.e. each sequence is 64 tokens long). must be <= maxT, which is 1024 for GPT-2
     var train_loader = DataLoader()
-    dataloader_init(&train_loader, train_tokens, B, T)
-    print("train dataset num_batches: \(train_loader.num_batches)")
     var val_loader = DataLoader()
-    dataloader_init(&val_loader, val_tokens, B, T)
-    print("val dataset num_batches: \(val_loader.num_batches)")
+    dataloader_init(&train_loader, train_tokens, B, T, 0, 1, 1)
+    dataloader_init(&val_loader, val_tokens, B, T, 0, 1, 0)
+    print("train dataset num_batches: \(train_loader.num_tokens / (B * T))")
+    print("val dataset num_batches: \(val_loader.num_tokens / (B * T))")
     let val_num_batches = 5
     
     // build the Tokenizer
@@ -1230,7 +1198,7 @@ func train_gpt2(_ folder: URL?) async -> Void {
         if step > 0 && step % 20 == 0 {
             // fill up gen_tokens with the GPT2_EOT, which kicks off the generation
             for i in 0..<B * T {
-                gen_tokens[i] = GPT2_EOT
+                gen_tokens[i] = tokenizer.eot_token
             }
             // now sample from the model autoregressively
             print("generating:\n---");
