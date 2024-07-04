@@ -14,6 +14,7 @@
 		1883FC062BFF2D9600F75687 /* utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC052BFF2D9600F75687 /* utils.swift */; };
 		1883FC092C354E5700F75687 /* dataloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC082C354E5700F75687 /* dataloader.swift */; };
 		1883FC0D2C355A1200F75687 /* Glob in Frameworks */ = {isa = PBXBuildFile; productRef = 1883FC0C2C355A1200F75687 /* Glob */; };
+		1883FC0F2C36B35000F75687 /* rand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC0E2C36B35000F75687 /* rand.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -39,6 +40,7 @@
 		1883FC052BFF2D9600F75687 /* utils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = utils.swift; sourceTree = "<group>"; };
 		1883FC072BFF3A3C00F75687 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		1883FC082C354E5700F75687 /* dataloader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = dataloader.swift; sourceTree = SOURCE_ROOT; };
+		1883FC0E2C36B35000F75687 /* rand.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = rand.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,12 +59,13 @@
 			isa = PBXGroup;
 			children = (
 				1883FC072BFF3A3C00F75687 /* .gitignore */,
+				1883FC082C354E5700F75687 /* dataloader.swift */,
+				1883FBFA2BF6746D00F75687 /* tokenizer.swift */,
+				1883FC0E2C36B35000F75687 /* rand.swift */,
 				1883FC052BFF2D9600F75687 /* utils.swift */,
 				1883FBFC2BF6746D00F75687 /* README.md */,
 				1883FBFD2BF6746D00F75687 /* test_gpt2.swift */,
 				1883FBFB2BF6746D00F75687 /* train_gpt2.swift */,
-				1883FC082C354E5700F75687 /* dataloader.swift */,
-				1883FBFA2BF6746D00F75687 /* tokenizer.swift */,
 				1883FBF02BF6714200F75687 /* llm.swift */,
 				1883FBEF2BF6714200F75687 /* Products */,
 			);
@@ -150,6 +153,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1883FC062BFF2D9600F75687 /* utils.swift in Sources */,
+				1883FC0F2C36B35000F75687 /* rand.swift in Sources */,
 				1883FBFF2BF6746D00F75687 /* train_gpt2.swift in Sources */,
 				1883FC092C354E5700F75687 /* dataloader.swift in Sources */,
 				1883FC002BF6746D00F75687 /* test_gpt2.swift in Sources */,

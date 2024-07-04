@@ -4,6 +4,9 @@ Implements:
 - EvalLoader for multiple-choice evaluation datasets, e.g. HellaSwag.
 */
 
+import Foundation
+import Glob
+
 // Distributed Data Loader
 //#define HEADER_SIZE 256
 let HEADER_SIZE = 256
@@ -43,19 +46,18 @@ struct DataLoader {
     var file_size_bytes = 0
 }
 
+@discardableResult
 fileprivate func dataloader_load_shard(_ loader: UnsafeMutablePointer<DataLoader>, _ shard_index: Int) -> Int {
     var file_index = shard_index
     if loader.pointee.should_shuffle {
-        file_index = loader.pointee.shard_indices[shard_index]
+        file_index = Int(loader.pointee.shard_indices[shard_index])
     }
     // use the first glob match as the filename for now
     let filename = loader.pointee.glob_result[file_index]
     // open the input file for reading. also only a single file can be opened at a time
-    if let tokens_file = loader.pointee.tokens_file {
-        try? loader.pointee.tokens_file!.close()
-    }
+    try? loader.pointee.tokens_file?.close()
     guard
-        let tokens_file = try? FileHandle(forReadingFrom: filename)
+        let tokens_file = try? FileHandle(forReadingFrom: URL(string: filename)!)
     else { fatalError("Error opening tokens file") }
     loader.pointee.tokens_file = tokens_file
     // validate the header
@@ -69,7 +71,7 @@ fileprivate func dataloader_load_shard(_ loader: UnsafeMutablePointer<DataLoader
     if header[1] != 1 { fatalError("Bad version in data file") }
 
     let ntok = header[2] // number of tokens in the file
-    assert(ntok > 0 "No tokens in file") // we expect some tokens in the file. this should never trip, right?
+    assert(ntok > 0, "No tokens in file") // we expect some tokens in the file. this should never trip, right?
     // determine the file size and make sure it is consistent with the number of tokens
     loader.pointee.file_size_bytes = Int((try? tokens_file.seekToEnd()) ?? 0)
     try? tokens_file.seek(toOffset: 0)
@@ -87,8 +89,8 @@ fileprivate func prepare_intra_shard_indices(_ loader: UnsafeMutablePointer<Data
     // shuffle the examples inside the shards
     loader.pointee.intra_shard_indices?.deallocate()
     loader.pointee.intra_shard_indices = UnsafeMutablePointer<Int32>.allocate(capacity: loader.pointee.shard_num_samples)
-    init_identity_permutation(loader.pointee.intra_shard_indices, loader.pointee.shard_num_samples)
-    random_permutation(loader.pointee.intra_shard_indices, loader.pointee.shard_num_samples, loader.pointee.shuffle_rng)
+    init_identity_permutation(loader.pointee.intra_shard_indices!, loader.pointee.shard_num_samples)
+    random_permutation(loader.pointee.intra_shard_indices!, loader.pointee.shard_num_samples, &loader.pointee.shuffle_rng)
 }
 
 func dataloader_reset(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
@@ -96,7 +98,7 @@ func dataloader_reset(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
     loader.pointee.current_sample_idx = 0
 
     if loader.pointee.should_shuffle {  // shuffle the shards
-        random_permutation(loader.pointee.shard_indices, loader.pointee.glob_result.count, loader.pointee.shuffle_rng)
+        random_permutation(loader.pointee.shard_indices, loader.pointee.glob_result.count, &loader.pointee.shuffle_rng)
     }
 
     dataloader_load_shard(loader, loader.pointee.current_shard_idx)
@@ -140,7 +142,7 @@ func dataloader_init(_ loader: UnsafeMutablePointer<DataLoader>,
     loader.pointee.local_batch_offset_bytes = loader.pointee.process_rank * loader.pointee.B * loader.pointee.T * MemoryLayout<UInt16>.size
 
     // glob to get the list of files matching the pattern, these are our data shards
-    loader.pointee.glob_result = Glob(filename_pattern)
+    loader.pointee.glob_result = Glob(pattern: filename_pattern)
     if loader.pointee.glob_result.count == 0 {
         fatalError("No files matching pattern \(filename_pattern)")
     }
@@ -156,7 +158,7 @@ func dataloader_init(_ loader: UnsafeMutablePointer<DataLoader>,
     // inspect and validate all shards so we don't get any runtime errors later
     // if too slow / too many shards, may wish to revisit later
     var ntok_total = 0
-    for shard_index in 0..< loader.pointee.glob_result.count {
+    for shard_index in 0..<loader.pointee.glob_result.count {
         let shard_ntok = dataloader_load_shard(loader, shard_index)
         // we need at least one batch/shard, the way things are written right now.
         // can be relaxed a lot later.
@@ -168,7 +170,7 @@ func dataloader_init(_ loader: UnsafeMutablePointer<DataLoader>,
     // print("DataLoader: Found \(ntok_total) tokens across \(loader.pointee.glob_result.count) shards")
 
     // allocate all the space we'll need
-    loader.pointee.buffer = UnsafeMutablePointer<UInt16>.allocate(capacity: B * T + 1)
+    loader.pointee.buffer = UnsafeMutableBufferPointer<UInt16>.allocate(capacity: B * T + 1)
     loader.pointee.inputs = UnsafeMutablePointer<Int32>.allocate(capacity: B * T)
     loader.pointee.targets = UnsafeMutablePointer<Int32>.allocate(capacity: B * T)
     loader.pointee.num_tokens = ntok_total
@@ -180,19 +182,19 @@ func dataloader_init(_ loader: UnsafeMutablePointer<DataLoader>,
 func dataloader_load_batch(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
     assert(!loader.pointee.should_shuffle || (loader.pointee.should_shuffle && loader.pointee.intra_shard_indices != nil), "No indices to shuffle")
     assert(loader.pointee.current_sample_idx < loader.pointee.shard_num_samples, "Sample index out of bounds")
-    let idx = loader.pointee.should_shuffle ? loader.pointee.intra_shard_indices[loader.pointee.current_sample_idx] : loader.pointee.current_sample_idx
+    let idx = loader.pointee.should_shuffle ? Int(loader.pointee.intra_shard_indices![loader.pointee.current_sample_idx]) : loader.pointee.current_sample_idx
     let global_batch_offset_bytes = idx * loader.pointee.total_batch_size_bytes
     let current_offset = loader.pointee.header_bytes + global_batch_offset_bytes + loader.pointee.local_batch_offset_bytes
 
     let B = loader.pointee.B
     let T = loader.pointee.T
     // read B*T+1 uint16_t tokens from the file into buffer
-    try? loader.pointee.tokens_file!.seek(toOffset: UInt64(current_position))
+    try? loader.pointee.tokens_file!.seek(toOffset: UInt64(current_offset))
     guard
         let file_data = try? loader.pointee.tokens_file!.read(upToCount: (B * T + 1) * MemoryLayout<UInt16>.size)
     else { fatalError("Error reading tokens file") }
     var token_data = file_data
-    loader.pointee.batch = token_data.withUnsafeMutableBytes { $0.bindMemory(to: UInt16.self) }
+    loader.pointee.buffer = token_data.withUnsafeMutableBytes { $0.bindMemory(to: UInt16.self) }
     // decode the buffer into inputs and targets (cast to int)
     for i in 0..<B * T {
         loader.pointee.inputs[i] = Int32(loader.pointee.buffer[i])
@@ -202,7 +204,7 @@ func dataloader_load_batch(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
 
 func dataloader_next_batch(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
     // if the next batch would go past the end of the file, advance the loader
-    if loader->current_sample_idx >= loader->shard_num_samples {
+    if loader.pointee.current_sample_idx >= loader.pointee.shard_num_samples {
         dataloader_advance(loader)
     }
     dataloader_load_batch(loader)

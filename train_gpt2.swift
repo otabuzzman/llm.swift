@@ -1148,12 +1148,12 @@ func train_gpt2(_ folder: URL?) async -> Void {
     gpt2_build_from_checkpoint(&model, folder.appending(path: "gpt2_124M.bin"))
 
     // build the DataLoaders from tokens files. for now use tiny_shakespeare if available, else tiny_stories
-    let tiny_stories_train = folder.appending(path: "dev/data/tinystories/TinyStories_train.bin")
-    let tiny_stories_val = folder.appending(path: "dev/data/tinystories/TinyStories_val.bin")
-    let tiny_shakespeare_train = folder.appending(path: "dev/data/tinyshakespeare/tiny_shakespeare_train.bin")
-    let tiny_shakespeare_val = folder.appending(path: "dev/data/tinyshakespeare/tiny_shakespeare_val.bin")
-    let train_tokens = FileManager.default.fileExists(atPath: tiny_shakespeare_train.path()) ? tiny_shakespeare_train : tiny_stories_train
-    let val_tokens = FileManager.default.fileExists(atPath: tiny_shakespeare_val.path()) ? tiny_shakespeare_val : tiny_stories_val
+    let tiny_stories_train = "dev/data/tinystories/TinyStories_train.bin"
+    let tiny_stories_val = "dev/data/tinystories/TinyStories_val.bin"
+    let tiny_shakespeare_train = "dev/data/tinyshakespeare/tiny_shakespeare_train.bin"
+    let tiny_shakespeare_val = "dev/data/tinyshakespeare/tiny_shakespeare_val.bin"
+    let train_tokens = FileManager.default.fileExists(atPath: tiny_shakespeare_train) ? tiny_shakespeare_train : tiny_stories_train
+    let val_tokens = FileManager.default.fileExists(atPath: tiny_shakespeare_val) ? tiny_shakespeare_val : tiny_stories_val
     let B = 4 // batch size 4 (i.e. 4 independent token sequences will be trained on)
     let T = 64 // sequence length 64 (i.e. each sequence is 64 tokens long). must be <= maxT, which is 1024 for GPT-2
     var train_loader = DataLoader()

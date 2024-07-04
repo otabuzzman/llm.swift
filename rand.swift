@@ -84,6 +84,8 @@ Both output:
     2756748748
 */
 
+import Accelerate
+
 // #define MERSENNE_STATE_M 397u
 // #define MERSENNE_STATE_N 624u
 let MERSENNE_STATE_M = 397
@@ -110,7 +112,7 @@ func manual_seed(_ state: UnsafeMutablePointer<mt19937_state>, _ seed: Int) -> V
     state.pointee.MATRIX_A[0] = 0x0
     state.pointee.MATRIX_A[1] = 0x9908b0d
     state.pointee.state[0] = seed & 0xffffffff
-    for j in 1..< MERSENNE_STATE_N {
+    for j in 1..<MERSENNE_STATE_N {
         state.pointee.state[j] = 1812433253 * (state.pointee.state[j - 1] ^ (state.pointee.state[j - 1] >> 30)) + j
         state.pointee.state[j] &= 0xffffffff
     }
@@ -128,6 +130,7 @@ func nextstate(_ state: UnsafeMutablePointer<mt19937_state>) -> Void {
         state.pointee.state[j] = state.pointee.state[j + MERSENNE_STATE_M] ^ (y >> 1) ^ state.pointee.MATRIX_A[y & 0x1]
     }
     for i in j..<MERSENNE_STATE_N - 1 {
+        j = i
         y = (state.pointee.state[j] & UMASK) | (state.pointee.state[j + 1] & LMASK)
         state.pointee.state[j] = state.pointee.state[j + (MERSENNE_STATE_M - MERSENNE_STATE_N)] ^ (y >> 1) ^ state.pointee.MATRIX_A[y & 0x1]
     }
@@ -147,7 +150,7 @@ func randint32(_ state: UnsafeMutablePointer<mt19937_state>) -> UInt32 {
     y ^= (y << 7) & 0x9d2c5680
     y ^= (y << 15) & 0xefc60000
     y ^= y >> 18
-    return y
+    return UInt32(y)
 }
 
 @inline(__always) // https://forums.swift.org/t/when-should-both-inlinable-and-inline-always-be-used/37375/2
@@ -177,35 +180,36 @@ func normal_fill_16(_ data: UnsafeMutablePointer<Float>, _ mean: Float, _ std: F
     // #define EPSILONE 1e-12f
     let EPSILONE: Float = 1e-12
     for t in 0..<8 {
-        Float u1 = 1 - data[t]
-        Float u2 = data[t + 8]
-        Float radius = sqrtf(-2 * logf(u1 + EPSILONE))
-        Float theta = 2 * Float.pi * u2
-        data[t] = radius * cosf(theta) * std + mean
-        data[t + 8] = radius * sinf(theta) * std + mean
+        let u1: Float = 1 - data[t]
+        let u2: Float = data[t + 8]
+        let radius: Float = sqrt(-2 * log(u1 + EPSILONE))
+        let theta: Float = 2 * Float.pi * u2
+        data[t] = radius * cos(theta) * std + mean
+        data[t + 8] = radius * sin(theta) * std + mean
     }
 }
 
-func normal_fill(_ data: UnsafeMutablePointer<Float>, _ mean: Float, _ std: Float, _ state: UnsafeMutablePointer<mt19937_state>) -> Void {
+func normal_fill(_ data: UnsafeMutableBufferPointer<Float>, _ numel: Int, _ mean: Float, _ std: Float, _ state: UnsafeMutablePointer<mt19937_state>) -> Void {
     for t in 0..<numel {
         data[t] = Float(randfloat32(state))
     }
 	var i = 0
 	while i < numel - 15 {
-		normal_fill_16(data + i, mean, std)
+        let data = (data.baseAddress?.advanced(by: i))!
+        normal_fill_16(data, mean, std)
 		i += 16
 	}
     if numel % 16 != 0 {
         // recompute the last 16 values
-        data = data + numel - 16
-        for i in 0..< 16 {
+        let data = (data.baseAddress?.advanced(by: numel - 16))!
+        for i in 0..<16 {
             data[i] = Float(randfloat32(state))
         }
         normal_fill_16(data, mean, std)
     }
 }
 
-fileprivate func normal(_ data: UnsafeMutablePointer<Float>, _ numel: Int, _ mean: Float, _ std: Float, _ state: UnsafeMutablePointer<mt19937_state>) -> Void {
+fileprivate func normal(_ data: UnsafeMutableBufferPointer<Float>, _ numel: Int, _ mean: Float, _ std: Float, _ state: UnsafeMutablePointer<mt19937_state>) -> Void {
     // #define EPSILONE 1e-12f
     let EPSILONE: Float = 1e-12
     if numel >= 16 {
@@ -215,15 +219,15 @@ fileprivate func normal(_ data: UnsafeMutablePointer<Float>, _ numel: Int, _ mea
         var has_nextdouble_normal_sample = false
         for t in 0..<numel {
             if has_nextdouble_normal_sample {
-                data[t] = Float(nextdouble_normal_sample * std + mean)
+                data[t] = Float(nextdouble_normal_sample) * std + mean
                 has_nextdouble_normal_sample = false
                 continue
             }
             // for numel < 16 we draw a double (float64)
-            u1 = Float(randfloat64(state))
-            u2 = Float(randfloat64(state))
-            radius = sqrtf(-2 * logf(1 - u2 + EPSILONE))
-            theta = 2 * Float.pi * u1
+            let u1 = Float(randfloat64(state))
+            let u2 = Float(randfloat64(state))
+            let radius = sqrtf(-2 * logf(1 - u2 + EPSILONE))
+            let theta = 2 * Float.pi * u1
             nextdouble_normal_sample = Double(radius * sinf(theta))
             has_nextdouble_normal_sample = true
             data[t] = radius * cosf(theta) * std + mean
@@ -231,16 +235,16 @@ fileprivate func normal(_ data: UnsafeMutablePointer<Float>, _ numel: Int, _ mea
     }
 }
 
-func init_identity_permutation(_ data: UnsafeMutablePointer<Int>, _ numel: Int) -> Void {
+func init_identity_permutation(_ data: UnsafeMutablePointer<Int32>, _ numel: Int) -> Void {
     for i in 0..<numel {
-        data[i] = i
+        data[i] = Int32(i)
     }
 }
 
-func random_permutation(_ data: UnsafeMutablePointer<Int>, _ numel: Int, _ state: UnsafeMutablePointer<mt19937_state>) -> Void {
+func random_permutation(_ data: UnsafeMutablePointer<Int32>, _ numel: Int, _ state: UnsafeMutablePointer<mt19937_state>) -> Void {
     for i in (0..<numel).reversed() {
         // pick an index j in [0, i] with equal probability
-        let j = randint32(state) % (i + 1)
+        let j = Int(randint32(state) % UInt32(i + 1))
         // swap i <-> j
         let tmp = data[i]
         data[i] = data[j]
@@ -257,8 +261,8 @@ func test_mt19937() -> Void {
     print("\(randint32(&state))")
     print("\(randint32(&state))")
 
-    var a8 = Array<Float>(repeating: 0, count 8)
-    a8.withUnsafeBufferPointer { t8 in
+    var a8 = Array<Float>(repeating: 0, count: 8)
+    a8.withUnsafeMutableBufferPointer { t8 in
         normal(t8, 8, 0, 1, &state)
         for i in 0..<8 {
             print("\(t8[i])")
@@ -266,8 +270,8 @@ func test_mt19937() -> Void {
         print("\(randint32(&state))")
     }
 
-    var a16 = Array<Float>(repeating: 0, count 16)
-    a16.withUnsafeBufferPointer { t16 in
+    var a16 = Array<Float>(repeating: 0, count: 16)
+    a16.withUnsafeMutableBufferPointer { t16 in
         normal(t16, 16, 0, 1, &state)
         for i in 0..<16 {
             print("\(t16[i])")
