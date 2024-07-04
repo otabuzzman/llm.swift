@@ -101,7 +101,7 @@ func layernorm_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMu
             let dinp_bt = dinp + b * T * C + t * C
             let mean_bt = mean[b * T + t]
             let rstd_bt = rstd[b * T + t]
-            
+
             // first: two reduce operations
             var dnorm_mean: Float = 0
             var dnorm_norm_mean: Float = 0
@@ -113,7 +113,7 @@ func layernorm_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMu
             }
             dnorm_mean = dnorm_mean / fC
             dnorm_norm_mean = dnorm_norm_mean / fC
-            
+
             // now iterate again and accumulate all the gradients
             for i in 0..<C {
                 let norm_bti = (inp_bt[i] - mean_bt) * rstd_bt
@@ -142,7 +142,7 @@ func matmul_forward_naive(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePoint
     // #pragma omp parallel for collapse(2)
     DispatchQueue.concurrentPerform(iterations: B * T) {
         let (t, b, _) = indicesOf(combined: $0, T, B)
-        
+
         let out_bt = out + b * T * OC + t * OC
         let inp_bt = inp + b * T * C + t * C
         for o in 0..<OC {
@@ -221,7 +221,7 @@ func matmul_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMutab
     // #pragma omp parallel for collapse(2)
     DispatchQueue.concurrentPerform(iterations: B * T) {
         let (t, b, _) = indicesOf(combined: $0, T, B)
-        
+
         let dout_bt = dout + b * T * OC + t * OC
         let dinp_bt = dinp + b * T * C + t * C
         for o in 0..<OC {
@@ -279,20 +279,20 @@ func attention_forward(_ out: UnsafeMutablePointer<Float>, _ preatt: UnsafeMutab
     let C3 = C * 3
     let hs = C / NH // head size
     let scale = 1 / sqrtf(Float(hs))
-    
+
     // #pragma omp parallel for collapse(3)
     DispatchQueue.concurrentPerform(iterations: B * T * NH) {
         let (h, t, b) = indicesOf(combined: $0, NH, T, B)
-        
+
         let query_t = inp + b * T * C3 + t * C3 + h * hs
         let preatt_bth = preatt + b * NH * T * T + h * T * T + t * T
         let att_bth = att + b * NH * T * T + h * T * T + t * T
-        
+
         // pass 1: calculate query dot key and maxval
         var maxval: Float = -10000 // TODO something better
         for t2 in 0...t {
             let key_t2 = inp + b * T * C3 + t2 * C3 + h * hs + C // +C because it's key
-            
+
             // (query_t) dot (key_t2)
             var val: Float = 0
             for i in 0..<hs {
@@ -302,10 +302,10 @@ func attention_forward(_ out: UnsafeMutablePointer<Float>, _ preatt: UnsafeMutab
             if val > maxval {
                 maxval = val
             }
-            
+
             preatt_bth[t2] = val
         }
-        
+
         // pass 2: calculate the exp and keep track of sum
         // maxval is being calculated and subtracted only for numerical stability
         var expsum: Float = 0
@@ -315,7 +315,7 @@ func attention_forward(_ out: UnsafeMutablePointer<Float>, _ preatt: UnsafeMutab
             att_bth[t2] = expv
         }
         let expsum_inv = expsum == 0 ? 0 : 1 / expsum
-        
+
         // pass 3: normalize to get the softmax
         for t2 in 0..<T {
             if t2 <= t {
@@ -326,7 +326,7 @@ func attention_forward(_ out: UnsafeMutablePointer<Float>, _ preatt: UnsafeMutab
                 att_bth[t2] = 0
             }
         }
-        
+
         // pass 4: accumulate weighted values into the output of attention
         let out_bth = out + b * T * C + t * C + h * hs
         for i in 0..<hs { out_bth[i] = 0 }
@@ -359,7 +359,7 @@ func attention_backward(_ dinp: UnsafeMutablePointer<Float>, _ dpreatt: UnsafeMu
     let C3 = C * 3
     let hs = C / NH // head size
     let scale = 1 / sqrtf(Float(hs))
-    
+
     for b in 0..<B {
         for t in 0..<T {
             for h in 0..<NH {
@@ -368,7 +368,7 @@ func attention_backward(_ dinp: UnsafeMutablePointer<Float>, _ dpreatt: UnsafeMu
                 let dpreatt_bth = dpreatt + b * NH * T * T + h * T * T + t * T
                 let dquery_t = dinp + b * T * C3 + t * C3 + h * hs
                 let query_t = inp + b * T * C3 + t * C3 + h * hs
-                
+
                 // backward pass 4, through the value accumulation
                 let dout_bth = dout + b * T * C + t * C + h * hs
                 for t2 in 0...t {
@@ -382,7 +382,7 @@ func attention_backward(_ dinp: UnsafeMutablePointer<Float>, _ dpreatt: UnsafeMu
                         dvalue_t2[i] += att_bth[t2] * dout_bth[i]
                     }
                 }
-                
+
                 // backward pass 2 & 3, the softmax
                 // note that softmax (like e.g. tanh) doesn't need the input (preatt) to backward
                 for t2 in 0...t {
@@ -392,7 +392,7 @@ func attention_backward(_ dinp: UnsafeMutablePointer<Float>, _ dpreatt: UnsafeMu
                         dpreatt_bth[t3] += local_derivative * datt_bth[t2]
                     }
                 }
-                
+
                 // backward pass 1, the query @ key matmul
                 for t2 in 0...t {
                     let key_t2 = inp + b * T * C3 + t2 * C3 + h * hs + C // +C because it's key
@@ -461,11 +461,11 @@ func softmax_forward(_ probs: UnsafeMutablePointer<Float>, _ logits: UnsafeMutab
     // #pragma omp parallel for collapse(2)
     DispatchQueue.concurrentPerform(iterations: B * T) {
         let (t, b, _) = indicesOf(combined: $0, T, B)
-        
+
         // probs <- softmax(logits)
         let logits_bt = logits + b * T * Vp + t * Vp
         let probs_bt = probs + b * T * Vp + t * Vp
-        
+
         // maxval is only calculated and subtracted for numerical stability
         var maxval: Float = -10000 // TODO something better
         for i in 0..<V {
@@ -725,7 +725,7 @@ struct GPT2 {
 }
 
 func gpt2_build_from_checkpoint(_ model: UnsafeMutablePointer<GPT2>, _ checkpoint_path: URL) -> Void {
-    
+
     // read in model from a checkpoint file
     guard
         let model_file = try? FileHandle(forReadingFrom: checkpoint_path)
@@ -738,7 +738,7 @@ func gpt2_build_from_checkpoint(_ model: UnsafeMutablePointer<GPT2>, _ checkpoin
     }
     if model_header[0] != 20240326 { fatalError("Bad magic model file") }
     if model_header[1] != 3 { fatalError("Bad version in model file (try `python train_gpt2.py`)") }
-    
+
     // read in hyperparameters
     let maxT = model_header[2]
     let V = model_header[3]
@@ -759,10 +759,10 @@ func gpt2_build_from_checkpoint(_ model: UnsafeMutablePointer<GPT2>, _ checkpoin
     print("num_layers: \(L)")
     print("num_heads: \(NH)")
     print("channels: \(C)")
-    
+
     // allocate space for all the parameters and read them in
     fill_in_parameter_sizes(&model.pointee.param_sizes, model.pointee.config)
-    
+
     // count the number of parameters
     var num_parameters = 0
     for i in 0..<NUM_PARAMETER_TENSORS {
@@ -770,7 +770,7 @@ func gpt2_build_from_checkpoint(_ model: UnsafeMutablePointer<GPT2>, _ checkpoin
     }
     print("num_parameters: \(num_parameters)")
     model.pointee.num_parameters = num_parameters
-    
+
     // read in all the parameters from file
     model.pointee.params_memory = malloc_and_point_parameters(&model.pointee.params, model.pointee.param_sizes)
 //    let params_memory_size = num_parameters * MemoryLayout<Float>.size
@@ -783,7 +783,7 @@ func gpt2_build_from_checkpoint(_ model: UnsafeMutablePointer<GPT2>, _ checkpoin
         _ = try FileDescriptor(rawValue: model_fd).read(into: UnsafeMutableRawBufferPointer(model.pointee.params_memory))
     } catch { fatalError("Error reading params from model file") }
     try? model_file.close()
-    
+
     // other inits
     model.pointee.acts_memory = nil
     model.pointee.grads_memory = nil
@@ -799,21 +799,21 @@ func gpt2_build_from_checkpoint(_ model: UnsafeMutablePointer<GPT2>, _ checkpoin
 
 func gpt2_forward(_ model: UnsafeMutablePointer<GPT2>, _ inputs: UnsafePointer<Int32>, _ targets: UnsafePointer<Int32>?, _ B: Int, _ T: Int) async -> Void {
     // targets are optional
-    
+
     // ensure the model was initialized or error out
     // params_memory available or app crashed in Swift
     // if (model->params_memory == NULL) {
     //     printf("Error: model was not initialized properly.\n");
     //     exit(1);
     // }
-    
+
     // convenience parameters
     let V = model.pointee.config.vocab_size
     let Vp = model.pointee.config.padded_vocab_size
     let L = model.pointee.config.num_layers
     let NH = model.pointee.config.num_heads
     let C = model.pointee.config.channels
-    
+
     // validate inputs, all indices must be in the range [0, V]
     for i in 0..<B * T {
         assert(0 <= inputs[i] && inputs[i] < V, "Input \(inputs[i]) not in range [0, \(V)]")
@@ -821,7 +821,7 @@ func gpt2_forward(_ model: UnsafeMutablePointer<GPT2>, _ inputs: UnsafePointer<I
             assert(0 <= targets[i] && targets[i] < V, "Target \(targets[i]) not in range [0, \(V)]")
         }
     }
-    
+
     // allocate space for all the activations if needed (done here, lazily)
     if model.pointee.acts_memory == nil {
         // record the current B,T as well
@@ -868,13 +868,13 @@ func gpt2_forward(_ model: UnsafeMutablePointer<GPT2>, _ inputs: UnsafePointer<I
             fatalError("Model deviates from expected values: B=\(model.pointee.batch_size) T=\(model.pointee.seq_len), expected: B=\(B) T=\(T)")
         }
     }
-    
+
     // cache the inputs/targets
     model.pointee.inputs!.update(from: inputs, count: B * T)
     if let targets = targets {
         model.pointee.targets!.update(from: targets, count: B * T)
     }
-    
+
     // forward pass
     let params = model.pointee.params // for brevity
     let acts = model.pointee.acts
@@ -882,7 +882,7 @@ func gpt2_forward(_ model: UnsafeMutablePointer<GPT2>, _ inputs: UnsafePointer<I
     encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
     for l in 0..<L {
         residual = l == 0 ? acts.encoded : acts.residual3 + (l - 1) * B * T * C
-        
+
         // get the pointers of the weights for this layer
         let l_ln1w = params.ln1w + l * C
         let l_ln1b = params.ln1b + l * C
@@ -896,7 +896,7 @@ func gpt2_forward(_ model: UnsafeMutablePointer<GPT2>, _ inputs: UnsafePointer<I
         let l_fcb = params.fcb + l * 4 * C
         let l_fcprojw = params.fcprojw + l * C * 4 * C
         let l_fcprojb = params.fcprojb + l * C
-        
+
         // get the pointers of the activations for this layer
         let l_ln1 = acts.ln1 + l * B * T * C
         let l_ln1_mean = acts.ln1_mean + l * B * T
@@ -931,7 +931,7 @@ func gpt2_forward(_ model: UnsafeMutablePointer<GPT2>, _ inputs: UnsafePointer<I
     layernorm_forward(acts.lnf, acts.lnf_mean, acts.lnf_rstd, residual, params.lnfw, params.lnfb, B, T, C)
     await matmul_forward(acts.logits, acts.lnf, params.wte, nil, B, T, C, Vp)
     await softmax_forward(acts.probs, acts.logits, B, T, V, Vp)
-    
+
     // also forward the cross-entropy loss function if we have the targets
     if let targets = targets {
         crossentropy_forward(model.pointee.acts.losses, model.pointee.acts.probs, targets, B, T, Vp)
@@ -956,19 +956,19 @@ func gpt2_zero_grad(_ model: UnsafeMutablePointer<GPT2>) -> Void {
 }
 
 func gpt2_backward(_ model: UnsafeMutablePointer<GPT2>) async -> Void {
-    
+
     // double check we forwarded previously, with targets
     if model.pointee.mean_loss == -1 {
         fatalError("Must forward with targets before backward")
     }
-    
+
     // lazily allocate the memory for gradients of the weights and activations, if needed
     if model.pointee.grads_memory == nil {
         model.pointee.grads_memory = malloc_and_point_parameters(&model.pointee.grads, model.pointee.param_sizes)
         model.pointee.grads_acts_memory = malloc_and_point_activations(&model.pointee.grads_acts, model.pointee.act_sizes)
         gpt2_zero_grad(model)
     }
-    
+
     // convenience shortcuts
     let B = model.pointee.batch_size
     let T = model.pointee.seq_len
@@ -977,30 +977,30 @@ func gpt2_backward(_ model: UnsafeMutablePointer<GPT2>) async -> Void {
     let L = model.pointee.config.num_layers
     let NH = model.pointee.config.num_heads
     let C = model.pointee.config.channels
-    
+
     // backward pass: go in the reverse order of the forward pass, and call backward() functions
     let params = model.pointee.params // for brevity
     let grads = model.pointee.grads
     let acts = model.pointee.acts
     let grads_acts = model.pointee.grads_acts
-    
+
     // we kick off the chain rule by filling in dlosses with 1/(B*T)
     // technically this is a small, inline backward() pass of calculating
     // total, final loss as the mean over all losses over all (B,T) positions in the batch
     let dloss_mean = 1 / Float(B * T)
     for i in 0..<B * T { grads_acts.losses[i] = dloss_mean }
-    
+
     crossentropy_softmax_backward(grads_acts.logits, grads_acts.losses, acts.probs, model.pointee.targets!, B, T, V, Vp)
     await matmul_backward(grads_acts.lnf, grads.wte, nil, grads_acts.logits, acts.lnf, params.wte, B, T, C, Vp)
     var residual = acts.residual3 + (L - 1) * B * T * C // last layer's residual
     var dresidual = grads_acts.residual3 + (L - 1) * B * T * C // write to last layer's residual
     layernorm_backward(dresidual, grads.lnfw, grads.lnfb, grads_acts.lnf, residual, params.lnfw, acts.lnf_mean, acts.lnf_rstd, B, T, C)
-    
+
     for l in (0..<L).reversed() {
-        
+
         residual = l == 0 ? acts.encoded : acts.residual3 + (l - 1) * B * T * C
         dresidual = l == 0 ? grads_acts.encoded : grads_acts.residual3 + (l - 1) * B * T * C
-        
+
         // get the pointers of the weights for this layer
         let l_ln1w = params.ln1w + l * C
         let l_qkvw = params.qkvw + l * 3 * C * C
@@ -1047,7 +1047,7 @@ func gpt2_backward(_ model: UnsafeMutablePointer<GPT2>) async -> Void {
         let dl_fch_gelu = grads_acts.fch_gelu + l * B * T * 4 * C
         let dl_fcproj = grads_acts.fcproj + l * B * T * C
         let dl_residual3 = grads_acts.residual3 + l * B * T * C
-        
+
         // backprop this layer
         residual_backward(dl_residual2, dl_fcproj, dl_residual3, B * T * C)
         await matmul_backward(dl_fch_gelu, dl_fcprojw, dl_fcprojb, dl_fcproj, l_fch_gelu, l_fcprojw, B, T, 4 * C, C)
@@ -1065,7 +1065,7 @@ func gpt2_backward(_ model: UnsafeMutablePointer<GPT2>) async -> Void {
 
 func gpt2_update(_ model: UnsafeMutablePointer<GPT2>, _ learning_rate: Float, _ beta1: Float, _ beta2: Float, _ eps: Float, _ weight_decay: Float, _ t: Int) {
     // reference: https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html
-    
+
     // lazily allocate the memory for m_memory and v_memory
     if model.pointee.m_memory == nil {
         model.pointee.m_memory = UnsafeMutableBufferPointer<Float>.allocate(capacity: model.pointee.num_parameters)
@@ -1081,7 +1081,7 @@ func gpt2_update(_ model: UnsafeMutablePointer<GPT2>, _ learning_rate: Float, _ 
     for i in 0..<model.pointee.num_parameters {
         let param = (params_memory + i).pointee
         let grad = (grads_memory + i).pointee
-        
+
         // update the first moment (momentum)
         let m = beta1 * (m_memory + i).pointee + (1 - beta1) * grad
         // update the second moment (RMSprop)
@@ -1089,7 +1089,7 @@ func gpt2_update(_ model: UnsafeMutablePointer<GPT2>, _ learning_rate: Float, _ 
         // bias-correct both moments
         let m_hat = m / (1 - powf(beta1, Float(t)))
         let v_hat = v / (1 - powf(beta2, Float(t)))
-        
+
         // update
         (m_memory + i).pointee = m
         (v_memory + i).pointee = v
@@ -1142,11 +1142,11 @@ func sample_mult(_ probabilities: UnsafeMutablePointer<Float>, _ n: Int, _ coin:
 // main training loop
 func train_gpt2(_ folder: URL?) async -> Void {
     guard let folder = folder else { return }
-    
+
     // build the GPT-2 model from a checkpoint
     var model = GPT2()
     gpt2_build_from_checkpoint(&model, folder.appending(path: "gpt2_124M.bin"))
-    
+
     // build the DataLoaders from tokens files. for now use tiny_shakespeare if available, else tiny_stories
     let tiny_stories_train = folder.appending(path: "dev/data/tinystories/TinyStories_train.bin")
     let tiny_stories_val = folder.appending(path: "dev/data/tinystories/TinyStories_val.bin")
@@ -1158,16 +1158,16 @@ func train_gpt2(_ folder: URL?) async -> Void {
     let T = 64 // sequence length 64 (i.e. each sequence is 64 tokens long). must be <= maxT, which is 1024 for GPT-2
     var train_loader = DataLoader()
     var val_loader = DataLoader()
-    dataloader_init(&train_loader, train_tokens, B, T)//, 0, 1, 1)
-    dataloader_init(&val_loader, val_tokens, B, T)//, 0, 1, 0)
-    //print("train dataset num_batches: \(train_loader.num_tokens / (B * T))")
-    //print("val dataset num_batches: \(val_loader.num_tokens / (B * T))")
+    dataloader_init(&train_loader, train_tokens, B, T, 0, 1, true)
+    dataloader_init(&val_loader, val_tokens, B, T, 0, 1, false)
+    print("train dataset num_batches: \(train_loader.num_tokens / (B * T))")
+    print("val dataset num_batches: \(val_loader.num_tokens / (B * T))")
     let val_num_batches = 5
-    
+
     // build the Tokenizer
     var tokenizer = Tokenizer()
     tokenizer_init(&tokenizer, folder.appending(path: "gpt2_tokenizer.bin"))
-    
+
     // some memory for generating samples from the model
     let rng_state = UnsafeMutablePointer<UInt64>.allocate(capacity: 1)
     let gen_tokens = UnsafeMutablePointer<Int32>.allocate(capacity: B * T)
@@ -1177,10 +1177,10 @@ func train_gpt2(_ folder: URL?) async -> Void {
     }
     rng_state.initialize(to: 1337)
     let genT = 64 // number of steps of inference we will do
-    
+
     // train
     for step in 0...40 {
-        
+
         // once in a while estimate the validation loss
         if step % 10 == 0 {
             var val_loss: Float = 0
@@ -1193,7 +1193,7 @@ func train_gpt2(_ folder: URL?) async -> Void {
             val_loss /= Float(val_num_batches)
             print("val loss \(val_loss)")
         }
-        
+
         // once in a while do model inference to print generated text
         if step > 0 && step % 20 == 0 {
             // fill up gen_tokens with the GPT2_EOT, which kicks off the generation
@@ -1230,7 +1230,7 @@ func train_gpt2(_ folder: URL?) async -> Void {
             }
             print("\n---")
         }
-        
+
         // do a training step
         let start = Date.timeIntervalSinceReferenceDate
         dataloader_next_batch(&train_loader)
@@ -1241,7 +1241,7 @@ func train_gpt2(_ folder: URL?) async -> Void {
         let end = Date.timeIntervalSinceReferenceDate
         print("step \(step): train loss \(model.mean_loss) (took \(String(format: "%1.2f", (end - start) * 1000)) ms)")
     }
-    
+
     // free
     dataloader_free(&train_loader)
     dataloader_free(&val_loader)
