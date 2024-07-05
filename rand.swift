@@ -101,56 +101,57 @@ let UMASK = 0x80000000
 // This implementation follows PyTorch so that we are numerically identical when running verification tests.
 
 struct mt19937_state {
-    /* private */ var seed = 0
+    /* private */ var seed: UInt32 = 0
     /* private */ var left = 0
-    /* private */ var next = 0
-    /* private */ var state = Array<Int>(repeating: 0, count: MERSENNE_STATE_N)
-    var MATRIX_A = Array<Int>(repeating: 0, count: 2)
+    /* private */ var next: UInt32 = 0
+    /* private */ var state = Array<UInt32>(repeating: 0, count: MERSENNE_STATE_N)
+    var MATRIX_A = Array<UInt32>(repeating: 0, count: 2)
 }
 
 func manual_seed(_ state: UnsafeMutablePointer<mt19937_state>, _ seed: Int) -> Void {
     state.pointee.MATRIX_A[0] = 0x0
-    state.pointee.MATRIX_A[1] = 0x9908b0d
-    state.pointee.state[0] = seed & 0xffffffff
+    state.pointee.MATRIX_A[1] = 0x9908b0df
+    state.pointee.state[0] = UInt32(seed & 0xffffffff)
     for j in 1..<MERSENNE_STATE_N {
-        state.pointee.state[j] = 1812433253 * (state.pointee.state[j - 1] ^ (state.pointee.state[j - 1] >> 30)) + j
+        state.pointee.state[j] = 1812433253 &* (state.pointee.state[j - 1] ^ (state.pointee.state[j - 1] >> 30)) + UInt32(j)
         state.pointee.state[j] &= 0xffffffff
     }
     state.pointee.left = 1
     state.pointee.next = 0
 }
 
-func nextstate(_ state: UnsafeMutablePointer<mt19937_state>) -> Void {
+func next_state(_ state: UnsafeMutablePointer<mt19937_state>) -> Void {
     state.pointee.left = MERSENNE_STATE_N
     state.pointee.next = 0
     var y = 0, j = 0
     for i in 0..<MERSENNE_STATE_N - MERSENNE_STATE_M {
 		j = i
-        y = (state.pointee.state[j] & UMASK) | (state.pointee.state[j + 1] & LMASK)
-        state.pointee.state[j] = state.pointee.state[j + MERSENNE_STATE_M] ^ (y >> 1) ^ state.pointee.MATRIX_A[y & 0x1]
+        y = (Int(state.pointee.state[j]) & UMASK) | (Int(state.pointee.state[j + 1]) & LMASK)
+        state.pointee.state[j] = state.pointee.state[j + MERSENNE_STATE_M] ^ UInt32(y >> 1) ^ state.pointee.MATRIX_A[y & 0x1]
     }
+    j += 1
     for i in j..<MERSENNE_STATE_N - 1 {
         j = i
-        y = (state.pointee.state[j] & UMASK) | (state.pointee.state[j + 1] & LMASK)
-        state.pointee.state[j] = state.pointee.state[j + (MERSENNE_STATE_M - MERSENNE_STATE_N)] ^ (y >> 1) ^ state.pointee.MATRIX_A[y & 0x1]
+        y = (Int(state.pointee.state[j]) & UMASK) | (Int(state.pointee.state[j + 1]) & LMASK)
+        state.pointee.state[j] = state.pointee.state[j + (MERSENNE_STATE_M - MERSENNE_STATE_N)] ^ UInt32(y >> 1) ^ state.pointee.MATRIX_A[y & 0x1]
     }
-    y = (state.pointee.state[MERSENNE_STATE_N - 1] & UMASK) | (state.pointee.state[0] & LMASK)
-    state.pointee.state[MERSENNE_STATE_N - 1] = state.pointee.state[MERSENNE_STATE_M - 1] ^ (y >> 1) ^ state.pointee.MATRIX_A[y & 0x1]
+    y = (Int(state.pointee.state[MERSENNE_STATE_N - 1]) & UMASK) | (Int(state.pointee.state[0]) & LMASK)
+    state.pointee.state[MERSENNE_STATE_N - 1] = state.pointee.state[MERSENNE_STATE_M - 1] ^ UInt32(y >> 1) ^ state.pointee.MATRIX_A[y & 0x1]
 }
 
 func randint32(_ state: UnsafeMutablePointer<mt19937_state>) -> UInt32 {
     if state.pointee.MATRIX_A[0] != 0 || state.pointee.MATRIX_A[1] != 0x9908b0df { manual_seed(state, 5489) } // auto-initialize
 	state.pointee.left -= 1
     if state.pointee.left <= 0 {
-        nextstate(state)
+        next_state(state)
     }
-    var y = state.pointee.state[state.pointee.next]
+    var y = state.pointee.state[Int(state.pointee.next)]
 	state.pointee.next += 1
     y ^= y >> 11
     y ^= (y << 7) & 0x9d2c5680
     y ^= (y << 15) & 0xefc60000
     y ^= y >> 18
-    return UInt32(y)
+    return y
 }
 
 @inline(__always) // https://forums.swift.org/t/when-should-both-inlinable-and-inline-always-be-used/37375/2
