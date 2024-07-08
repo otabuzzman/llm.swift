@@ -3,7 +3,7 @@
 A Swift port of Andrej Karpathy‘s [llm.c](https://github.com/karpathy/llm.c). 
 
 ## Quick start
-- Clone [llm.c](https://github.com/karpathy/llm.c), checkout commit [2346cdac](https://github.com/karpathy/llm.c/tree/2346cdac931f544d63ce816f7e3f5479a917eef5) (`git checkout 2346cdac`) this port is based on, and follow instructions given there in section [quick start (CPU)](https://github.com/otabuzzman/llm.c/blob/2346cdac931f544d63ce816f7e3f5479a917eef5/README.md#quick-start-cpu). This will get you the dataset, the tokens, the small GPT-2 model (124M) released by OpenAI, and two executables for testing and training.
+- Clone [llm.c](https://github.com/karpathy/llm.c) and follow instructions given there in README, section [quick start (CPU)](https://github.com/otabuzzman/llm.c/blob/2346cdac931f544d63ce816f7e3f5479a917eef5/README.md#quick-start-cpu). This will get you the dataset, the tokens, the small GPT-2 model (124M) released by OpenAI, and two executables for testing and training.
 
 - Clone this repository, cd into it, build and run the executables for testing and training. 
 
@@ -11,16 +11,17 @@ A Swift port of Andrej Karpathy‘s [llm.c](https://github.com/karpathy/llm.c).
   git clone https://github.com/otabuzzman/llm.swift.git
   cd llm.swift
   
-  xcodebuild # will build for production
-  # create sym-links for convenience
-  ln -s build/Release/llm.swift test_gpt2
-  ln -s build/Release/llm.swift train_gpt2
+  # build for production
+  xcodebuild -scheme llm.swift -configuration Release
   
+  # find path of `llm.swift` executable in xcodebuild log on stdout.
+  # create symlinks `train_gpt2` and `test_gpt2` for convenience.
+
   # usage:
-  # test_gpt2 [ <llm.c folder> ]
-  # train_gpt2 [ <llm.c folder> ]
+  # test_gpt2 [ llm.c data folder ]
+  # train_gpt2 [ llm.c data folder ]
   
-  ./test_gpt2 ../llm.c   # llm.c data in sibling folder
+  ./test_gpt2 ../llm.c # llm.c data in sibling folder
   ./train_gpt2 ../llm.c
   ```
 

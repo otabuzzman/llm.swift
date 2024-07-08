@@ -724,11 +724,11 @@ struct GPT2 {
     var mean_loss: Float = 0 // after a forward pass with targets, will be populated with the mean loss
 }
 
-func gpt2_build_from_checkpoint(_ model: UnsafeMutablePointer<GPT2>, _ checkpoint_path: URL) -> Void {
+func gpt2_build_from_checkpoint(_ model: UnsafeMutablePointer<GPT2>, _ checkpoint_path: String) -> Void {
 
     // read in model from a checkpoint file
     guard
-        let model_file = try? FileHandle(forReadingFrom: checkpoint_path)
+        let model_file = FileHandle(forReadingAtPath: checkpoint_path)
     else { fatalError("Error opening model file") }
     guard
         let header_data = try? model_file.read(upToCount: 256 * MemoryLayout<Int32>.size)
@@ -1141,11 +1141,15 @@ func sample_mult(_ probabilities: UnsafeMutablePointer<Float>, _ n: Int, _ coin:
 // ----------------------------------------------------------------------------
 // main training loop
 func train_gpt2(_ folder: URL?) async -> Void {
-    guard let folder = folder else { return }
+    let cwd = FileManager.default.currentDirectoryPath
+    if let folder = folder {
+        FileManager.default.changeCurrentDirectoryPath(folder.path)
+    }
+    defer { FileManager.default.changeCurrentDirectoryPath(cwd) }
 
     // build the GPT-2 model from a checkpoint
     var model = GPT2()
-    gpt2_build_from_checkpoint(&model, folder.appending(path: "gpt2_124M.bin"))
+    gpt2_build_from_checkpoint(&model, "gpt2_124M.bin")
 
     // build the DataLoaders from tokens files. for now use tiny_shakespeare if available, else tiny_stories
     let tiny_stories_train = "dev/data/tinystories/TinyStories_train.bin"
@@ -1166,7 +1170,7 @@ func train_gpt2(_ folder: URL?) async -> Void {
 
     // build the Tokenizer
     var tokenizer = Tokenizer()
-    tokenizer_init(&tokenizer, folder.appending(path: "gpt2_tokenizer.bin"))
+    tokenizer_init(&tokenizer, "gpt2_tokenizer.bin")
 
     // some memory for generating samples from the model
     let rng_state = UnsafeMutablePointer<UInt64>.allocate(capacity: 1)

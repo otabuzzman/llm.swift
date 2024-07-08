@@ -46,11 +46,15 @@ func check_tensor(_ a: UnsafePointer<Float>, _ b: UnsafePointer<Float>, _ n: Int
 }
 
 func test_gpt2(_ folder: URL?) async -> Void {
-    guard let folder = folder else { return }
-    
+    let cwd = FileManager.default.currentDirectoryPath
+    if let folder = folder {
+        FileManager.default.changeCurrentDirectoryPath(folder.path)
+    }
+    defer { FileManager.default.changeCurrentDirectoryPath(cwd) }
+
     // build the GPT-2 model from a checkpoint
     var model = GPT2()
-    gpt2_build_from_checkpoint(&model, folder.appending(path: "gpt2_124M.bin"))
+    gpt2_build_from_checkpoint(&model, "gpt2_124M.bin")
     
     let C = model.config.channels
     let V = model.config.vocab_size
@@ -60,7 +64,7 @@ func test_gpt2(_ folder: URL?) async -> Void {
     
     // load additional information that we will use for debugging and error checking
     guard
-        let state_file = try? FileHandle(forReadingFrom: folder.appending(path: "gpt2_124M_debug_state.bin"))
+        let state_file = FileHandle(forReadingAtPath: "gpt2_124M_debug_state.bin")
     else { fatalError("Error opening state file") }
     let state_fd = state_file.fileDescriptor
     guard

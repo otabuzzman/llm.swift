@@ -60,9 +60,9 @@ func isspace(_ byte: UInt8) -> Bool {
     return false
 }
 
-func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ filename: URL) -> Void {
+func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ filename: String) -> Void {
     guard
-        let file = try? FileHandle(forReadingFrom: filename)
+        let file = FileHandle(forReadingAtPath: filename)
     else {
         tokenizer.pointee.init_ok = 0
         fatalError("Error opening tokens file (try `python train_gpt2.py`)")
