@@ -47,10 +47,10 @@ func check_tensor(_ a: UnsafePointer<Float>, _ b: UnsafePointer<Float>, _ n: Int
 
 func test_gpt2(_ folder: URL?) async -> Void {
     let cwd = FileManager.default.currentDirectoryPath
+    defer { FileManager.default.changeCurrentDirectoryPath(cwd) }
     if let folder = folder {
         FileManager.default.changeCurrentDirectoryPath(folder.path)
     }
-    defer { FileManager.default.changeCurrentDirectoryPath(cwd) }
 
     // build the GPT-2 model from a checkpoint
     var model = GPT2()

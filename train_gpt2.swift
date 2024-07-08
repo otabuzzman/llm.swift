@@ -1142,10 +1142,10 @@ func sample_mult(_ probabilities: UnsafeMutablePointer<Float>, _ n: Int, _ coin:
 // main training loop
 func train_gpt2(_ folder: URL?) async -> Void {
     let cwd = FileManager.default.currentDirectoryPath
+    defer { FileManager.default.changeCurrentDirectoryPath(cwd) }
     if let folder = folder {
         FileManager.default.changeCurrentDirectoryPath(folder.path)
     }
-    defer { FileManager.default.changeCurrentDirectoryPath(cwd) }
 
     // build the GPT-2 model from a checkpoint
     var model = GPT2()
