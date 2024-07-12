@@ -862,9 +862,9 @@ func gpt2_forward(_ model: UnsafeMutablePointer<GPT2>, _ inputs: UnsafePointer<I
         model.pointee.inputs = UnsafeMutablePointer<Int32>.allocate(capacity: B * T)
         model.pointee.targets = UnsafeMutablePointer<Int32>.allocate(capacity: B * T) // might be unused if we never have targets but it's small
     } else {
-        // validate B,T is consistent with how we've allocated the memory before
-        // in principle we could get more clever here in the future, for now this is safest
-        if B != model.pointee.batch_size || T != model.pointee.seq_len {
+        // validate B,T are not larger than the values used at initialisation
+        // (smaller B,T are okay for inference only)
+        if (B > model->batch_size || T > model->seq_len) {
             fatalError("Model deviates from expected values: B=\(model.pointee.batch_size) T=\(model.pointee.seq_len), expected: B=\(B) T=\(T)")
         }
     }
