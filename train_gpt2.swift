@@ -140,18 +140,20 @@ func matmul_forward_naive(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePoint
     // inp is (B,T,C), weight is (OC, C), bias is (OC)
     // out will be (B,T,OC)
     // #pragma omp parallel for collapse(2)
-    DispatchQueue.concurrentPerform(iterations: B * T) {
-        let (t, b, _) = indicesOf(combined: $0, T, B)
-
-        let out_bt = out + b * T * OC + t * OC
-        let inp_bt = inp + b * T * C + t * C
-        for o in 0..<OC {
-            var val = bias?[o] ?? 0
-            let wrow = weight + o * C
-            for i in 0..<C {
-                val += inp_bt[i] * wrow[i]
+    DispatchQueue.global(qos: .userInitiated).sync {
+        DispatchQueue.concurrentPerform(iterations: B * T) {
+            let (t, b, _) = indicesOf(combined: $0, T, B)
+            
+            let out_bt = out + b * T * OC + t * OC
+            let inp_bt = inp + b * T * C + t * C
+            for o in 0..<OC {
+                var val = bias?[o] ?? 0
+                let wrow = weight + o * C
+                for i in 0..<C {
+                    val += inp_bt[i] * wrow[i]
+                }
+                out_bt[o] = val
             }
-            out_bt[o] = val
         }
     }
 //    await withTaskGroup(of: Void.self) {
@@ -184,29 +186,31 @@ func matmul_forward(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Flo
     // collapse the B and T loops into one and turn it into a strided loop.
     // then we can tile the inner loop, and reuse the loaded weight LOOP_UNROLL many times
     // #pragma omp parallel for
-    DispatchQueue.concurrentPerform(iterations: B * T / LOOP_UNROLL) {
-        let obt = $0 * LOOP_UNROLL
-        for o in 0..<OC {
-            // we'll keep LOOP_UNROLL many results in registers
-            var result = Array<Float>(repeating: 0, count: LOOP_UNROLL)
-            // initialize the bias, if it exists
-            for ibt in 0..<LOOP_UNROLL {
-                result[ibt] = bias?[o] ?? 0
-            }
-            // inner loops. Because we do LOOP_UNROLL steps of inner bt, we can cache
-            // the value of weight[i + o * C] and reuse it.
-            // we compile with -Ofast, so the compiler will turn the inner loop into FMAs
-            for i in 0..<C {
-                let w = weight[i + o * C]
+    DispatchQueue.global(qos: .userInitiated).sync {
+        DispatchQueue.concurrentPerform(iterations: B * T / LOOP_UNROLL) {
+            let obt = $0 * LOOP_UNROLL
+            for o in 0..<OC {
+                // we'll keep LOOP_UNROLL many results in registers
+                var result = Array<Float>(repeating: 0, count: LOOP_UNROLL)
+                // initialize the bias, if it exists
+                for ibt in 0..<LOOP_UNROLL {
+                    result[ibt] = bias?[o] ?? 0
+                }
+                // inner loops. Because we do LOOP_UNROLL steps of inner bt, we can cache
+                // the value of weight[i + o * C] and reuse it.
+                // we compile with -Ofast, so the compiler will turn the inner loop into FMAs
+                for i in 0..<C {
+                    let w = weight[i + o * C]
+                    for ibt in 0..<LOOP_UNROLL {
+                        let bt = obt + ibt
+                        result[ibt] += inp[bt * C + i] * w
+                    }
+                }
+                // write back results to main memory
                 for ibt in 0..<LOOP_UNROLL {
                     let bt = obt + ibt
-                    result[ibt] += inp[bt * C + i] * w
+                    out[bt * OC + o] = result[ibt]
                 }
-            }
-            // write back results to main memory
-            for ibt in 0..<LOOP_UNROLL {
-                let bt = obt + ibt
-                out[bt * OC + o] = result[ibt]
             }
         }
     }
@@ -219,16 +223,18 @@ func matmul_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMutab
 
     // backward into inp first, parallelize over B,T
     // #pragma omp parallel for collapse(2)
-    DispatchQueue.concurrentPerform(iterations: B * T) {
-        let (t, b, _) = indicesOf(combined: $0, T, B)
-
-        let dout_bt = dout + b * T * OC + t * OC
-        let dinp_bt = dinp + b * T * C + t * C
-        for o in 0..<OC {
-            let wrow = weight + o * C
-            let d = dout_bt[o]
-            for i in 0..<C {
-                dinp_bt[i] += wrow[i] * d
+    DispatchQueue.global(qos: .userInitiated).sync {
+        DispatchQueue.concurrentPerform(iterations: B * T) {
+            let (t, b, _) = indicesOf(combined: $0, T, B)
+            
+            let dout_bt = dout + b * T * OC + t * OC
+            let dinp_bt = dinp + b * T * C + t * C
+            for o in 0..<OC {
+                let wrow = weight + o * C
+                let d = dout_bt[o]
+                for i in 0..<C {
+                    dinp_bt[i] += wrow[i] * d
+                }
             }
         }
     }
@@ -244,16 +250,18 @@ func matmul_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMutab
 //    }
     // backward into weight/bias, parallelize over output channels OC
     // #pragma omp parallel for
-    DispatchQueue.concurrentPerform(iterations: OC) { o in
-        for b in 0..<B {
-            for t in 0..<T {
-                let dout_bt = dout + b * T * OC + t * OC
-                let inp_bt = inp + b * T * C + t * C
-                let dwrow = dweight + o * C
-                let d = dout_bt[o]
-                if let dbias = dbias { dbias[o] += d }
-                for i in 0..<C {
-                    dwrow[i] += inp_bt[i] * d
+    DispatchQueue.global(qos: .userInitiated).sync {
+        DispatchQueue.concurrentPerform(iterations: OC) { o in
+            for b in 0..<B {
+                for t in 0..<T {
+                    let dout_bt = dout + b * T * OC + t * OC
+                    let inp_bt = inp + b * T * C + t * C
+                    let dwrow = dweight + o * C
+                    let d = dout_bt[o]
+                    if let dbias = dbias { dbias[o] += d }
+                    for i in 0..<C {
+                        dwrow[i] += inp_bt[i] * d
+                    }
                 }
             }
         }
@@ -281,60 +289,62 @@ func attention_forward(_ out: UnsafeMutablePointer<Float>, _ preatt: UnsafeMutab
     let scale = 1 / sqrtf(Float(hs))
 
     // #pragma omp parallel for collapse(3)
-    DispatchQueue.concurrentPerform(iterations: B * T * NH) {
-        let (h, t, b) = indicesOf(combined: $0, NH, T, B)
-
-        let query_t = inp + b * T * C3 + t * C3 + h * hs
-        let preatt_bth = preatt + b * NH * T * T + h * T * T + t * T
-        let att_bth = att + b * NH * T * T + h * T * T + t * T
-
-        // pass 1: calculate query dot key and maxval
-        var maxval: Float = -10000 // TODO something better
-        for t2 in 0...t {
-            let key_t2 = inp + b * T * C3 + t2 * C3 + h * hs + C // +C because it's key
-
-            // (query_t) dot (key_t2)
-            var val: Float = 0
-            for i in 0..<hs {
-                val += query_t[i] * key_t2[i]
+    DispatchQueue.global(qos: .userInitiated).sync {
+        DispatchQueue.concurrentPerform(iterations: B * T * NH) {
+            let (h, t, b) = indicesOf(combined: $0, NH, T, B)
+            
+            let query_t = inp + b * T * C3 + t * C3 + h * hs
+            let preatt_bth = preatt + b * NH * T * T + h * T * T + t * T
+            let att_bth = att + b * NH * T * T + h * T * T + t * T
+            
+            // pass 1: calculate query dot key and maxval
+            var maxval: Float = -10000 // TODO something better
+            for t2 in 0...t {
+                let key_t2 = inp + b * T * C3 + t2 * C3 + h * hs + C // +C because it's key
+                
+                // (query_t) dot (key_t2)
+                var val: Float = 0
+                for i in 0..<hs {
+                    val += query_t[i] * key_t2[i]
+                }
+                val *= scale
+                if val > maxval {
+                    maxval = val
+                }
+                
+                preatt_bth[t2] = val
             }
-            val *= scale
-            if val > maxval {
-                maxval = val
+            
+            // pass 2: calculate the exp and keep track of sum
+            // maxval is being calculated and subtracted only for numerical stability
+            var expsum: Float = 0
+            for t2 in 0...t {
+                let expv = expf(preatt_bth[t2] - maxval)
+                expsum += expv
+                att_bth[t2] = expv
             }
-
-            preatt_bth[t2] = val
-        }
-
-        // pass 2: calculate the exp and keep track of sum
-        // maxval is being calculated and subtracted only for numerical stability
-        var expsum: Float = 0
-        for t2 in 0...t {
-            let expv = expf(preatt_bth[t2] - maxval)
-            expsum += expv
-            att_bth[t2] = expv
-        }
-        let expsum_inv = expsum == 0 ? 0 : 1 / expsum
-
-        // pass 3: normalize to get the softmax
-        for t2 in 0..<T {
-            if t2 <= t {
-                att_bth[t2] *= expsum_inv
-            } else {
-                // causal attention mask. not strictly necessary to set to zero here
-                // only doing this explicitly for debugging and checking to PyTorch
-                att_bth[t2] = 0
+            let expsum_inv = expsum == 0 ? 0 : 1 / expsum
+            
+            // pass 3: normalize to get the softmax
+            for t2 in 0..<T {
+                if t2 <= t {
+                    att_bth[t2] *= expsum_inv
+                } else {
+                    // causal attention mask. not strictly necessary to set to zero here
+                    // only doing this explicitly for debugging and checking to PyTorch
+                    att_bth[t2] = 0
+                }
             }
-        }
-
-        // pass 4: accumulate weighted values into the output of attention
-        let out_bth = out + b * T * C + t * C + h * hs
-        for i in 0..<hs { out_bth[i] = 0 }
-        for t2 in 0...t {
-            let value_t2 = inp + b * T * C3 + t2 * C3 + h * hs + C * 2 // +C*2 because it's value
-            let att_btht2 = att_bth[t2]
-            for i in 0..<hs {
-                out_bth[i] += att_btht2 * value_t2[i]
+            
+            // pass 4: accumulate weighted values into the output of attention
+            let out_bth = out + b * T * C + t * C + h * hs
+            for i in 0..<hs { out_bth[i] = 0 }
+            for t2 in 0...t {
+                let value_t2 = inp + b * T * C3 + t2 * C3 + h * hs + C * 2 // +C*2 because it's value
+                let att_btht2 = att_bth[t2]
+                for i in 0..<hs {
+                    out_bth[i] += att_btht2 * value_t2[i]
+                }
             }
         }
     }
@@ -459,33 +469,35 @@ func softmax_forward(_ probs: UnsafeMutablePointer<Float>, _ logits: UnsafeMutab
     // Vp is the padded vocab size (for efficiency), V is the "real" vocab size
     // example: Vp is 50304 and V is 50257
     // #pragma omp parallel for collapse(2)
-    DispatchQueue.concurrentPerform(iterations: B * T) {
-        let (t, b, _) = indicesOf(combined: $0, T, B)
-
-        // probs <- softmax(logits)
-        let logits_bt = logits + b * T * Vp + t * Vp
-        let probs_bt = probs + b * T * Vp + t * Vp
-
-        // maxval is only calculated and subtracted for numerical stability
-        var maxval: Float = -10000 // TODO something better
-        for i in 0..<V {
-            if logits_bt[i] > maxval {
-                maxval = logits_bt[i]
+    DispatchQueue.global(qos: .userInitiated).sync {
+        DispatchQueue.concurrentPerform(iterations: B * T) {
+            let (t, b, _) = indicesOf(combined: $0, T, B)
+            
+            // probs <- softmax(logits)
+            let logits_bt = logits + b * T * Vp + t * Vp
+            let probs_bt = probs + b * T * Vp + t * Vp
+            
+            // maxval is only calculated and subtracted for numerical stability
+            var maxval: Float = -10000 // TODO something better
+            for i in 0..<V {
+                if logits_bt[i] > maxval {
+                    maxval = logits_bt[i]
+                }
             }
-        }
-        var sum: Float = 0
-        for i in 0..<V {
-            probs_bt[i] = expf(logits_bt[i] - maxval)
-            sum += probs_bt[i]
-        }
-        // note we only loop to V, leaving the padded dimensions
-        for i in 0..<V {
-            probs_bt[i] /= sum
-        }
-        // for extra super safety we may wish to include this too,
-        // forcing the probabilities here to be zero, but it shouldn't matter
-        for i in V..<Vp {
-            probs_bt[i] = 0
+            var sum: Float = 0
+            for i in 0..<V {
+                probs_bt[i] = expf(logits_bt[i] - maxval)
+                sum += probs_bt[i]
+            }
+            // note we only loop to V, leaving the padded dimensions
+            for i in 0..<V {
+                probs_bt[i] /= sum
+            }
+            // for extra super safety we may wish to include this too,
+            // forcing the probabilities here to be zero, but it shouldn't matter
+            for i in V..<Vp {
+                probs_bt[i] = 0
+            }
         }
     }
 //    await withTaskGroup(of: Void.self) {
@@ -864,7 +876,7 @@ func gpt2_forward(_ model: UnsafeMutablePointer<GPT2>, _ inputs: UnsafePointer<I
     } else {
         // validate B,T are not larger than the values used at initialisation
         // (smaller B,T are okay for inference only)
-        if (B > model->batch_size || T > model->seq_len) {
+        if B > model.pointee.batch_size || T > model.pointee.seq_len {
             fatalError("Model deviates from expected values: B=\(model.pointee.batch_size) T=\(model.pointee.seq_len), expected: B=\(B) T=\(T)")
         }
     }
