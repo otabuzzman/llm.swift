@@ -561,22 +561,22 @@ struct GPT2Config {
 // the parameters of the model
 let NUM_PARAMETER_TENSORS = 16
 struct ParameterTensors {
-    var wte = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (V, C)
-    var wpe = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (maxT, C)
-    var ln1w = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, C)
-    var ln1b = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, C)
-    var qkvw = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, 3*C, C)
-    var qkvb = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, 3*C)
-    var attprojw = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, C, C)
-    var attprojb = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, C)
-    var ln2w = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, C)
-    var ln2b = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, C)
-    var fcw = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, 4*C, C)
-    var fcb = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, 4*C)
-    var fcprojw = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, C, 4*C)
-    var fcprojb = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, C)
-    var lnfw = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (C)
-    var lnfb = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (C)
+    var wte: UnsafeMutablePointer<Float>! // (V, C)
+    var wpe: UnsafeMutablePointer<Float>! // (maxT, C)
+    var ln1w: UnsafeMutablePointer<Float>! // (L, C)
+    var ln1b: UnsafeMutablePointer<Float>! // (L, C)
+    var qkvw: UnsafeMutablePointer<Float>! // (L, 3*C, C)
+    var qkvb: UnsafeMutablePointer<Float>! // (L, 3*C)
+    var attprojw: UnsafeMutablePointer<Float>! // (L, C, C)
+    var attprojb: UnsafeMutablePointer<Float>! // (L, C)
+    var ln2w: UnsafeMutablePointer<Float>! // (L, C)
+    var ln2b: UnsafeMutablePointer<Float>! // (L, C)
+    var fcw: UnsafeMutablePointer<Float>! // (L, 4*C, C)
+    var fcb: UnsafeMutablePointer<Float>! // (L, 4*C)
+    var fcprojw: UnsafeMutablePointer<Float>! // (L, C, 4*C)
+    var fcprojb: UnsafeMutablePointer<Float>! // (L, C)
+    var lnfw: UnsafeMutablePointer<Float>! // (C)
+    var lnfb: UnsafeMutablePointer<Float>! // (C)
 }
 
 func fill_in_parameter_sizes(_ param_sizes: UnsafeMutablePointer<Int>, _ config: GPT2Config) -> Void {
@@ -641,29 +641,29 @@ func malloc_and_point_parameters(_ params: UnsafeMutablePointer<ParameterTensors
 
 let NUM_ACTIVATION_TENSORS = 23
 struct ActivationTensors {
-    var encoded = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (B, T, C)
-    var ln1 = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T, C)
-    var ln1_mean = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T)
-    var ln1_rstd = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T)
-    var qkv = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T, 3*C)
-    var atty = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T, C)
-    var preatt = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, NH, T, T)
-    var att = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, NH, T, T)
-    var attproj = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T, C)
-    var residual2 = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T, C)
-    var ln2 = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T, C)
-    var ln2_mean = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T)
-    var ln2_rstd = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T)
-    var fch = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T, 4*C)
-    var fch_gelu = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T, 4*C)
-    var fcproj = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T, C)
-    var residual3 = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T, C)
-    var lnf = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (B, T, C)
-    var lnf_mean = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (B, T)
-    var lnf_rstd = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (B, T)
-    var logits = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (B, T, V)
-    var probs = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (B, T, V)
-    var losses = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (B, T)
+    var encoded: UnsafeMutablePointer<Float>! // (B, T, C)
+    var ln1: UnsafeMutablePointer<Float>! // (L, B, T, C)
+    var ln1_mean: UnsafeMutablePointer<Float>! // (L, B, T)
+    var ln1_rstd: UnsafeMutablePointer<Float>! // (L, B, T)
+    var qkv: UnsafeMutablePointer<Float>! // (L, B, T, 3*C)
+    var atty: UnsafeMutablePointer<Float>! // (L, B, T, C)
+    var preatt: UnsafeMutablePointer<Float>! // (L, B, NH, T, T)
+    var att: UnsafeMutablePointer<Float>! // (L, B, NH, T, T)
+    var attproj: UnsafeMutablePointer<Float>! // (L, B, T, C)
+    var residual2: UnsafeMutablePointer<Float>! // (L, B, T, C)
+    var ln2: UnsafeMutablePointer<Float>! // (L, B, T, C)
+    var ln2_mean: UnsafeMutablePointer<Float>! // (L, B, T)
+    var ln2_rstd: UnsafeMutablePointer<Float>! // (L, B, T)
+    var fch: UnsafeMutablePointer<Float>! // (L, B, T, 4*C)
+    var fch_gelu: UnsafeMutablePointer<Float>! // (L, B, T, 4*C)
+    var fcproj: UnsafeMutablePointer<Float>! // (L, B, T, C)
+    var residual3: UnsafeMutablePointer<Float>! // (L, B, T, C)
+    var lnf: UnsafeMutablePointer<Float>! // (B, T, C)
+    var lnf_mean: UnsafeMutablePointer<Float>! // (B, T)
+    var lnf_rstd: UnsafeMutablePointer<Float>! // (B, T)
+    var logits: UnsafeMutablePointer<Float>! // (B, T, V)
+    var probs: UnsafeMutablePointer<Float>! // (B, T, V)
+    var losses: UnsafeMutablePointer<Float>! // (B, T)
 }
 
 func malloc_and_point_activations(_ acts: UnsafeMutablePointer<ActivationTensors>, _ act_sizes: UnsafePointer<Int>) -> UnsafeMutableBufferPointer<Float> {
@@ -712,7 +712,7 @@ struct GPT2 {
     // the weights (parameters) of the model, and their sizes
     var params = ParameterTensors()
     var param_sizes = Array<Int>(repeating: 0, count: NUM_PARAMETER_TENSORS)
-    var params_memory = UnsafeMutableBufferPointer<Float>.allocate(capacity: 0)
+    var params_memory: UnsafeMutableBufferPointer<Float>?
     var num_parameters = 0
     // gradients of the weights
     var grads = ParameterTensors()
@@ -792,7 +792,7 @@ func gpt2_build_from_checkpoint(_ model: UnsafeMutablePointer<GPT2>, _ checkpoin
 //    _ = params_data.withUnsafeBytes { $0.copyBytes(to: model.pointee.params_memory) }
     do {
         let model_fd = model_file.fileDescriptor
-        _ = try FileDescriptor(rawValue: model_fd).read(into: UnsafeMutableRawBufferPointer(model.pointee.params_memory))
+        _ = try FileDescriptor(rawValue: model_fd).read(into: UnsafeMutableRawBufferPointer(model.pointee.params_memory!))
     } catch { fatalError("Error reading params from model file") }
     try? model_file.close()
 
@@ -1087,7 +1087,7 @@ func gpt2_update(_ model: UnsafeMutablePointer<GPT2>, _ learning_rate: Float, _ 
     }
     let m_memory = model.pointee.m_memory!.baseAddress!
     let v_memory = model.pointee.v_memory!.baseAddress!
-    let params_memory = model.pointee.params_memory.baseAddress!
+    let params_memory = model.pointee.params_memory!.baseAddress!
     let grads_memory = model.pointee.grads_memory!.baseAddress!
 
     for i in 0..<model.pointee.num_parameters {
@@ -1110,7 +1110,7 @@ func gpt2_update(_ model: UnsafeMutablePointer<GPT2>, _ learning_rate: Float, _ 
 }
 
 func gpt2_free(_ model: UnsafeMutablePointer<GPT2>) -> Void {
-    model.pointee.params_memory.deallocate()
+    model.pointee.params_memory?.deallocate()
     model.pointee.grads_memory?.deallocate()
     model.pointee.m_memory?.deallocate()
     model.pointee.v_memory?.deallocate()

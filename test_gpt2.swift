@@ -137,13 +137,13 @@ func test_gpt2(_ folder: URL?) async -> Void {
                 for v in 0..<V { // note we only loop to V (ignoring padding)
                     let i = bt * Vp + v // linearized index, using Vp
                     if i < 10 {
-                        print("\(expected_logits[i]) \(calculated_logits[i])")
+                        print("\(expected_logits[i]) \(calculated_logits![i])")
                     }
-                    let diff = fabsf(expected_logits[bt * V + v] - calculated_logits[i])
+                    let diff = fabsf(expected_logits[bt * V + v] - calculated_logits![i])
                     max_diff = fmaxf(max_diff, diff)
                     if diff >= 1e-2 {
                         print("MISMATCH AT INDEX \(bt),\(v): ", terminator: "")
-                        print("\(expected_logits[bt*V + v]) \(calculated_logits[i])")
+                        print("\(expected_logits[bt*V + v]) \(calculated_logits![i])")
                         logits_ok = false
                         break // break out of both loops
                     }
