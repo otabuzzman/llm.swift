@@ -21,14 +21,13 @@ import System
 struct Tokenizer {
     var vocab_size = 0
     var token_table = UnsafeMutableBufferPointer<UnsafeMutableBufferPointer<UInt8>>.allocate(capacity: 0)
-    var init_ok = 0
+    var init_ok = false
     var eot_token: Int32 = 0 // <|endoftext|> token id
 }
 
-func safe_printf(_ piece: UnsafeMutablePointer<UInt8>?) -> Void {
+func safe_printf(_ piece: UnsafeMutablePointer<UInt8>, _ info: ((String) -> Void)?) -> Void {
     // the tokens are raw bytes, and we we only want to print the printable ones
     // many bytes can be various control codes, backspace, etc.
-    guard let piece = piece else { return }
     if piece[0] == 0 { return }
     // handle individual byte tokens
     // every token is asserted to be at least one byte so doing piece[1] is ok
@@ -38,7 +37,7 @@ func safe_printf(_ piece: UnsafeMutablePointer<UInt8>?) -> Void {
             return // weird byte, don't print it
         }
     }
-    print("\(String(cString: piece))", terminator: "")
+    info?("\(String(cString: piece))")
 }
 
 func isprint(_ byte: UInt8) -> Bool {
@@ -64,7 +63,6 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ filename: St
     guard
         let file = FileHandle(forReadingAtPath: filename)
     else {
-        tokenizer.pointee.init_ok = 0
         fatalError("Error opening tokens file (try `python train_gpt2.py`)")
     }
     // read in the header
@@ -110,15 +108,14 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ filename: St
     }
     // cleanups
     try? file.close()
-    tokenizer.pointee.init_ok = 1
+    tokenizer.pointee.init_ok = true
 }
 
 func tokenizer_decode(_ tokenizer: UnsafePointer<Tokenizer>, _ token_id: Int) -> UnsafeMutablePointer<UInt8>? {
-    if tokenizer.pointee.init_ok == 0 { return nil }
+    if !tokenizer.pointee.init_ok { return nil }
     if token_id < tokenizer.pointee.vocab_size {
         return tokenizer.pointee.token_table[token_id].baseAddress
     } else {
-        print("Invalid token id \(token_id)")
         return nil
     }
 }
@@ -126,7 +123,7 @@ func tokenizer_decode(_ tokenizer: UnsafePointer<Tokenizer>, _ token_id: Int) ->
 func tokenizer_free(_ tokenizer: UnsafePointer<Tokenizer>) -> Void {
     let vocab_size = tokenizer.pointee.vocab_size // for brevity
     let token_table = tokenizer.pointee.token_table
-    if tokenizer.pointee.init_ok == 1 {
+    if tokenizer.pointee.init_ok {
         for i in 0..<vocab_size {
             token_table[i].deallocate()
         }
