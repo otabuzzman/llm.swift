@@ -17,18 +17,6 @@
 		1883FC0F2C36B35000F75687 /* rand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC0E2C36B35000F75687 /* rand.swift */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		1883FBEC2BF6714200F75687 /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 1;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
 		1883FBEE2BF6714200F75687 /* llm.swift */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = llm.swift; sourceTree = BUILT_PRODUCTS_DIR; };
 		1883FBFA2BF6746D00F75687 /* tokenizer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = tokenizer.swift; sourceTree = "<group>"; };
@@ -39,7 +27,7 @@
 		1883FC032BF677E200F75687 /* main.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		1883FC052BFF2D9600F75687 /* utils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = utils.swift; sourceTree = "<group>"; };
 		1883FC072BFF3A3C00F75687 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
-		1883FC082C354E5700F75687 /* dataloader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = dataloader.swift; sourceTree = SOURCE_ROOT; };
+		1883FC082C354E5700F75687 /* dataloader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = dataloader.swift; path = llmc/dataloader.swift; sourceTree = SOURCE_ROOT; };
 		1883FC0E2C36B35000F75687 /* rand.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = rand.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -58,11 +46,8 @@
 		1883FBE52BF6714200F75687 = {
 			isa = PBXGroup;
 			children = (
+				1883FC122C43CCC500F75687 /* llmc */,
 				1883FC072BFF3A3C00F75687 /* .gitignore */,
-				1883FC082C354E5700F75687 /* dataloader.swift */,
-				1883FBFA2BF6746D00F75687 /* tokenizer.swift */,
-				1883FC0E2C36B35000F75687 /* rand.swift */,
-				1883FC052BFF2D9600F75687 /* utils.swift */,
 				1883FBFC2BF6746D00F75687 /* README.md */,
 				1883FBFD2BF6746D00F75687 /* test_gpt2.swift */,
 				1883FBFB2BF6746D00F75687 /* train_gpt2.swift */,
@@ -88,6 +73,17 @@
 			path = llm.swift;
 			sourceTree = "<group>";
 		};
+		1883FC122C43CCC500F75687 /* llmc */ = {
+			isa = PBXGroup;
+			children = (
+				1883FC082C354E5700F75687 /* dataloader.swift */,
+				1883FBFA2BF6746D00F75687 /* tokenizer.swift */,
+				1883FC0E2C36B35000F75687 /* rand.swift */,
+				1883FC052BFF2D9600F75687 /* utils.swift */,
+			);
+			path = llmc;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -97,7 +93,7 @@
 			buildPhases = (
 				1883FBEA2BF6714200F75687 /* Sources */,
 				1883FBEB2BF6714200F75687 /* Frameworks */,
-				1883FBEC2BF6714200F75687 /* CopyFiles */,
+				1883FC142C43CE2A00F75687 /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -146,6 +142,29 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		1883FC142C43CE2A00F75687 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 12;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				$BUILD_DIR/$CONFIGURATION/$TARGET_NAME,
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				test_gpt2,
+				train_gpt2,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "test $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME test_gpt2\ntest $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME train_gpt2\nexit 0\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		1883FBEA2BF6714200F75687 /* Sources */ = {
@@ -306,6 +325,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 28FV44657B;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.otabuzzman.llm-swift";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -319,6 +339,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 28FV44657B;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.otabuzzman.llm-swift";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;

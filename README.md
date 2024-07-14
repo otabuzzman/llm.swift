@@ -14,12 +14,9 @@ A Swift port of Andrej Karpathy‘s [llm.c](https://github.com/karpathy/llm.c).
   # build for production
   xcodebuild -scheme llm.swift -configuration Release
   
-  # find path of `llm.swift` executable in xcodebuild log on stdout.
-  # create symlinks `train_gpt2` and `test_gpt2` for convenience.
-
   # usage:
-  # test_gpt2 [ llm.c data folder ]
-  # train_gpt2 [ llm.c data folder ]
+  #   test_gpt2 [ llm.c data folder ]
+  #   train_gpt2 [ llm.c data folder ]
   
   ./test_gpt2 ../llm.c # llm.c data in sibling folder
   ./train_gpt2 ../llm.c

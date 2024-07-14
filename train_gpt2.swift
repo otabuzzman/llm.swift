@@ -646,7 +646,7 @@ struct ActivationTensors {
     var ln1_mean = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T)
     var ln1_rstd = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T)
     var qkv = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T, 3*C)
-    var atty = UnsafeMutablePointer<Float> .allocate(capacity: 0)// (L, B, T, C)
+    var atty = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T, C)
     var preatt = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, NH, T, T)
     var att = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, NH, T, T)
     var attproj = UnsafeMutablePointer<Float>.allocate(capacity: 0) // (L, B, T, C)

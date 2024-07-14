@@ -5,7 +5,6 @@ train_gpt2
 
 *.bin
 *.zip
-dev/
 
 # Xcode
 #
