@@ -132,24 +132,21 @@ func layernorm_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMu
 }
 
 func matmul_forward_naive(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Float>, _ weight: UnsafePointer<Float>, _ bias: UnsafePointer<Float>?, _ B: Int, _ T: Int, _ C: Int, _ OC: Int) async -> Void {
-    // most of the running time is spent here and in matmul_backward
-    // OC is short for "output channels"
-    // inp is (B,T,C), weight is (OC, C), bias is (OC)
-    // out will be (B,T,OC)
+    // the most naive implementation of matrix multiplication
+    // this serves as an algorithmic reference, and as a fallback for
+    // unfriendly input shapes inside matmul_forward(), below.
     // #pragma omp parallel for collapse(2)
     DispatchQueue.global(qos: .userInitiated).sync {
         DispatchQueue.concurrentPerform(iterations: B * T) {
             let (t, b, _) = indicesOf(combined: $0, T, B)
             
-            let out_bt = out + b * T * OC + t * OC
-            let inp_bt = inp + b * T * C + t * C
+            let bt = b * T + t
             for o in 0..<OC {
                 var val = bias?[o] ?? 0
-                let wrow = weight + o * C
                 for i in 0..<C {
-                    val += inp_bt[i] * wrow[i]
+                    val += inp[bt * C + i] * weight[o * C + i]
                 }
-                out_bt[o] = val
+                out[bt * OC + o] = val
             }
         }
     }
@@ -157,7 +154,7 @@ func matmul_forward_naive(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePoint
 //        for b in 0..<B {
 //            for t in 0..<T {
 //                $0.addTask {
-//                    let out_bt = out + b * T * OC + t * OC
+//                    let bt = b * T + t
 //                    ...
 //                }
 //            }
