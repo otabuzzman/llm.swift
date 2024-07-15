@@ -1,10 +1,3 @@
-//
-//  utils.swift
-//  llm.swift
-//
-//  Created by Jürgen Schuck on 23.05.24.
-//
-
 import Foundation
 
 func indicesOf(combined: Int, _ X: Int, _ Y: Int, _ Z: Int = 1) -> (Int, Int, Int) {

@@ -1,10 +1,3 @@
-//
-//  tokenizer.swift
-//  llm.swift
-//
-//  Created by Jürgen Schuck on 10.05.24.
-//
-
 import Foundation
 import System
 
@@ -25,21 +18,22 @@ struct Tokenizer {
     var eot_token: Int32 = 0 // <|endoftext|> token id
 }
 
-func safe_printf(_ piece: UnsafeMutablePointer<UInt8>, _ info: ((String) -> Void)?) -> Void {
+func isprint(_ piece: UnsafeMutablePointer<UInt8>) -> Bool {
     // the tokens are raw bytes, and we we only want to print the printable ones
     // many bytes can be various control codes, backspace, etc.
-    if piece[0] == 0 { return }
+    if piece[0] == 0 { return false }
     // handle individual byte tokens
     // every token is asserted to be at least one byte so doing piece[1] is ok
     if piece[1] == 0 {
         let byte_val = piece[0]
         if !(isprint(byte_val) || isspace(byte_val)) {
-            return // weird byte, don't print it
+            return false // weird byte, don't print it
         }
     }
-    info?("\(String(cString: piece))")
+    return true
 }
 
+fileprivate
 func isprint(_ byte: UInt8) -> Bool {
     if byte > 0x20 && byte != 0x7F {
         return true
@@ -47,6 +41,7 @@ func isprint(_ byte: UInt8) -> Bool {
     return false
 }
 
+fileprivate
 func isspace(_ byte: UInt8) -> Bool {
     if byte == 0x20
         || byte == 0x09

@@ -140,7 +140,6 @@ func dataloader_init(_ loader: UnsafeMutablePointer<DataLoader>,
     loader.pointee.header_bytes = HEADER_SIZE * MemoryLayout<Int32>.size
     loader.pointee.total_batch_size_bytes = ((loader.pointee.num_processes * (loader.pointee.B * loader.pointee.T)) * MemoryLayout<UInt16>.size)
     loader.pointee.local_batch_offset_bytes = loader.pointee.process_rank * loader.pointee.B * loader.pointee.T * MemoryLayout<UInt16>.size
-
     // glob to get the list of files matching the pattern, these are our data shards
     loader.pointee.glob_result = Glob(pattern: filename_pattern)
     if loader.pointee.glob_result.count == 0 {

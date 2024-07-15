@@ -1,12 +1,9 @@
-//
-//  train_gpt2.swift
-//  llm.swift
-//
-//  Created by Jürgen Schuck on 10.05.24.
-//
-
 import Foundation
 import System
+
+enum LlmSwiftError: Error {
+    case runtime(String)
+}
 
 // ----------------------------------------------------------------------------
 // all the individual layers' forward and backward passes
@@ -877,7 +874,7 @@ func gpt2_forward(_ model: UnsafeMutablePointer<GPT2>, _ inputs: UnsafePointer<I
         // validate B,T are not larger than the values used at initialisation
         // (smaller B,T are okay for inference only)
         if B > model.pointee.batch_size || T > model.pointee.seq_len {
-            fatalError("Model deviates from expected values: B=\(model.pointee.batch_size) T=\(model.pointee.seq_len), expected: B=\(B) T=\(T)")
+            fatalError("Model: B=\(model.pointee.batch_size) T=\(model.pointee.seq_len), Desired: B=\(B) T=\(T)")
         }
     }
 
@@ -1237,7 +1234,9 @@ func train_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async -> Void
                 // print the generated token, either using the Tokenizer or a fallback
                 if tokenizer.init_ok {
                     if let token_str = tokenizer_decode(&tokenizer, next_token) {
-                        safe_printf(token_str, info)
+                        if isprint(token_str) {
+                            info?(String(cString: token_str))
+                        }
                     } else {
                         info?("Invalid token id \(next_token)\n")
                     }

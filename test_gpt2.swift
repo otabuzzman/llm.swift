@@ -1,10 +1,3 @@
-//
-//  test_gpt2.swift
-//  llm.swift
-//
-//  Created by Jürgen Schuck on 10.05.24.
-//
-
 import Foundation
 import System
 
