@@ -13,7 +13,7 @@ Example usage:
 
     var a8 = Array<Float>(repeating: 0, count 8)
     a8.withUnsafeBufferPointer { t8 in
-        normal(t8, 8, 0, 1, &state)
+        normal(t8.baseAddress!, 8, 0, 1, &state)
         for i in 0..<8 {
             print("\(t8[i])")
         }
@@ -22,7 +22,7 @@ Example usage:
 
     var a16 = Array<Float>(repeating: 0, count 16)
     a16.withUnsafeBufferPointer { t16 in
-        normal(t16, 16, 0, 1, &state)
+        normal(t16.baseAddress!, 16, 0, 1, &state)
         for i in 0..<16 {
             print("\(t16[i])")
         }
@@ -190,19 +190,19 @@ func normal_fill_16(_ data: UnsafeMutablePointer<Float>, _ mean: Float, _ std: F
     }
 }
 
-func normal_fill(_ data: UnsafeMutableBufferPointer<Float>, _ numel: Int, _ mean: Float, _ std: Float, _ state: UnsafeMutablePointer<mt19937_state>) -> Void {
+func normal_fill(_ data: UnsafeMutablePointer<Float>, _ numel: Int, _ mean: Float, _ std: Float, _ state: UnsafeMutablePointer<mt19937_state>) -> Void {
     for t in 0..<numel {
         data[t] = Float(randfloat32(state))
     }
 	var i = 0
 	while i < numel - 15 {
-        let data = (data.baseAddress?.advanced(by: i))!
+        let data = (data.advanced(by: i))
         normal_fill_16(data, mean, std)
 		i += 16
 	}
     if numel % 16 != 0 {
         // recompute the last 16 values
-        let data = (data.baseAddress?.advanced(by: numel - 16))!
+        let data = (data.advanced(by: numel - 16))
         for i in 0..<16 {
             data[i] = Float(randfloat32(state))
         }
@@ -210,7 +210,7 @@ func normal_fill(_ data: UnsafeMutableBufferPointer<Float>, _ numel: Int, _ mean
     }
 }
 
-fileprivate func normal(_ data: UnsafeMutableBufferPointer<Float>, _ numel: Int, _ mean: Float, _ std: Float, _ state: UnsafeMutablePointer<mt19937_state>) -> Void {
+fileprivate func normal(_ data: UnsafeMutablePointer<Float>, _ numel: Int, _ mean: Float, _ std: Float, _ state: UnsafeMutablePointer<mt19937_state>) -> Void {
     // #define EPSILONE 1e-12f
     let EPSILONE: Float = 1e-12
     if numel >= 16 {
@@ -264,7 +264,7 @@ func test_mt19937() -> Void {
 
     var a8 = Array<Float>(repeating: 0, count: 8)
     a8.withUnsafeMutableBufferPointer { t8 in
-        normal(t8, 8, 0, 1, &state)
+        normal(t8.baseAddress!, 8, 0, 1, &state)
         for i in 0..<8 {
             print("\(t8[i])")
         }
@@ -273,7 +273,7 @@ func test_mt19937() -> Void {
 
     var a16 = Array<Float>(repeating: 0, count: 16)
     a16.withUnsafeMutableBufferPointer { t16 in
-        normal(t16, 16, 0, 1, &state)
+        normal(t16.baseAddress!, 16, 0, 1, &state)
         for i in 0..<16 {
             print("\(t16[i])")
         }

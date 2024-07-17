@@ -13,7 +13,7 @@ import System
 
 struct Tokenizer {
     var vocab_size = 0
-    var token_table: UnsafeMutableBufferPointer<UnsafeMutableBufferPointer<UInt8>>!
+    var token_table: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>!
     var init_ok = false
     var eot_token: Int32 = 0 // <|endoftext|> token id
 }
@@ -82,21 +82,21 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ filename: St
         fatalError("Wrong version \(version) of tokenizer file \(filename)")
     }
     // read in all the tokens
-    tokenizer.pointee.token_table = UnsafeMutableBufferPointer<UnsafeMutableBufferPointer<UInt8>>.allocate(capacity: vocab_size)
+    tokenizer.pointee.token_table = UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.allocate(capacity: vocab_size)
     for i in 0..<vocab_size {
         guard
             let length_data = try? file.read(upToCount: 1 * MemoryLayout<UInt8>.size)
         else { fatalError("Error reading token length from tokens file") }
         let length = Int(length_data.withUnsafeBytes { $0.bindMemory(to: UInt8.self)[0] })
         assert(length > 0, "Every token should be at least one character")
-        let token_bytes = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: length + 1)
+        let token_bytes = UnsafeMutablePointer<UInt8>.allocate(capacity: length + 1)
 //        guard
 //            let token_bytes_data = try? file.read(upToCount: length * MemoryLayout<UInt8>.size)
 //        else { fatalError("Error reading token bytes from tokens file") }
 //        _ = token_bytes_data.withUnsafeBytes { $0.copyBytes(to: token_bytes) }
         do {
             let fd = file.fileDescriptor
-            _ = try FileDescriptor(rawValue: fd).read(into: UnsafeMutableRawBufferPointer(start: token_bytes.baseAddress!, count: length))
+            _ = try FileDescriptor(rawValue: fd).read(into: UnsafeMutableRawBufferPointer(start: token_bytes, count: length))
         } catch { fatalError("Error reading token bytes from tokens file") }
         token_bytes[length] = 0 // add null terminator for printing
         tokenizer.pointee.token_table[i] = token_bytes
@@ -109,7 +109,7 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ filename: St
 func tokenizer_decode(_ tokenizer: UnsafePointer<Tokenizer>, _ token_id: Int) -> UnsafeMutablePointer<UInt8>? {
     if !tokenizer.pointee.init_ok { return nil }
     if token_id < tokenizer.pointee.vocab_size {
-        return tokenizer.pointee.token_table[token_id].baseAddress
+        return tokenizer.pointee.token_table[token_id]
     } else {
         return nil
     }

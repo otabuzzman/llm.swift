@@ -139,7 +139,7 @@ func matmul_forward_naive(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePoint
     DispatchQueue.global(qos: .userInteractive).sync {
         DispatchQueue.concurrentPerform(iterations: B * T) {
             let (t, b, _) = indicesOf(combined: $0, T, B)
-            
+
             let bt = b * T + t
             for o in 0..<OC {
                 var val = bias?[o] ?? 0
@@ -605,7 +605,40 @@ func malloc_and_point_parameters(_ params: UnsafeMutablePointer<ParameterTensors
     // malloc all parameters all at once (https://stackoverflow.com/a/74021402)
     let params_memory = UnsafeMutableBufferPointer<Float>.allocate(capacity: num_parameters)
     // assign all the tensors
-    let ptrs: [UnsafeMutablePointer<UnsafeMutablePointer<Float>>] = [
+    var params_memory_iterator = params_memory.baseAddress!
+    params.pointee.wte = params_memory_iterator
+    params_memory_iterator += param_sizes[0]
+    params.pointee.wpe = params_memory_iterator
+    params_memory_iterator += param_sizes[1]
+    params.pointee.ln1w = params_memory_iterator
+    params_memory_iterator += param_sizes[2]
+    params.pointee.ln1b = params_memory_iterator
+    params_memory_iterator += param_sizes[3]
+    params.pointee.qkvw = params_memory_iterator
+    params_memory_iterator += param_sizes[4]
+    params.pointee.qkvb = params_memory_iterator
+    params_memory_iterator += param_sizes[5]
+    params.pointee.attprojw = params_memory_iterator
+    params_memory_iterator += param_sizes[6]
+    params.pointee.attprojb = params_memory_iterator
+    params_memory_iterator += param_sizes[7]
+    params.pointee.ln2w = params_memory_iterator
+    params_memory_iterator += param_sizes[8]
+    params.pointee.ln2b = params_memory_iterator
+    params_memory_iterator += param_sizes[9]
+    params.pointee.fcw = params_memory_iterator
+    params_memory_iterator += param_sizes[10]
+    params.pointee.fcb = params_memory_iterator
+    params_memory_iterator += param_sizes[11]
+    params.pointee.fcprojw = params_memory_iterator
+    params_memory_iterator += param_sizes[12]
+    params.pointee.fcprojb = params_memory_iterator
+    params_memory_iterator += param_sizes[13]
+    params.pointee.lnfw = params_memory_iterator
+    params_memory_iterator += param_sizes[14]
+    params.pointee.lnfb = params_memory_iterator
+    params_memory_iterator += param_sizes[15]
+/*    let ptrs: [UnsafeMutablePointer<UnsafeMutablePointer<Float>>] = [
         withUnsafeMutablePointer(to: &params.pointee.wte) { $0 },
         withUnsafeMutablePointer(to: &params.pointee.wpe) { $0 },
         withUnsafeMutablePointer(to: &params.pointee.ln1w) { $0 },
@@ -623,13 +656,12 @@ func malloc_and_point_parameters(_ params: UnsafeMutablePointer<ParameterTensors
         withUnsafeMutablePointer(to: &params.pointee.lnfw) { $0 },
         withUnsafeMutablePointer(to: &params.pointee.lnfb) { $0 }
     ]
-    var params_memory_iterator = params_memory.baseAddress!
     for i in 0..<NUM_PARAMETER_TENSORS {
         // ptrs[i][0] = params_memory_iterator
         // wordy variant of short form in previous line
         UnsafeMutableRawPointer(ptrs[i]).storeBytes(of: params_memory_iterator, as: UnsafeMutablePointer<Float>.self)
         params_memory_iterator += param_sizes[i]
-    }
+    }*/
     return params_memory
 }
 
@@ -666,7 +698,54 @@ func malloc_and_point_activations(_ acts: UnsafeMutablePointer<ActivationTensors
         num_activations += act_sizes[i]
     }
     let acts_memory = UnsafeMutableBufferPointer<Float>.allocate(capacity: num_activations)
-    let ptrs: [UnsafeMutablePointer<UnsafeMutablePointer<Float>>] = [
+    var acts_memory_iterator = acts_memory.baseAddress!
+    acts.pointee.encoded = acts_memory_iterator
+    acts_memory_iterator += act_sizes[0]
+    acts.pointee.ln1 = acts_memory_iterator
+    acts_memory_iterator += act_sizes[1]
+    acts.pointee.ln1_mean = acts_memory_iterator
+    acts_memory_iterator += act_sizes[2]
+    acts.pointee.ln1_rstd = acts_memory_iterator
+    acts_memory_iterator += act_sizes[3]
+    acts.pointee.qkv = acts_memory_iterator
+    acts_memory_iterator += act_sizes[4]
+    acts.pointee.atty = acts_memory_iterator
+    acts_memory_iterator += act_sizes[5]
+    acts.pointee.preatt = acts_memory_iterator
+    acts_memory_iterator += act_sizes[6]
+    acts.pointee.att = acts_memory_iterator
+    acts_memory_iterator += act_sizes[7]
+    acts.pointee.attproj = acts_memory_iterator
+    acts_memory_iterator += act_sizes[8]
+    acts.pointee.residual2 = acts_memory_iterator
+    acts_memory_iterator += act_sizes[9]
+    acts.pointee.ln2 = acts_memory_iterator
+    acts_memory_iterator += act_sizes[10]
+    acts.pointee.ln2_mean = acts_memory_iterator
+    acts_memory_iterator += act_sizes[11]
+    acts.pointee.ln2_rstd = acts_memory_iterator
+    acts_memory_iterator += act_sizes[12]
+    acts.pointee.fch = acts_memory_iterator
+    acts_memory_iterator += act_sizes[13]
+    acts.pointee.fch_gelu = acts_memory_iterator
+    acts_memory_iterator += act_sizes[14]
+    acts.pointee.fcproj = acts_memory_iterator
+    acts_memory_iterator += act_sizes[15]
+    acts.pointee.residual3 = acts_memory_iterator
+    acts_memory_iterator += act_sizes[16]
+    acts.pointee.lnf = acts_memory_iterator
+    acts_memory_iterator += act_sizes[17]
+    acts.pointee.lnf_mean = acts_memory_iterator
+    acts_memory_iterator += act_sizes[18]
+    acts.pointee.lnf_rstd = acts_memory_iterator
+    acts_memory_iterator += act_sizes[19]
+    acts.pointee.logits = acts_memory_iterator
+    acts_memory_iterator += act_sizes[20]
+    acts.pointee.probs = acts_memory_iterator
+    acts_memory_iterator += act_sizes[21]
+    acts.pointee.losses = acts_memory_iterator
+    acts_memory_iterator += act_sizes[22]
+/*    let ptrs: [UnsafeMutablePointer<UnsafeMutablePointer<Float>>] = [
         withUnsafeMutablePointer(to: &acts.pointee.encoded) { $0 },
         withUnsafeMutablePointer(to: &acts.pointee.ln1) { $0 },
         withUnsafeMutablePointer(to: &acts.pointee.ln1_mean) { $0 },
@@ -691,13 +770,12 @@ func malloc_and_point_activations(_ acts: UnsafeMutablePointer<ActivationTensors
         withUnsafeMutablePointer(to: &acts.pointee.probs) { $0 },
         withUnsafeMutablePointer(to: &acts.pointee.losses) { $0 }
     ]
-    var acts_memory_iterator = acts_memory.baseAddress!
     for i in 0..<NUM_ACTIVATION_TENSORS {
         // ptrs[i][0] = acts_memory_iterator
         // wordy variant of short form in previous line
         UnsafeMutableRawPointer(ptrs[i]).storeBytes(of: acts_memory_iterator, as: UnsafeMutablePointer<Float>.self)
         acts_memory_iterator += act_sizes[i]
-    }
+    }*/
     return acts_memory
 }
 
@@ -706,22 +784,22 @@ struct GPT2 {
     // the weights (parameters) of the model, and their sizes
     var params = ParameterTensors()
     var param_sizes = Array<Int>(repeating: 0, count: NUM_PARAMETER_TENSORS)
-    var params_memory: UnsafeMutableBufferPointer<Float>?
+    var params_memory: UnsafeMutablePointer<Float>?
     var num_parameters = 0
     // gradients of the weights
     var grads = ParameterTensors()
-    var grads_memory: UnsafeMutableBufferPointer<Float>?
+    var grads_memory: UnsafeMutablePointer<Float>?
     // buffers for the AdamW optimizer
-    var m_memory: UnsafeMutableBufferPointer<Float>?
-    var v_memory: UnsafeMutableBufferPointer<Float>?
+    var m_memory: UnsafeMutablePointer<Float>?
+    var v_memory: UnsafeMutablePointer<Float>?
     // the activations of the model, and their sizes
     var acts = ActivationTensors()
     var act_sizes = Array<Int>(repeating: 0, count: NUM_ACTIVATION_TENSORS)
-    var acts_memory: UnsafeMutableBufferPointer<Float>?
+    var acts_memory: UnsafeMutablePointer<Float>?
     var num_activations = 0
     // gradients of the activations
     var grads_acts = ActivationTensors()
-    var grads_acts_memory: UnsafeMutableBufferPointer<Float>?
+    var grads_acts_memory: UnsafeMutablePointer<Float>?
     // other run state configuration
     var batch_size = 0 // the batch size (B) of current forward pass
     var seq_len = 0 // the sequence length (T) of current forward pass
@@ -778,7 +856,7 @@ func gpt2_build_from_checkpoint(_ model: UnsafeMutablePointer<GPT2>, _ checkpoin
     model.pointee.num_parameters = num_parameters
 
     // read in all the parameters from file
-    model.pointee.params_memory = malloc_and_point_parameters(&model.pointee.params, model.pointee.param_sizes)
+    let params_memory = malloc_and_point_parameters(&model.pointee.params, model.pointee.param_sizes)
 //    let params_memory_size = num_parameters * MemoryLayout<Float>.size
 //    guard
 //        let params_data = try? model_file.read(upToCount: params_memory_size)
@@ -786,7 +864,8 @@ func gpt2_build_from_checkpoint(_ model: UnsafeMutablePointer<GPT2>, _ checkpoin
 //    _ = params_data.withUnsafeBytes { $0.copyBytes(to: model.pointee.params_memory) }
     do {
         let model_fd = model_file.fileDescriptor
-        _ = try FileDescriptor(rawValue: model_fd).read(into: UnsafeMutableRawBufferPointer(model.pointee.params_memory!))
+        _ = try FileDescriptor(rawValue: model_fd).read(into: UnsafeMutableRawBufferPointer(params_memory))
+        model.pointee.params_memory = params_memory.baseAddress
     } catch { fatalError("Error reading params from model file") }
     try? model_file.close()
 
@@ -863,7 +942,8 @@ func gpt2_forward(_ model: UnsafeMutablePointer<GPT2>, _ inputs: UnsafePointer<I
         }
         info?("num_activations: \(num_activations)\n")
         model.pointee.num_activations = num_activations
-        model.pointee.acts_memory = malloc_and_point_activations(&model.pointee.acts, model.pointee.act_sizes)
+        let acts_memory = malloc_and_point_activations(&model.pointee.acts, model.pointee.act_sizes)
+        model.pointee.acts_memory = acts_memory.baseAddress
         // also create memory for caching inputs and targets
         model.pointee.inputs = UnsafeMutablePointer<Int32>.allocate(capacity: B * T)
         model.pointee.targets = UnsafeMutablePointer<Int32>.allocate(capacity: B * T) // might be unused if we never have targets but it's small
@@ -954,10 +1034,10 @@ func gpt2_forward(_ model: UnsafeMutablePointer<GPT2>, _ inputs: UnsafePointer<I
 
 func gpt2_zero_grad(_ model: UnsafeMutablePointer<GPT2>) -> Void {
     if let grads_memory = model.pointee.grads_memory {
-        grads_memory.update(repeating: 0)
+        grads_memory.update(repeating: 0, count: model.pointee.num_parameters)
     }
     if let grads_acts_memory = model.pointee.grads_acts_memory {
-        grads_acts_memory.update(repeating: 0)
+        grads_acts_memory.update(repeating: 0, count: model.pointee.num_activations)
     }
 }
 
@@ -970,8 +1050,10 @@ func gpt2_backward(_ model: UnsafeMutablePointer<GPT2>) async -> Void {
 
     // lazily allocate the memory for gradients of the weights and activations, if needed
     if model.pointee.grads_memory == nil {
-        model.pointee.grads_memory = malloc_and_point_parameters(&model.pointee.grads, model.pointee.param_sizes)
-        model.pointee.grads_acts_memory = malloc_and_point_activations(&model.pointee.grads_acts, model.pointee.act_sizes)
+        let grads_memory = malloc_and_point_parameters(&model.pointee.grads, model.pointee.param_sizes)
+        model.pointee.grads_memory = grads_memory.baseAddress
+        let grads_acts_memory = malloc_and_point_activations(&model.pointee.grads_acts, model.pointee.act_sizes)
+        model.pointee.grads_acts_memory = grads_acts_memory.baseAddress
         gpt2_zero_grad(model)
     }
 
@@ -1074,15 +1156,17 @@ func gpt2_update(_ model: UnsafeMutablePointer<GPT2>, _ learning_rate: Float, _ 
 
     // lazily allocate the memory for m_memory and v_memory
     if model.pointee.m_memory == nil {
-        model.pointee.m_memory = UnsafeMutableBufferPointer<Float>.allocate(capacity: model.pointee.num_parameters)
-        model.pointee.m_memory!.initialize(repeating: 0)
-        model.pointee.v_memory = UnsafeMutableBufferPointer<Float>.allocate(capacity: model.pointee.num_parameters)
-        model.pointee.v_memory!.initialize(repeating: 0)
+        let m_memory = UnsafeMutableBufferPointer<Float>.allocate(capacity: model.pointee.num_parameters)
+        model.pointee.m_memory = m_memory.baseAddress
+        model.pointee.m_memory!.initialize(repeating: 0, count: model.pointee.num_parameters)
+        let v_memory = UnsafeMutableBufferPointer<Float>.allocate(capacity: model.pointee.num_parameters)
+        model.pointee.v_memory = v_memory.baseAddress
+        model.pointee.v_memory!.initialize(repeating: 0, count: model.pointee.num_parameters)
     }
-    let m_memory = model.pointee.m_memory!.baseAddress!
-    let v_memory = model.pointee.v_memory!.baseAddress!
-    let params_memory = model.pointee.params_memory!.baseAddress!
-    let grads_memory = model.pointee.grads_memory!.baseAddress!
+    let m_memory = model.pointee.m_memory!
+    let v_memory = model.pointee.v_memory!
+    let params_memory = model.pointee.params_memory!
+    let grads_memory = model.pointee.grads_memory!
 
     for i in 0..<model.pointee.num_parameters {
         let param = (params_memory + i).pointee
