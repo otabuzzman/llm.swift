@@ -29,15 +29,15 @@ struct DataLoader {
     var tokens_file: FileHandle?
     // data buffers
     // we fread data from file into this buffer
-    var buffer = UnsafeMutableBufferPointer<UInt16>.allocate(capacity: 0)
+    var buffer: UnsafeMutablePointer<UInt16>!
     // input tokens into transformer
-    var inputs = UnsafeMutablePointer<Int32>.allocate(capacity: 0)
+    var inputs: UnsafeMutablePointer<Int32>!
     // target tokens for the transformer
-    var targets = UnsafeMutablePointer<Int32>.allocate(capacity: 0)
+    var targets: UnsafeMutablePointer<Int32>!
     // random shuffle related variables
     var shuffle_rng: mt19937_state!
     var should_shuffle = false
-    var shard_indices = UnsafeMutablePointer<Int32>.allocate(capacity: 0)
+    var shard_indices: UnsafeMutablePointer<Int32>!
     var intra_shard_indices: UnsafeMutablePointer<Int32>?
     // sizes in bytes
     var total_batch_size_bytes = 0  // total across all processes
@@ -169,7 +169,7 @@ func dataloader_init(_ loader: UnsafeMutablePointer<DataLoader>,
     // print("DataLoader: Found \(ntok_total) tokens across \(loader.pointee.glob_result.count) shards")
 
     // allocate all the space we'll need
-    loader.pointee.buffer = UnsafeMutableBufferPointer<UInt16>.allocate(capacity: B * T + 1)
+    loader.pointee.buffer = UnsafeMutablePointer<UInt16>.allocate(capacity: B * T + 1)
     loader.pointee.inputs = UnsafeMutablePointer<Int32>.allocate(capacity: B * T)
     loader.pointee.targets = UnsafeMutablePointer<Int32>.allocate(capacity: B * T)
     loader.pointee.num_tokens = ntok_total
@@ -193,7 +193,7 @@ func dataloader_load_batch(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
         let file_data = try? loader.pointee.tokens_file!.read(upToCount: (B * T + 1) * MemoryLayout<UInt16>.size)
     else { fatalError("Error reading tokens file") }
     var token_data = file_data
-    loader.pointee.buffer = token_data.withUnsafeMutableBytes { $0.bindMemory(to: UInt16.self) }
+    loader.pointee.buffer = token_data.withUnsafeMutableBytes { $0.bindMemory(to: UInt16.self) }.baseAddress
     // decode the buffer into inputs and targets (cast to int)
     for i in 0..<B * T {
         loader.pointee.inputs[i] = Int32(loader.pointee.buffer[i])

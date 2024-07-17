@@ -13,7 +13,7 @@ import System
 
 struct Tokenizer {
     var vocab_size = 0
-    var token_table = UnsafeMutableBufferPointer<UnsafeMutableBufferPointer<UInt8>>.allocate(capacity: 0)
+    var token_table: UnsafeMutableBufferPointer<UnsafeMutableBufferPointer<UInt8>>!
     var init_ok = false
     var eot_token: Int32 = 0 // <|endoftext|> token id
 }
@@ -120,8 +120,8 @@ func tokenizer_free(_ tokenizer: UnsafePointer<Tokenizer>) -> Void {
     let token_table = tokenizer.pointee.token_table
     if tokenizer.pointee.init_ok {
         for i in 0..<vocab_size {
-            token_table[i].deallocate()
+            token_table![i].deallocate()
         }
-        token_table.deallocate()
+        token_table!.deallocate()
     }
 }

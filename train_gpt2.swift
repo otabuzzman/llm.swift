@@ -136,7 +136,7 @@ func matmul_forward_naive(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePoint
     // this serves as an algorithmic reference, and as a fallback for
     // unfriendly input shapes inside matmul_forward(), below.
     // #pragma omp parallel for collapse(2)
-    DispatchQueue.global(qos: .userInitiated).sync {
+    DispatchQueue.global(qos: .userInteractive).sync {
         DispatchQueue.concurrentPerform(iterations: B * T) {
             let (t, b, _) = indicesOf(combined: $0, T, B)
             
@@ -180,7 +180,7 @@ func matmul_forward(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Flo
     // collapse the B and T loops into one and turn it into a strided loop.
     // then we can tile the inner loop, and reuse the loaded weight LOOP_UNROLL many times
     // #pragma omp parallel for
-    DispatchQueue.global(qos: .userInitiated).sync {
+    DispatchQueue.global(qos: .userInteractive).sync {
         DispatchQueue.concurrentPerform(iterations: B * T / LOOP_UNROLL) {
             let obt = $0 * LOOP_UNROLL
             for o in 0..<OC {
@@ -217,7 +217,7 @@ func matmul_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMutab
 
     // backward into inp first, parallelize over B,T
     // #pragma omp parallel for collapse(2)
-    DispatchQueue.global(qos: .userInitiated).sync {
+    DispatchQueue.global(qos: .userInteractive).sync {
         DispatchQueue.concurrentPerform(iterations: B * T) {
             let (t, b, _) = indicesOf(combined: $0, T, B)
             
@@ -244,7 +244,7 @@ func matmul_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMutab
 //    }
     // backward into weight/bias, parallelize over output channels OC
     // #pragma omp parallel for
-    DispatchQueue.global(qos: .userInitiated).sync {
+    DispatchQueue.global(qos: .userInteractive).sync {
         DispatchQueue.concurrentPerform(iterations: OC) { o in
             for b in 0..<B {
                 for t in 0..<T {
@@ -283,7 +283,7 @@ func attention_forward(_ out: UnsafeMutablePointer<Float>, _ preatt: UnsafeMutab
     let scale = 1 / sqrtf(Float(hs))
 
     // #pragma omp parallel for collapse(3)
-    DispatchQueue.global(qos: .userInitiated).sync {
+    DispatchQueue.global(qos: .userInteractive).sync {
         DispatchQueue.concurrentPerform(iterations: B * T * NH) {
             let (h, t, b) = indicesOf(combined: $0, NH, T, B)
             
@@ -463,7 +463,7 @@ func softmax_forward(_ probs: UnsafeMutablePointer<Float>, _ logits: UnsafeMutab
     // Vp is the padded vocab size (for efficiency), V is the "real" vocab size
     // example: Vp is 50304 and V is 50257
     // #pragma omp parallel for collapse(2)
-    DispatchQueue.global(qos: .userInitiated).sync {
+    DispatchQueue.global(qos: .userInteractive).sync {
         DispatchQueue.concurrentPerform(iterations: B * T) {
             let (t, b, _) = indicesOf(combined: $0, T, B)
             
