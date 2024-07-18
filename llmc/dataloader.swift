@@ -169,7 +169,6 @@ func dataloader_init(_ loader: UnsafeMutablePointer<DataLoader>,
     // print("DataLoader: Found \(ntok_total) tokens across \(loader.pointee.glob_result.count) shards")
 
     // allocate all the space we'll need
-    loader.pointee.buffer = UnsafeMutablePointer<UInt16>.allocate(capacity: B * T + 1)
     loader.pointee.inputs = UnsafeMutablePointer<Int32>.allocate(capacity: B * T)
     loader.pointee.targets = UnsafeMutablePointer<Int32>.allocate(capacity: B * T)
     loader.pointee.num_tokens = ntok_total
@@ -218,7 +217,6 @@ func dataloader_resume(_ loader: UnsafeMutablePointer<DataLoader>, _ current_sha
 }
 
 func dataloader_free(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
-    loader.pointee.buffer.deallocate()
     loader.pointee.inputs.deallocate()
     loader.pointee.targets.deallocate()
     if loader.pointee.should_shuffle {

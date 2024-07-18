@@ -606,6 +606,7 @@ func malloc_and_point_parameters(_ params: UnsafeMutablePointer<ParameterTensors
     let params_memory = UnsafeMutableBufferPointer<Float>.allocate(capacity: num_parameters)
     // assign all the tensors
     var params_memory_iterator = params_memory.baseAddress!
+    // Pointer initialization in Swift
     params.pointee.wte = params_memory_iterator
     params_memory_iterator += param_sizes[0]
     params.pointee.wpe = params_memory_iterator
@@ -638,7 +639,10 @@ func malloc_and_point_parameters(_ params: UnsafeMutablePointer<ParameterTensors
     params_memory_iterator += param_sizes[14]
     params.pointee.lnfb = params_memory_iterator
     params_memory_iterator += param_sizes[15]
-/*    let ptrs: [UnsafeMutablePointer<UnsafeMutablePointer<Float>>] = [
+/*    
+ A 1:1 port of the C implementation for pointer initialization.
+ Quite verbose in Swift and also far too difficult to read and understand.
+    let ptrs: [UnsafeMutablePointer<UnsafeMutablePointer<Float>>] = [
         withUnsafeMutablePointer(to: &params.pointee.wte) { $0 },
         withUnsafeMutablePointer(to: &params.pointee.wpe) { $0 },
         withUnsafeMutablePointer(to: &params.pointee.ln1w) { $0 },
@@ -661,7 +665,8 @@ func malloc_and_point_parameters(_ params: UnsafeMutablePointer<ParameterTensors
         // wordy variant of short form in previous line
         UnsafeMutableRawPointer(ptrs[i]).storeBytes(of: params_memory_iterator, as: UnsafeMutablePointer<Float>.self)
         params_memory_iterator += param_sizes[i]
-    }*/
+    }
+ */
     return params_memory
 }
 
@@ -699,6 +704,7 @@ func malloc_and_point_activations(_ acts: UnsafeMutablePointer<ActivationTensors
     }
     let acts_memory = UnsafeMutableBufferPointer<Float>.allocate(capacity: num_activations)
     var acts_memory_iterator = acts_memory.baseAddress!
+    // Pointer initialization in Swift
     acts.pointee.encoded = acts_memory_iterator
     acts_memory_iterator += act_sizes[0]
     acts.pointee.ln1 = acts_memory_iterator
@@ -745,7 +751,10 @@ func malloc_and_point_activations(_ acts: UnsafeMutablePointer<ActivationTensors
     acts_memory_iterator += act_sizes[21]
     acts.pointee.losses = acts_memory_iterator
     acts_memory_iterator += act_sizes[22]
-/*    let ptrs: [UnsafeMutablePointer<UnsafeMutablePointer<Float>>] = [
+/*
+ A 1:1 port of the C implementation for pointer initialization.
+ Quite verbose in Swift and also difficult to read and understand.
+    let ptrs: [UnsafeMutablePointer<UnsafeMutablePointer<Float>>] = [
         withUnsafeMutablePointer(to: &acts.pointee.encoded) { $0 },
         withUnsafeMutablePointer(to: &acts.pointee.ln1) { $0 },
         withUnsafeMutablePointer(to: &acts.pointee.ln1_mean) { $0 },
@@ -775,7 +784,8 @@ func malloc_and_point_activations(_ acts: UnsafeMutablePointer<ActivationTensors
         // wordy variant of short form in previous line
         UnsafeMutableRawPointer(ptrs[i]).storeBytes(of: acts_memory_iterator, as: UnsafeMutablePointer<Float>.self)
         acts_memory_iterator += act_sizes[i]
-    }*/
+    }
+ */
     return acts_memory
 }
 
