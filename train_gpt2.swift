@@ -137,10 +137,7 @@ func matmul_forward_naive(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePoint
     // unfriendly input shapes inside matmul_forward(), below.
     // #pragma omp parallel for collapse(2)
     DispatchQueue.global(qos: .userInteractive).sync {
-        DispatchQueue.concurrentPerform(iterations: B * T) {
-            let (t, b, _) = indicesOf(combined: $0, T, B)
-
-            let bt = b * T + t
+        DispatchQueue.concurrentPerform(iterations: B * T) { bt in
             for o in 0..<OC {
                 var val = bias?[o] ?? 0
                 for i in 0..<C {
