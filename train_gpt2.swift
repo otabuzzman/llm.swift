@@ -166,7 +166,7 @@ func matmul_forward(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Flo
     // OC is short for "output channels"
     // inp is (B,T,C), weight is (OC, C), bias is (OC)
     // out will be (B,T,OC)
-
+//    let t0 = Date.timeIntervalSinceReferenceDate
     // make sure the tiled loop will be correct or fallback to naive version
     let LOOP_UNROLL = 8
     if (B * T) % LOOP_UNROLL != 0 {
@@ -205,6 +205,9 @@ func matmul_forward(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Flo
             }
         }
     }
+//    let t1 = Date.timeIntervalSinceReferenceDate
+//    print("matmul took \((t1 - t0) * 1000) ms")
+
 }
 
 func matmul_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMutablePointer<Float>, _ dbias : UnsafeMutablePointer<Float>?, _ dout : UnsafePointer<Float>, _ inp: UnsafePointer<Float>, _ weight: UnsafePointer<Float>, _ B: Int, _ T: Int, _ C: Int, _ OC: Int) async -> Void {
