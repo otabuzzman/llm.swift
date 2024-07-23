@@ -1,10 +1,15 @@
+// swiftlint:disable:next blanket_disable_command
+// swiftlint:disable identifier_name
+
 import Foundation
 import System
 
 // #define TESTING
 
 // poor man's tensor checker
-func check_tensor(_ a: UnsafePointer<Float>, _ b: UnsafePointer<Float>, _ n: Int, _ label: String, _ info: ((String) -> Void)?) -> Bool {
+func check_tensor(
+    _ a: UnsafePointer<Float>, _ b: UnsafePointer<Float>, _ n: Int,
+    _ label: String, _ info: ((String) -> Void)?) -> Bool {
     let print_upto = 5
     var ok = true
     var maxdiff: Float = 0
@@ -13,11 +18,11 @@ func check_tensor(_ a: UnsafePointer<Float>, _ b: UnsafePointer<Float>, _ n: Int
     for i in 0..<n {
         // look at the diffence at position i of these two tensors
         let diff = fabsf(a[i] - b[i])
-        
+
         // keep track of the overall error
         ok = ok && (diff <= tol)
         if diff > maxdiff { maxdiff = diff }
-        
+
         // for the first few elements of each tensor, pretty print
         // the actual numbers, so we can do a visual, qualitative proof/assessment
         if i < print_upto {
@@ -37,7 +42,8 @@ func check_tensor(_ a: UnsafePointer<Float>, _ b: UnsafePointer<Float>, _ n: Int
     return ok
 }
 
-func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async -> Void {
+// swiftlint:disable:next function_body_length
+func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async {
     let cwd = FileManager.default.currentDirectoryPath
     defer { FileManager.default.changeCurrentDirectoryPath(cwd) }
     if let folder = folder {
@@ -47,13 +53,13 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async -> Void 
     // build the GPT-2 model from a checkpoint
     var model = GPT2()
     gpt2_build_from_checkpoint(&model, "gpt2_124M.bin", info)
-    
+
     let C = model.config.channels
     let V = model.config.vocab_size
     let Vp = model.config.padded_vocab_size
     let maxT = model.config.max_seq_len
     let L = model.config.num_layers
-    
+
     // load additional information that we will use for debugging and error checking
     guard
         let state_file = FileHandle(forReadingAtPath: "gpt2_124M_debug_state.bin")
@@ -69,33 +75,31 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async -> Void 
     if state_header[1] != 2 { fatalError("Bad version in state file (try `python train_gpt2.py`)") }
     let B = state_header[2] // batch size, e.g. 4
     let T = state_header[3] // time / sequence length (e.g. 64, up to maxT)
-    info?("[State]\n");
+    info?("[State]\n")
     info?("batch_size: \(B)\n")
     info?("seq_len: \(T)\n")
-    
+
     var expected_grads = ParameterTensors()
     let expected_grads_memory = malloc_and_point_parameters(&expected_grads, model.param_sizes)
-    
+
     // read reference information from Python
     guard
         let x_data = try? state_file.read(upToCount: B * T * MemoryLayout<Int32>.size),
         let y_data = try? state_file.read(upToCount: B * T * MemoryLayout<Int32>.size),
         let expected_logits_data = try? state_file.read(upToCount: B * T * V * MemoryLayout<Float>.size),
         let expected_loss_data = try? state_file.read(upToCount: MemoryLayout<Float>.size),
-        // let expected_grads_memory_data = try? state_file.read(upToCount: model.num_parameters * MemoryLayout<Float>.size)
-        let _ = try? FileDescriptor(rawValue: state_fd).read(into: UnsafeMutableRawBufferPointer(expected_grads_memory))
+        (try? FileDescriptor(rawValue: state_fd).read(into: UnsafeMutableRawBufferPointer(expected_grads_memory))) != nil
     else { fatalError("Error reading state file") }
     // inputs and expected outputs, only used for error checking
     let x = x_data.withUnsafeBytes { $0.bindMemory(to: Int32.self) }
     let y = y_data.withUnsafeBytes { $0.bindMemory(to: Int32.self) }
     let expected_logits = expected_logits_data.withUnsafeBytes { $0.bindMemory(to: Float.self) }
     let expected_loss = expected_loss_data.withUnsafeBytes { $0.load(as: Float.self) }
-    // _ = expected_grads_memory_data.withUnsafeBytes { $0.copyBytes(to: expected_grads_memory) }
     try? state_file.close()
-    
+
     // overall OK signal for the test
     var allok = true
-    
+
     // let's do 10 training iterations, following the pytorch code
     let expected_losses: [Float] = [
         5.270007133483887,
@@ -112,13 +116,13 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async -> Void 
     for step in 0..<10 {
 
         let start = Date.timeIntervalSinceReferenceDate
-        
+
         await gpt2_forward(&model, x.baseAddress!, y.baseAddress!, B, T, info)
         gpt2_zero_grad(&model)
         await gpt2_backward(&model)
-        
+
         let end = Date.timeIntervalSinceReferenceDate
-        
+
         if step == 0 {
             // error checking at step 0 for reference activations/gradients
             // at this point, target should be equal to expected_logits, let's compare
@@ -143,7 +147,7 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async -> Void 
             }
             info?("\(logits_ok ? "" : "NOT ")OK (LOGITS), max_diff = \(max_diff)\n")
             allok = allok && logits_ok
-            
+
             // compare the achieved loss
             if fabsf(model.mean_loss - expected_loss) >= 1e-2 {
                 info?("LOSS MISMATCH: \(model.mean_loss) \(expected_loss)\n")
@@ -151,9 +155,9 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async -> Void 
             } else {
                 info?("LOSS OK: \(model.mean_loss) \(expected_loss)\n")
             }
-            
+
             // finally check all the gradients
-            var gradoks = Array<Bool>(repeating: false, count: 16)
+            var gradoks = [Bool](repeating: false, count: 16)
             let grads = model.grads
             gradoks[0] = check_tensor(grads.wte, expected_grads.wte, V * C, "dwte", info)
             gradoks[1] = check_tensor(grads.wpe, expected_grads.wpe, maxT * C, "dwpe", info)
@@ -175,22 +179,22 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async -> Void 
                 allok = allok && gradoks[i]
             }
         }
-        
+
         gpt2_update(&model, 1e-4, 0.9, 0.999, 1e-8, 0.01, step + 1)
-        
+
         // compare the losses
         let expected_loss = expected_losses[step]
         let actual_loss = model.mean_loss
         let step_loss_ok = fabsf(expected_loss - actual_loss) < 1e-2
         allok = allok && step_loss_ok
-        
+
         // print the timing information at the end
         info?("step \(step): loss \(model.mean_loss) (took \(String(format: "%1.2f", (end - start) * 1000)) ms) OK = \(step_loss_ok)\n")
     }
-    
+
     // final judgement
     info?("overall okay: \(allok)\n")
-    
+
     // free everything
     expected_grads_memory.deallocate()
     gpt2_free(&model)

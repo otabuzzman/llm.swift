@@ -1,3 +1,6 @@
+// swiftlint:disable:next blanket_disable_command
+// swiftlint:disable identifier_name
+
 import Foundation
 import System
 
@@ -33,16 +36,14 @@ func isprint(_ piece: UnsafeMutablePointer<UInt8>) -> Bool {
     return true
 }
 
-fileprivate
-func isprint(_ byte: UInt8) -> Bool {
+private func isprint(_ byte: UInt8) -> Bool {
     if byte > 0x20 && byte != 0x7F {
         return true
     }
     return false
 }
 
-fileprivate
-func isspace(_ byte: UInt8) -> Bool {
+private func isspace(_ byte: UInt8) -> Bool {
     if byte == 0x20
         || byte == 0x09
         || byte == 0x0A
@@ -54,7 +55,7 @@ func isspace(_ byte: UInt8) -> Bool {
     return false
 }
 
-func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ filename: String) -> Void {
+func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ filename: String) {
     guard
         let file = FileHandle(forReadingAtPath: filename)
     else {
@@ -75,7 +76,7 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ filename: St
         // version 1 didn't include the EOT token id
         // so we assume it is 50256, the EOT in GPT-2
         assert(vocab_size == 50257, "Wrong tokenizer vocabulary size") // let's be defensive here
-        tokenizer.pointee.eot_token = 50256;
+        tokenizer.pointee.eot_token = 50256
     } else if version == 2 {
         tokenizer.pointee.eot_token = Int32(header[3])
     } else {
@@ -115,7 +116,7 @@ func tokenizer_decode(_ tokenizer: UnsafePointer<Tokenizer>, _ token_id: Int) ->
     }
 }
 
-func tokenizer_free(_ tokenizer: UnsafePointer<Tokenizer>) -> Void {
+func tokenizer_free(_ tokenizer: UnsafePointer<Tokenizer>) {
     let vocab_size = tokenizer.pointee.vocab_size // for brevity
     let token_table = tokenizer.pointee.token_table
     if tokenizer.pointee.init_ok {

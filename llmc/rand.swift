@@ -1,7 +1,12 @@
-/*
-Mersenne Twisters implementation, numerically identical to torch.
+// swiftlint:disable:next blanket_disable_command
+// swiftlint:disable identifier_name
+// swiftlint:disable:next blanket_disable_command
+// swiftlint:disable type_name
 
-Example usage:
+/*
+ Mersenne Twisters implementation, numerically identical to torch.
+
+ Example usage:
 
     var state = mt19937_state()
     manual_seed(&state, 137)
@@ -29,7 +34,7 @@ Example usage:
         print("\(randint32(&state))")
     }
 
-PyTorch reference (producing identical results):
+ PyTorch reference (producing identical results):
 
     import torch
     torch.manual_seed(137)
@@ -49,7 +54,7 @@ PyTorch reference (producing identical results):
         print(t[i].item())
     print(torch.randint(0, 0xFFFFFFFF, [1]).item())
 
-Both output:
+ Both output:
 
     4053805790
     2173880614
@@ -82,7 +87,7 @@ Both output:
     - 2.3153159618377686
     0.3961987793445587
     2756748748
-*/
+ */
 
 import Accelerate
 
@@ -104,11 +109,11 @@ struct mt19937_state {
     /* private */ var seed: UInt32 = 0
     /* private */ var left = 0
     /* private */ var next: UInt32 = 0
-    /* private */ var state = Array<UInt32>(repeating: 0, count: MERSENNE_STATE_N)
-    var MATRIX_A = Array<UInt32>(repeating: 0, count: 2)
+    /* private */ var state = [UInt32](repeating: 0, count: MERSENNE_STATE_N)
+    var MATRIX_A = [UInt32](repeating: 0, count: 2)
 }
 
-func manual_seed(_ state: UnsafeMutablePointer<mt19937_state>, _ seed: Int) -> Void {
+func manual_seed(_ state: UnsafeMutablePointer<mt19937_state>, _ seed: Int) {
     state.pointee.MATRIX_A[0] = 0x0
     state.pointee.MATRIX_A[1] = 0x9908b0df
     state.pointee.state[0] = UInt32(seed & 0xffffffff)
@@ -120,7 +125,7 @@ func manual_seed(_ state: UnsafeMutablePointer<mt19937_state>, _ seed: Int) -> V
     state.pointee.next = 0
 }
 
-func next_state(_ state: UnsafeMutablePointer<mt19937_state>) -> Void {
+func next_state(_ state: UnsafeMutablePointer<mt19937_state>) {
     state.pointee.left = MERSENNE_STATE_N
     state.pointee.next = 0
     var y = 0, j = 0
@@ -169,7 +174,8 @@ func randfloat64(_ state: UnsafeMutablePointer<mt19937_state>) -> Double {
     Double(randint64(state) & ((1 << 53) - 1)) * (1.0 / Double(1 << 53))
 }
 
-fileprivate func uniform(_ data: UnsafeMutablePointer<Float>, _ numel: Int, _ from: Float, _ to: Float, _ state: UnsafeMutablePointer<mt19937_state>) -> Void {
+private func uniform(_ data: UnsafeMutablePointer<Float>, _ numel: Int, _ from: Float, _ to: Float,
+                     _ state: UnsafeMutablePointer<mt19937_state>) {
     for t in 0..<numel {
         data[t] = randfloat32(state) * (to - from) + from
     }
@@ -177,7 +183,7 @@ fileprivate func uniform(_ data: UnsafeMutablePointer<Float>, _ numel: Int, _ fr
 
 // Box-Muller transform: maps uniform random numbers to Gaussian distributed numbers
 // https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
-func normal_fill_16(_ data: UnsafeMutablePointer<Float>, _ mean: Float, _ std: Float) -> Void {
+func normal_fill_16(_ data: UnsafeMutablePointer<Float>, _ mean: Float, _ std: Float) {
     // #define EPSILONE 1e-12f
     let EPSILONE: Float = 1e-12
     for t in 0..<8 {
@@ -190,7 +196,8 @@ func normal_fill_16(_ data: UnsafeMutablePointer<Float>, _ mean: Float, _ std: F
     }
 }
 
-func normal_fill(_ data: UnsafeMutablePointer<Float>, _ numel: Int, _ mean: Float, _ std: Float, _ state: UnsafeMutablePointer<mt19937_state>) -> Void {
+func normal_fill(_ data: UnsafeMutablePointer<Float>, _ numel: Int, _ mean: Float, _ std: Float,
+                 _ state: UnsafeMutablePointer<mt19937_state>) {
     for t in 0..<numel {
         data[t] = Float(randfloat32(state))
     }
@@ -210,7 +217,8 @@ func normal_fill(_ data: UnsafeMutablePointer<Float>, _ numel: Int, _ mean: Floa
     }
 }
 
-fileprivate func normal(_ data: UnsafeMutablePointer<Float>, _ numel: Int, _ mean: Float, _ std: Float, _ state: UnsafeMutablePointer<mt19937_state>) -> Void {
+private func normal(_ data: UnsafeMutablePointer<Float>, _ numel: Int, _ mean: Float, _ std: Float,
+                    _ state: UnsafeMutablePointer<mt19937_state>) {
     // #define EPSILONE 1e-12f
     let EPSILONE: Float = 1e-12
     if numel >= 16 {
@@ -236,13 +244,14 @@ fileprivate func normal(_ data: UnsafeMutablePointer<Float>, _ numel: Int, _ mea
     }
 }
 
-func init_identity_permutation(_ data: UnsafeMutablePointer<Int32>, _ numel: Int) -> Void {
+func init_identity_permutation(_ data: UnsafeMutablePointer<Int32>, _ numel: Int) {
     for i in 0..<numel {
         data[i] = Int32(i)
     }
 }
 
-func random_permutation(_ data: UnsafeMutablePointer<Int32>, _ numel: Int, _ state: UnsafeMutablePointer<mt19937_state>) -> Void {
+func random_permutation(_ data: UnsafeMutablePointer<Int32>, _ numel: Int,
+                        _ state: UnsafeMutablePointer<mt19937_state>) {
     for i in (0..<numel).reversed() {
         // pick an index j in [0, i] with equal probability
         let j = Int(randint32(state) % UInt32(i + 1))
@@ -253,7 +262,7 @@ func random_permutation(_ data: UnsafeMutablePointer<Int32>, _ numel: Int, _ sta
     }
 }
 
-func test_mt19937() -> Void {
+func test_mt19937() {
     var state = mt19937_state()
     manual_seed(&state, 137)
     print("\(randint32(&state))")
@@ -262,7 +271,7 @@ func test_mt19937() -> Void {
     print("\(randint32(&state))")
     print("\(randint32(&state))")
 
-    var a8 = Array<Float>(repeating: 0, count: 8)
+    var a8 = [Float](repeating: 0, count: 8)
     a8.withUnsafeMutableBufferPointer { t8 in
         normal(t8.baseAddress!, 8, 0, 1, &state)
         for i in 0..<8 {
@@ -271,12 +280,12 @@ func test_mt19937() -> Void {
         print("\(randint32(&state))")
     }
 
-    var a16 = Array<Float>(repeating: 0, count: 16)
+    var a16 = [Float](repeating: 0, count: 16)
     a16.withUnsafeMutableBufferPointer { t16 in
         normal(t16.baseAddress!, 16, 0, 1, &state)
         for i in 0..<16 {
             print("\(t16[i])")
         }
-        print("\(randint32(&state))");
+        print("\(randint32(&state))")
     }
 }

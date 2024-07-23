@@ -1,3 +1,8 @@
+// swiftlint:disable:next blanket_disable_command
+// swiftlint:disable identifier_name
+// swiftlint:disable:next blanket_disable_command
+// swiftlint:disable large_tuple
+
 import Foundation
 
 func indicesOf(combined: Int, _ X: Int, _ Y: Int, _ Z: Int = 1) -> (Int, Int, Int) {

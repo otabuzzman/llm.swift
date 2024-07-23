@@ -1,14 +1,16 @@
+// swiftlint:disable:next blanket_disable_command
+// swiftlint:disable identifier_name
+
 /*
-Implements:
-- DataLoader for model training. Reads and serves data shards.
-- EvalLoader for multiple-choice evaluation datasets, e.g. HellaSwag.
-*/
+ Implements:
+ - DataLoader for model training. Reads and serves data shards.
+ - EvalLoader for multiple-choice evaluation datasets, e.g. HellaSwag.
+ */
 
 import Foundation
 import Glob
 
 // Distributed Data Loader
-//#define HEADER_SIZE 256
 let HEADER_SIZE = 256
 
 struct DataLoader {
@@ -47,7 +49,7 @@ struct DataLoader {
 }
 
 @discardableResult
-fileprivate func dataloader_load_shard(_ loader: UnsafeMutablePointer<DataLoader>, _ shard_index: Int) -> Int {
+private func dataloader_load_shard(_ loader: UnsafeMutablePointer<DataLoader>, _ shard_index: Int) -> Int {
     var file_index = shard_index
     if loader.pointee.should_shuffle {
         file_index = Int(loader.pointee.shard_indices[shard_index])
@@ -85,7 +87,7 @@ fileprivate func dataloader_load_shard(_ loader: UnsafeMutablePointer<DataLoader
     return ntok
 }
 
-fileprivate func prepare_intra_shard_indices(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
+private func prepare_intra_shard_indices(_ loader: UnsafeMutablePointer<DataLoader>) {
     // shuffle the examples inside the shards
     loader.pointee.intra_shard_indices?.deallocate()
     loader.pointee.intra_shard_indices = UnsafeMutablePointer<Int32>.allocate(capacity: loader.pointee.shard_num_samples)
@@ -93,7 +95,7 @@ fileprivate func prepare_intra_shard_indices(_ loader: UnsafeMutablePointer<Data
     random_permutation(loader.pointee.intra_shard_indices!, loader.pointee.shard_num_samples, &loader.pointee.shuffle_rng)
 }
 
-func dataloader_reset(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
+func dataloader_reset(_ loader: UnsafeMutablePointer<DataLoader>) {
     loader.pointee.current_shard_idx = 0
     loader.pointee.current_sample_idx = 0
 
@@ -108,7 +110,7 @@ func dataloader_reset(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
     }
 }
 
-fileprivate func dataloader_advance(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
+private func dataloader_advance(_ loader: UnsafeMutablePointer<DataLoader>) {
     if loader.pointee.current_shard_idx == loader.pointee.glob_result.count - 1 {
         // if we are at the last shard, we reset the loader and start a new epoch
         dataloader_reset(loader)
@@ -125,13 +127,14 @@ fileprivate func dataloader_advance(_ loader: UnsafeMutablePointer<DataLoader>) 
     }
 }
 
+// swiftlint:disable:next function_parameter_count
 func dataloader_init(_ loader: UnsafeMutablePointer<DataLoader>,
                      _ filename_pattern: String,
                      _ B: Int,
                      _ T: Int,
                      _ process_rank: Int,
                      _ num_processes: Int,
-                     _ should_shuffle: Bool) -> Void {
+                     _ should_shuffle: Bool) {
     loader.pointee.process_rank = process_rank
     loader.pointee.num_processes = num_processes
     loader.pointee.B = B
@@ -177,7 +180,7 @@ func dataloader_init(_ loader: UnsafeMutablePointer<DataLoader>,
     dataloader_reset(loader)
 }
 
-func dataloader_load_batch(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
+func dataloader_load_batch(_ loader: UnsafeMutablePointer<DataLoader>) {
     assert(!loader.pointee.should_shuffle || (loader.pointee.should_shuffle && loader.pointee.intra_shard_indices != nil), "No indices to shuffle")
     assert(loader.pointee.current_sample_idx < loader.pointee.shard_num_samples, "Sample index out of bounds")
     let idx = loader.pointee.should_shuffle ? Int(loader.pointee.intra_shard_indices![loader.pointee.current_sample_idx]) : loader.pointee.current_sample_idx
@@ -200,7 +203,7 @@ func dataloader_load_batch(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
     }
 }
 
-func dataloader_next_batch(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
+func dataloader_next_batch(_ loader: UnsafeMutablePointer<DataLoader>) {
     // if the next batch would go past the end of the file, advance the loader
     if loader.pointee.current_sample_idx >= loader.pointee.shard_num_samples {
         dataloader_advance(loader)
@@ -209,14 +212,14 @@ func dataloader_next_batch(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
     loader.pointee.current_sample_idx += 1
 }
 
-func dataloader_resume(_ loader: UnsafeMutablePointer<DataLoader>, _ current_shard_idx: Int, _ current_sample_idx: Int) -> Void {
+func dataloader_resume(_ loader: UnsafeMutablePointer<DataLoader>, _ current_shard_idx: Int, _ current_sample_idx: Int) {
     // used during model resumption (-y 1) flag
     loader.pointee.current_shard_idx = current_shard_idx
     loader.pointee.current_sample_idx = current_sample_idx
     dataloader_load_shard(loader, loader.pointee.current_shard_idx)
 }
 
-func dataloader_free(_ loader: UnsafeMutablePointer<DataLoader>) -> Void {
+func dataloader_free(_ loader: UnsafeMutablePointer<DataLoader>) {
     loader.pointee.inputs.deallocate()
     loader.pointee.targets.deallocate()
     if loader.pointee.should_shuffle {

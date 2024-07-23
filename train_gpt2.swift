@@ -1,3 +1,6 @@
+// swiftlint:disable:next blanket_disable_command
+// swiftlint:disable identifier_name
+
 import Foundation
 import System
 
@@ -9,7 +12,13 @@ enum LlmSwiftError: Error {
 // all the individual layers' forward and backward passes
 // B = batch_size, T = sequence_length, C = channels, V = vocab_size
 
-func encoder_forward(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Int32>, _ wte: UnsafePointer<Float>, _ wpe: UnsafePointer<Float>, _ B: Int, _ T: Int, _ C: Int) -> Void {
+// swiftlint:disable:next function_parameter_count
+func encoder_forward(
+    _ out: UnsafeMutablePointer<Float>,
+    _ inp: UnsafePointer<Int32>,
+    _ wte: UnsafePointer<Float>,
+    _ wpe: UnsafePointer<Float>,
+    _ B: Int, _ T: Int, _ C: Int) {
     // out is (B,T,C). At each position (b,t), a C-dimensional vector summarizing token & position
     // inp is (B,T) of integers, holding the token ids at each (b,t) position
     // wte is (V,C) of token embeddings, short for "weight token embeddings"
@@ -32,7 +41,13 @@ func encoder_forward(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<In
     }
 }
 
-func encoder_backward(_ dwte: UnsafeMutablePointer<Float>, _ dwpe: UnsafeMutablePointer<Float>, _ dout: UnsafePointer<Float>, _ inp: UnsafePointer<Int32>, _ B: Int, _ T: Int, _ C: Int) -> Void {
+// swiftlint:disable:next function_parameter_count
+func encoder_backward(
+    _ dwte: UnsafeMutablePointer<Float>,
+    _ dwpe: UnsafeMutablePointer<Float>,
+    _ dout: UnsafePointer<Float>,
+    _ inp: UnsafePointer<Int32>,
+    _ B: Int, _ T: Int, _ C: Int) {
     for b in 0..<B {
         for t in 0..<T {
             let dout_bt = dout + b * T * C + t * C
@@ -48,7 +63,14 @@ func encoder_backward(_ dwte: UnsafeMutablePointer<Float>, _ dwpe: UnsafeMutable
     }
 }
 
-func layernorm_forward(_ out: UnsafeMutablePointer<Float>, _ mean: UnsafeMutablePointer<Float>, _ rstd: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Float>, _ weight: UnsafePointer<Float>, _ bias: UnsafePointer<Float>, _ B: Int, _ T: Int, _ C: Int) -> Void {
+// swiftlint:disable:next function_parameter_count
+func layernorm_forward(
+    _ out: UnsafeMutablePointer<Float>,
+    _ mean: UnsafeMutablePointer<Float>,
+    _ rstd: UnsafeMutablePointer<Float>,
+    _ inp: UnsafePointer<Float>,
+    _ weight: UnsafePointer<Float>,
+    _ bias: UnsafePointer<Float>, _ B: Int, _ T: Int, _ C: Int) {
     // reference: https://pytorch.org/docs/stable/generated/torch.nn.LayerNorm.html
     // both inp and out are (B,T,C) of the activations
     // mean and rstd are (B,T) buffers, to be used later in backward pass
@@ -65,14 +87,14 @@ func layernorm_forward(_ out: UnsafeMutablePointer<Float>, _ mean: UnsafeMutable
             for i in 0..<C {
                 m += x[i]
             }
-            m = m / fC
+            m /= fC
             // calculate the variance (without any bias correction)
             var v: Float = 0
             for i in 0..<C {
                 let xshift = x[i] - m
                 v += xshift * xshift
             }
-            v = v / fC
+            v /= fC
             // calculate the rstd (reciprocal standard deviation)
             let s: Float = 1 / sqrtf(v + eps)
             // seek to the output position in out[b,t,:]
@@ -89,7 +111,17 @@ func layernorm_forward(_ out: UnsafeMutablePointer<Float>, _ mean: UnsafeMutable
     }
 }
 
-func layernorm_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMutablePointer<Float>, _ dbias: UnsafeMutablePointer<Float>, _ dout: UnsafePointer<Float>, _ inp: UnsafePointer<Float>, _ weight: UnsafePointer<Float>, _ mean: UnsafePointer<Float>, _ rstd: UnsafePointer<Float>, _ B: Int, _ T: Int, _ C: Int) -> Void {
+// swiftlint:disable:next function_parameter_count
+func layernorm_backward(
+    _ dinp: UnsafeMutablePointer<Float>,
+    _ dweight: UnsafeMutablePointer<Float>,
+    _ dbias: UnsafeMutablePointer<Float>,
+    _ dout: UnsafePointer<Float>,
+    _ inp: UnsafePointer<Float>,
+    _ weight: UnsafePointer<Float>,
+    _ mean: UnsafePointer<Float>,
+    _ rstd: UnsafePointer<Float>,
+    _ B: Int, _ T: Int, _ C: Int) {
     let fC = Float(C)
     for b in 0..<B {
         for t in 0..<T {
@@ -108,8 +140,8 @@ func layernorm_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMu
                 dnorm_mean += dnorm_i
                 dnorm_norm_mean += dnorm_i * norm_bti
             }
-            dnorm_mean = dnorm_mean / fC
-            dnorm_norm_mean = dnorm_norm_mean / fC
+            dnorm_mean /= fC
+            dnorm_norm_mean /= fC
 
             // now iterate again and accumulate all the gradients
             for i in 0..<C {
@@ -131,7 +163,13 @@ func layernorm_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMu
     }
 }
 
-func matmul_forward_naive(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Float>, _ weight: UnsafePointer<Float>, _ bias: UnsafePointer<Float>?, _ B: Int, _ T: Int, _ C: Int, _ OC: Int) async -> Void {
+// swiftlint:disable:next function_parameter_count
+func matmul_forward_naive(
+    _ out: UnsafeMutablePointer<Float>,
+    _ inp: UnsafePointer<Float>,
+    _ weight: UnsafePointer<Float>,
+    _ bias: UnsafePointer<Float>?,
+    _ B: Int, _ T: Int, _ C: Int, _ OC: Int) async {
     // the most naive implementation of matrix multiplication
     // this serves as an algorithmic reference, and as a fallback for
     // unfriendly input shapes inside matmul_forward(), below.
@@ -159,13 +197,20 @@ func matmul_forward_naive(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePoint
 //    }
 }
 
-func matmul_forward(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Float>, _ weight: UnsafePointer<Float>, _ bias: UnsafePointer<Float>?, _ B: Int, _ T: Int, _ C: Int, _ OC: Int) async -> Void {
+// swiftlint:disable:next function_parameter_count
+func matmul_forward(
+    _ out: UnsafeMutablePointer<Float>,
+    _ inp: UnsafePointer<Float>,
+    _ weight: UnsafePointer<Float>,
+    _ bias: UnsafePointer<Float>?,
+    _ B: Int, _ T: Int, _ C: Int, _ OC: Int) async {
     // most of the running time is spent here and in matmul_backward
     // therefore, the implementation below is very mildly optimized
     // this function is otherwise identical to that of matmul_forward_naive()
     // OC is short for "output channels"
     // inp is (B,T,C), weight is (OC, C), bias is (OC)
     // out will be (B,T,OC)
+
 //    let t0 = Date.timeIntervalSinceReferenceDate
     // make sure the tiled loop will be correct or fallback to naive version
     let LOOP_UNROLL = 8
@@ -182,7 +227,7 @@ func matmul_forward(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Flo
             let obt = $0 * LOOP_UNROLL
             for o in 0..<OC {
                 // we'll keep LOOP_UNROLL many results in registers
-                var result = Array<Float>(repeating: 0, count: LOOP_UNROLL)
+                var result = [Float](repeating: 0, count: LOOP_UNROLL)
                 // initialize the bias, if it exists
                 for ibt in 0..<LOOP_UNROLL {
                     result[ibt] = bias?[o] ?? 0
@@ -207,10 +252,17 @@ func matmul_forward(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Flo
     }
 //    let t1 = Date.timeIntervalSinceReferenceDate
 //    print("matmul took \((t1 - t0) * 1000) ms")
-
 }
 
-func matmul_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMutablePointer<Float>, _ dbias : UnsafeMutablePointer<Float>?, _ dout : UnsafePointer<Float>, _ inp: UnsafePointer<Float>, _ weight: UnsafePointer<Float>, _ B: Int, _ T: Int, _ C: Int, _ OC: Int) async -> Void {
+// swiftlint:disable:next function_parameter_count
+func matmul_backward(
+    _ dinp: UnsafeMutablePointer<Float>,
+    _ dweight: UnsafeMutablePointer<Float>,
+    _ dbias: UnsafeMutablePointer<Float>?,
+    _ dout: UnsafePointer<Float>,
+    _ inp: UnsafePointer<Float>,
+    _ weight: UnsafePointer<Float>,
+    _ B: Int, _ T: Int, _ C: Int, _ OC: Int) async {
     // most of the running time is spent here and in matmul_forward
     // this backward could be done in a single "round" of loops
     // but that doesn't afford an efficient parallelization strategy
@@ -220,7 +272,7 @@ func matmul_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMutab
     DispatchQueue.global(qos: .userInteractive).sync {
         DispatchQueue.concurrentPerform(iterations: B * T) {
             let (t, b, _) = indicesOf(combined: $0, T, B)
-            
+
             let dout_bt = dout + b * T * OC + t * OC
             let dinp_bt = dinp + b * T * C + t * C
             for o in 0..<OC {
@@ -242,6 +294,7 @@ func matmul_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMutab
 //            }
 //        }
 //    }
+
     // backward into weight/bias, parallelize over output channels OC
     // #pragma omp parallel for
     DispatchQueue.global(qos: .userInteractive).sync {
@@ -270,7 +323,13 @@ func matmul_backward(_ dinp: UnsafeMutablePointer<Float>, _ dweight: UnsafeMutab
 //    }
 }
 
-func attention_forward(_ out: UnsafeMutablePointer<Float>, _ preatt: UnsafeMutablePointer<Float>, _ att: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Float>, _ B: Int, _ T: Int, _ C: Int, _ NH: Int) async -> Void {
+// swiftlint:disable:next function_parameter_count
+func attention_forward(
+    _ out: UnsafeMutablePointer<Float>,
+    _ preatt: UnsafeMutablePointer<Float>,
+    _ att: UnsafeMutablePointer<Float>,
+    _ inp: UnsafePointer<Float>,
+    _ B: Int, _ T: Int, _ C: Int, _ NH: Int) async {
     // input is (B, T, 3C) holding the query, key, value (Q, K, V) vectors
     // preatt, att are (B, NH, T, T). NH = number of heads, T = sequence length
     // that holds the pre-attention and post-attention scores (used in backward)
@@ -286,16 +345,16 @@ func attention_forward(_ out: UnsafeMutablePointer<Float>, _ preatt: UnsafeMutab
     DispatchQueue.global(qos: .userInteractive).sync {
         DispatchQueue.concurrentPerform(iterations: B * T * NH) {
             let (h, t, b) = indicesOf(combined: $0, NH, T, B)
-            
+
             let query_t = inp + b * T * C3 + t * C3 + h * hs
             let preatt_bth = preatt + b * NH * T * T + h * T * T + t * T
             let att_bth = att + b * NH * T * T + h * T * T + t * T
-            
+
             // pass 1: calculate query dot key and maxval
-            var maxval: Float = -10000 // TODO something better
+            var maxval: Float = -10000 // TODO something better // swiftlint:disable:this todo
             for t2 in 0...t {
                 let key_t2 = inp + b * T * C3 + t2 * C3 + h * hs + C // +C because it's key
-                
+
                 // (query_t) dot (key_t2)
                 var val: Float = 0
                 for i in 0..<hs {
@@ -305,10 +364,10 @@ func attention_forward(_ out: UnsafeMutablePointer<Float>, _ preatt: UnsafeMutab
                 if val > maxval {
                     maxval = val
                 }
-                
+
                 preatt_bth[t2] = val
             }
-            
+
             // pass 2: calculate the exp and keep track of sum
             // maxval is being calculated and subtracted only for numerical stability
             var expsum: Float = 0
@@ -318,7 +377,7 @@ func attention_forward(_ out: UnsafeMutablePointer<Float>, _ preatt: UnsafeMutab
                 att_bth[t2] = expv
             }
             let expsum_inv = expsum == 0 ? 0 : 1 / expsum
-            
+
             // pass 3: normalize to get the softmax
             for t2 in 0..<T {
                 if t2 <= t {
@@ -329,7 +388,7 @@ func attention_forward(_ out: UnsafeMutablePointer<Float>, _ preatt: UnsafeMutab
                     att_bth[t2] = 0
                 }
             }
-            
+
             // pass 4: accumulate weighted values into the output of attention
             let out_bth = out + b * T * C + t * C + h * hs
             for i in 0..<hs { out_bth[i] = 0 }
@@ -356,7 +415,15 @@ func attention_forward(_ out: UnsafeMutablePointer<Float>, _ preatt: UnsafeMutab
 //    }
 }
 
-func attention_backward(_ dinp: UnsafeMutablePointer<Float>, _ dpreatt: UnsafeMutablePointer<Float>, _ datt: UnsafeMutablePointer<Float>, _ dout: UnsafePointer<Float>, _ inp: UnsafePointer<Float>, _ att: UnsafePointer<Float>, _ B: Int, _ T: Int, _ C: Int, _ NH: Int) -> Void {
+// swiftlint:disable:next function_parameter_count
+func attention_backward(
+    _ dinp: UnsafeMutablePointer<Float>,
+    _ dpreatt: UnsafeMutablePointer<Float>,
+    _ datt: UnsafeMutablePointer<Float>,
+    _ dout: UnsafePointer<Float>,
+    _ inp: UnsafePointer<Float>,
+    _ att: UnsafePointer<Float>,
+    _ B: Int, _ T: Int, _ C: Int, _ NH: Int) {
     // inp/dinp are (B, T, 3C) Q,K,V
     // att/datt/dpreatt are (B, NH, T, T)
     // dout is (B, T, C)
@@ -415,7 +482,7 @@ func attention_backward(_ dinp: UnsafeMutablePointer<Float>, _ dpreatt: UnsafeMu
 }
 
 let GELU_SCALING_FACTOR = sqrtf(2 / Float.pi)
-func gelu_forward(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Float>, _ N: Int) -> Void {
+func gelu_forward(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Float>, _ N: Int) {
     // (approximate) GeLU elementwise non-linearity in the MLP block of Transformer
     for i in 0..<N {
         let x = inp[i]
@@ -430,7 +497,11 @@ func gelu_forward(_ out: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Float
 // __attribute__((optimize("no-finite-math-only")))
 // #endif
 @_optimize(none)
-func gelu_backward(_ dinp: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Float>, _ dout: UnsafePointer<Float>, _ N: Int) -> Void {
+func gelu_backward(
+    _ dinp: UnsafeMutablePointer<Float>,
+    _ inp: UnsafePointer<Float>,
+    _ dout: UnsafePointer<Float>,
+    _ N: Int) {
     for i in 0..<N {
         let x = inp[i]
         let cube = 0.044715 * x * x * x
@@ -444,20 +515,32 @@ func gelu_backward(_ dinp: UnsafeMutablePointer<Float>, _ inp: UnsafePointer<Flo
 }
 // #pragma float_control(pop)
 
-func residual_forward(_ out: UnsafeMutablePointer<Float>, _ inp1: UnsafePointer<Float>, _ inp2: UnsafePointer<Float>, _ N: Int) -> Void {
+func residual_forward(
+    _ out: UnsafeMutablePointer<Float>,
+    _ inp1: UnsafePointer<Float>,
+    _ inp2: UnsafePointer<Float>,
+    _ N: Int) {
     for i in 0..<N {
         out[i] = inp1[i] + inp2[i]
     }
 }
 
-func residual_backward(_ dinp1: UnsafeMutablePointer<Float>, _ dinp2: UnsafeMutablePointer<Float>, _ dout: UnsafePointer<Float>, _ N: Int) -> Void {
+func residual_backward(
+    _ dinp1: UnsafeMutablePointer<Float>,
+    _ dinp2: UnsafeMutablePointer<Float>,
+    _ dout: UnsafePointer<Float>,
+    _ N: Int) {
     for i in 0..<N {
         dinp1[i] += dout[i]
         dinp2[i] += dout[i]
     }
 }
 
-func softmax_forward(_ probs: UnsafeMutablePointer<Float>, _ logits: UnsafeMutablePointer<Float>, _ B: Int, _ T: Int, _ V: Int, _ Vp: Int) async -> Void {
+// swiftlint:disable:next function_parameter_count
+func softmax_forward(
+    _ probs: UnsafeMutablePointer<Float>,
+    _ logits: UnsafeMutablePointer<Float>,
+    _ B: Int, _ T: Int, _ V: Int, _ Vp: Int) async {
     // output: probs are (B,T,Vp) of the probabilities (sums to 1.0 in each b,t position)
     // input: logits is (B,T,Vp) of the unnormalized log probabilities
     // Vp is the padded vocab size (for efficiency), V is the "real" vocab size
@@ -466,17 +549,15 @@ func softmax_forward(_ probs: UnsafeMutablePointer<Float>, _ logits: UnsafeMutab
     DispatchQueue.global(qos: .userInteractive).sync {
         DispatchQueue.concurrentPerform(iterations: B * T) {
             let (t, b, _) = indicesOf(combined: $0, T, B)
-            
+
             // probs <- softmax(logits)
             let logits_bt = logits + b * T * Vp + t * Vp
             let probs_bt = probs + b * T * Vp + t * Vp
-            
+
             // maxval is only calculated and subtracted for numerical stability
-            var maxval: Float = -10000 // TODO something better
-            for i in 0..<V {
-                if logits_bt[i] > maxval {
-                    maxval = logits_bt[i]
-                }
+            var maxval: Float = -10000 // TODO something better // swiftlint:disable:this todo
+            for i in 0..<V where logits_bt[i] > maxval {
+                maxval = logits_bt[i]
             }
             var sum: Float = 0
             for i in 0..<V {
@@ -507,7 +588,12 @@ func softmax_forward(_ probs: UnsafeMutablePointer<Float>, _ logits: UnsafeMutab
 //    }
 }
 
-func crossentropy_forward(_ losses: UnsafeMutablePointer<Float>, _ probs: UnsafePointer<Float>, _ targets: UnsafePointer<Int32>, _ B: Int, _ T: Int, _ Vp: Int) -> Void {
+// swiftlint:disable:next function_parameter_count
+func crossentropy_forward(
+    _ losses: UnsafeMutablePointer<Float>,
+    _ probs: UnsafePointer<Float>,
+    _ targets: UnsafePointer<Int32>,
+    _ B: Int, _ T: Int, _ Vp: Int) {
     // output: losses is (B,T) of the individual losses at each position
     // input: probs are (B,T,Vp) of the probabilities
     // input: targets is (B,T) of integers giving the correct index in logits
@@ -521,7 +607,13 @@ func crossentropy_forward(_ losses: UnsafeMutablePointer<Float>, _ probs: Unsafe
     }
 }
 
-func crossentropy_softmax_backward(_ dlogits: UnsafeMutablePointer<Float>, _ dlosses: UnsafePointer<Float>, _ probs: UnsafePointer<Float>, _ targets: UnsafePointer<Int32>, _ B: Int, _ T: Int, _ V: Int, _ Vp: Int) -> Void {
+// swiftlint:disable:next function_parameter_count
+func crossentropy_softmax_backward(
+    _ dlogits: UnsafeMutablePointer<Float>,
+    _ dlosses: UnsafePointer<Float>,
+    _ probs: UnsafePointer<Float>,
+    _ targets: UnsafePointer<Int32>,
+    _ B: Int, _ T: Int, _ V: Int, _ Vp: Int) {
     // backwards through both softmax and crossentropy
     for b in 0..<B {
         for t in 0..<T {
@@ -573,7 +665,7 @@ struct ParameterTensors {
     var lnfb: UnsafeMutablePointer<Float>! // (C)
 }
 
-func fill_in_parameter_sizes(_ param_sizes: UnsafeMutablePointer<Int>, _ config: GPT2Config) -> Void {
+func fill_in_parameter_sizes(_ param_sizes: UnsafeMutablePointer<Int>, _ config: GPT2Config) {
     let Vp = config.padded_vocab_size
     let C = config.channels
     let maxT = config.max_seq_len
@@ -597,7 +689,9 @@ func fill_in_parameter_sizes(_ param_sizes: UnsafeMutablePointer<Int>, _ config:
 }
 
 // allocate memory for the parameters and point the individual tensors to the right places
-func malloc_and_point_parameters(_ params: UnsafeMutablePointer<ParameterTensors>, _ param_sizes: UnsafePointer<Int>) -> UnsafeMutableBufferPointer<Float> {
+func malloc_and_point_parameters(
+    _ params: UnsafeMutablePointer<ParameterTensors>,
+    _ param_sizes: UnsafePointer<Int>) -> UnsafeMutableBufferPointer<Float> {
     var num_parameters = 0
     for i in 0..<NUM_PARAMETER_TENSORS {
         num_parameters += param_sizes[i]
@@ -697,7 +791,10 @@ struct ActivationTensors {
     var losses: UnsafeMutablePointer<Float>! // (B, T)
 }
 
-func malloc_and_point_activations(_ acts: UnsafeMutablePointer<ActivationTensors>, _ act_sizes: UnsafePointer<Int>) -> UnsafeMutableBufferPointer<Float> {
+// swiftlint:disable:next function_body_length
+func malloc_and_point_activations(
+    _ acts: UnsafeMutablePointer<ActivationTensors>,
+    _ act_sizes: UnsafePointer<Int>) -> UnsafeMutableBufferPointer<Float> {
     var num_activations = 0
     for i in 0..<NUM_ACTIVATION_TENSORS {
         num_activations += act_sizes[i]
@@ -793,7 +890,7 @@ struct GPT2 {
     var config = GPT2Config()
     // the weights (parameters) of the model, and their sizes
     var params = ParameterTensors()
-    var param_sizes = Array<Int>(repeating: 0, count: NUM_PARAMETER_TENSORS)
+    var param_sizes = [Int](repeating: 0, count: NUM_PARAMETER_TENSORS)
     var params_memory: UnsafeMutablePointer<Float>?
     var num_parameters = 0
     // gradients of the weights
@@ -804,7 +901,7 @@ struct GPT2 {
     var v_memory: UnsafeMutablePointer<Float>?
     // the activations of the model, and their sizes
     var acts = ActivationTensors()
-    var act_sizes = Array<Int>(repeating: 0, count: NUM_ACTIVATION_TENSORS)
+    var act_sizes = [Int](repeating: 0, count: NUM_ACTIVATION_TENSORS)
     var acts_memory: UnsafeMutablePointer<Float>?
     var num_activations = 0
     // gradients of the activations
@@ -818,8 +915,11 @@ struct GPT2 {
     var mean_loss: Float = 0 // after a forward pass with targets, will be populated with the mean loss
 }
 
-func gpt2_build_from_checkpoint(_ model: UnsafeMutablePointer<GPT2>, _ checkpoint_path: String, _ info: ((String) -> Void)?) -> Void {
-
+// swiftlint:disable:next function_body_length
+func gpt2_build_from_checkpoint(
+    _ model: UnsafeMutablePointer<GPT2>,
+    _ checkpoint_path: String,
+    _ info: ((String) -> Void)?) {
     // read in model from a checkpoint file
     guard
         let model_file = FileHandle(forReadingAtPath: checkpoint_path)
@@ -867,11 +967,6 @@ func gpt2_build_from_checkpoint(_ model: UnsafeMutablePointer<GPT2>, _ checkpoin
 
     // read in all the parameters from file
     let params_memory = malloc_and_point_parameters(&model.pointee.params, model.pointee.param_sizes)
-//    let params_memory_size = num_parameters * MemoryLayout<Float>.size
-//    guard
-//        let params_data = try? model_file.read(upToCount: params_memory_size)
-//    else { fatalError("Error reading params from model file") }
-//    _ = params_data.withUnsafeBytes { $0.copyBytes(to: model.pointee.params_memory) }
     do {
         let model_fd = model_file.fileDescriptor
         _ = try FileDescriptor(rawValue: model_fd).read(into: UnsafeMutableRawBufferPointer(params_memory))
@@ -892,7 +987,13 @@ func gpt2_build_from_checkpoint(_ model: UnsafeMutablePointer<GPT2>, _ checkpoin
     model.pointee.mean_loss = -1 // -1 will designate no loss
 }
 
-func gpt2_forward(_ model: UnsafeMutablePointer<GPT2>, _ inputs: UnsafePointer<Int32>, _ targets: UnsafePointer<Int32>?, _ B: Int, _ T: Int, _ info: ((String) -> Void)?) async -> Void {
+// swiftlint:disable:next function_parameter_count
+func gpt2_forward( // swiftlint:disable:this function_body_length
+    _ model: UnsafeMutablePointer<GPT2>,
+    _ inputs: UnsafePointer<Int32>,
+    _ targets: UnsafePointer<Int32>?,
+    _ B: Int, _ T: Int, _ info: ((String) -> Void)?) async {
+
     // targets are optional
 
     // ensure the model was initialized or error out
@@ -956,7 +1057,8 @@ func gpt2_forward(_ model: UnsafeMutablePointer<GPT2>, _ inputs: UnsafePointer<I
         model.pointee.acts_memory = acts_memory.baseAddress
         // also create memory for caching inputs and targets
         model.pointee.inputs = UnsafeMutablePointer<Int32>.allocate(capacity: B * T)
-        model.pointee.targets = UnsafeMutablePointer<Int32>.allocate(capacity: B * T) // might be unused if we never have targets but it's small
+        // might be unused if we never have targets but it's small
+        model.pointee.targets = UnsafeMutablePointer<Int32>.allocate(capacity: B * T)
     } else {
         // validate B,T are not larger than the values used at initialisation
         // (smaller B,T are okay for inference only)
@@ -1042,7 +1144,7 @@ func gpt2_forward(_ model: UnsafeMutablePointer<GPT2>, _ inputs: UnsafePointer<I
     }
 }
 
-func gpt2_zero_grad(_ model: UnsafeMutablePointer<GPT2>) -> Void {
+func gpt2_zero_grad(_ model: UnsafeMutablePointer<GPT2>) {
     if let grads_memory = model.pointee.grads_memory {
         grads_memory.update(repeating: 0, count: model.pointee.num_parameters)
     }
@@ -1051,8 +1153,8 @@ func gpt2_zero_grad(_ model: UnsafeMutablePointer<GPT2>) -> Void {
     }
 }
 
-func gpt2_backward(_ model: UnsafeMutablePointer<GPT2>) async -> Void {
-
+// swiftlint:disable:next function_body_length
+func gpt2_backward(_ model: UnsafeMutablePointer<GPT2>) async {
     // double check we forwarded previously, with targets
     if model.pointee.mean_loss == -1 {
         fatalError("Must forward with targets before backward")
@@ -1095,7 +1197,6 @@ func gpt2_backward(_ model: UnsafeMutablePointer<GPT2>) async -> Void {
     layernorm_backward(dresidual, grads.lnfw, grads.lnfb, grads_acts.lnf, residual, params.lnfw, acts.lnf_mean, acts.lnf_rstd, B, T, C)
 
     for l in (0..<L).reversed() {
-
         residual = l == 0 ? acts.encoded : acts.residual3 + (l - 1) * B * T * C
         dresidual = l == 0 ? grads_acts.encoded : grads_acts.residual3 + (l - 1) * B * T * C
 
@@ -1161,7 +1262,12 @@ func gpt2_backward(_ model: UnsafeMutablePointer<GPT2>) async -> Void {
     encoder_backward(grads.wte, grads.wpe, grads_acts.encoded, model.pointee.inputs!, B, T, C)
 }
 
-func gpt2_update(_ model: UnsafeMutablePointer<GPT2>, _ learning_rate: Float, _ beta1: Float, _ beta2: Float, _ eps: Float, _ weight_decay: Float, _ t: Int) {
+// swiftlint:disable:next function_parameter_count
+func gpt2_update(
+    _ model: UnsafeMutablePointer<GPT2>,
+    _ learning_rate: Float,
+    _ beta1: Float, _ beta2: Float,
+    _ eps: Float, _ weight_decay: Float, _ t: Int) {
     // reference: https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html
 
     // lazily allocate the memory for m_memory and v_memory
@@ -1197,7 +1303,7 @@ func gpt2_update(_ model: UnsafeMutablePointer<GPT2>, _ learning_rate: Float, _ 
     }
 }
 
-func gpt2_free(_ model: UnsafeMutablePointer<GPT2>) -> Void {
+func gpt2_free(_ model: UnsafeMutablePointer<GPT2>) {
     model.pointee.params_memory?.deallocate()
     model.pointee.grads_memory?.deallocate()
     model.pointee.m_memory?.deallocate()
@@ -1240,7 +1346,8 @@ func sample_mult(_ probabilities: UnsafeMutablePointer<Float>, _ n: Int, _ coin:
 
 // ----------------------------------------------------------------------------
 // main training loop
-func train_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async -> Void {
+// swiftlint:disable:next function_body_length
+func train_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async {
     let cwd = FileManager.default.currentDirectoryPath
     defer { FileManager.default.changeCurrentDirectoryPath(cwd) }
     if let folder = folder {
@@ -1284,7 +1391,6 @@ func train_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async -> Void
 
     // train
     for step in 0...40 {
-
         // once in a while estimate the validation loss
         if step % 10 == 0 {
             var val_loss: Float = 0
@@ -1305,7 +1411,7 @@ func train_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async -> Void
                 gen_tokens[i] = tokenizer.eot_token
             }
             // now sample from the model autoregressively
-            info?("generating:\n---\n");
+            info?("generating:\n---\n")
             for t in 1..<genT {
                 // note that inference is very wasteful here because for each token
                 // we re-calculate the forward pass for all of (B,T) positions from scratch
@@ -1358,3 +1464,4 @@ func train_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async -> Void
     gpt2_free(&model)
 }
 // #endif
+// swiftlint:disable:this file_length
