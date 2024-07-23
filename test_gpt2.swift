@@ -61,18 +61,21 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async {
     let L = model.config.num_layers
 
     // load additional information that we will use for debugging and error checking
+    let state_filename = "gpt2_124M_debug_state.bin"
     guard
-        let state_file = FileHandle(forReadingAtPath: "gpt2_124M_debug_state.bin")
-    else { fatalError("Error opening state file") }
+        let state_file = FileHandle(forReadingAtPath: state_filename)
+    else { fatalError("Error opening state file \(state_filename)") }
     let state_fd = state_file.fileDescriptor
     guard
         let header_data = try? state_file.read(upToCount: 256 * MemoryLayout<Int32>.size)
-    else { fatalError("Error reading header from state file") }
+    else { fatalError("Error reading header from state file \(state_filename)") }
     let state_header = header_data.withUnsafeBytes { (state_header: UnsafeRawBufferPointer) -> [Int] in
         state_header.bindMemory(to: Int32.self).map { Int($0) }
     }
-    if state_header[0] != 20240327 { fatalError("Bad magic state file") }
-    if state_header[1] != 2 { fatalError("Bad version in state file (try `python train_gpt2.py`)") }
+    assert(state_header[0] == 20240327, "Bad magic state file \(state_filename)")
+    if state_header[1] != 2 {
+        fatalError("Wrong version \(state_header[1]) instead of 2 found in state file \(state_filename) (try `python train_gpt2.py`)")
+    }
     let B = state_header[2] // batch size, e.g. 4
     let T = state_header[3] // time / sequence length (e.g. 64, up to maxT)
     info?("[State]\n")
@@ -89,7 +92,7 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async {
         let expected_logits_data = try? state_file.read(upToCount: B * T * V * MemoryLayout<Float>.size),
         let expected_loss_data = try? state_file.read(upToCount: MemoryLayout<Float>.size),
         (try? FileDescriptor(rawValue: state_fd).read(into: UnsafeMutableRawBufferPointer(expected_grads_memory))) != nil
-    else { fatalError("Error reading state file") }
+    else { fatalError("Error reading state file\(state_filename)") }
     // inputs and expected outputs, only used for error checking
     let x = x_data.withUnsafeBytes { $0.bindMemory(to: Int32.self) }
     let y = y_data.withUnsafeBytes { $0.bindMemory(to: Int32.self) }

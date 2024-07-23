@@ -60,27 +60,29 @@ private func dataloader_load_shard(_ loader: UnsafeMutablePointer<DataLoader>, _
     try? loader.pointee.tokens_file?.close()
     guard
         let tokens_file = try? FileHandle(forReadingFrom: URL(string: filename)!)
-    else { fatalError("Error opening tokens file") }
+    else { fatalError("Error opening data file \(filename)") }
     loader.pointee.tokens_file = tokens_file
     // validate the header
     guard
         let header_data = try? tokens_file.read(upToCount: HEADER_SIZE * MemoryLayout<Int32>.size)
-    else { fatalError("Error reading header from model file") }
+    else { fatalError("Error reading header from data file \(filename)") }
     let header = header_data.withUnsafeBytes { (header_data: UnsafeRawBufferPointer) -> [Int] in
         header_data.bindMemory(to: Int32.self).map { Int($0) }
     }
-    if header[0] != 20240520 { fatalError("Bad magic in data file (data encoding may have changed, re-run data prepro or refer again to README)") }
-    if header[1] != 1 { fatalError("Bad version in data file") }
+    assert(header[0] == 20240520, "Bad magic data file \(filename) (re-run preprocessing or refer to README)")
+    if header[1] != 1 {
+        fatalError("Wrong version \(header[1]) instead of 1 found in data file \(filename)")
+    }
 
     let ntok = header[2] // number of tokens in the file
-    assert(ntok > 0, "No tokens in file") // we expect some tokens in the file. this should never trip, right?
+    assert(ntok > 0, "No tokens in file \(filename)") // we expect some tokens in the file. this should never trip, right?
     // determine the file size and make sure it is consistent with the number of tokens
     loader.pointee.file_size_bytes = Int((try? tokens_file.seekToEnd()) ?? 0)
     try? tokens_file.seek(toOffset: 0)
     // we expect ntok in the file to be consistent with filesize, assert that is the case
     let expected_file_size = HEADER_SIZE * MemoryLayout<Int32>.size + ntok * MemoryLayout<UInt16>.size
     if loader.pointee.file_size_bytes != expected_file_size {
-        fatalError("File size not as expected")
+        fatalError("Tokens file size \(loader.pointee.file_size_bytes) must equal \(expected_file_size)")
     }
     // -1 uint16_t due to us taking B*T+1 tokens but moving by B*T tokens
     loader.pointee.shard_num_samples = (ntok * MemoryLayout<UInt16>.size - MemoryLayout<UInt16>.size) / loader.pointee.total_batch_size_bytes

@@ -923,15 +923,17 @@ func gpt2_build_from_checkpoint(
     // read in model from a checkpoint file
     guard
         let model_file = FileHandle(forReadingAtPath: checkpoint_path)
-    else { fatalError("Error opening model file") }
+    else { fatalError("Error opening model file \(checkpoint_path)") }
     guard
         let header_data = try? model_file.read(upToCount: 256 * MemoryLayout<Int32>.size)
-    else { fatalError("Error reading header from model file") }
+    else { fatalError("Error reading header from model file \(checkpoint_path)") }
     let model_header = header_data.withUnsafeBytes { (header_data: UnsafeRawBufferPointer) -> [Int] in
         header_data.bindMemory(to: Int32.self).map { Int($0) }
     }
-    if model_header[0] != 20240326 { fatalError("Bad magic model file") }
-    if model_header[1] != 3 { fatalError("Bad version in model file (try `python train_gpt2.py`)") }
+    assert(model_header[0] == 20240326, "Bad magic model file \(checkpoint_path)")
+    if model_header[1] != 3 {
+        fatalError("Wrong version \(model_header[1]) instead of 3 found in model file \(checkpoint_path) (try `python train_gpt2.py`)")
+    }
 
     // read in hyperparameters
     let maxT = model_header[2]
@@ -971,7 +973,7 @@ func gpt2_build_from_checkpoint(
         let model_fd = model_file.fileDescriptor
         _ = try FileDescriptor(rawValue: model_fd).read(into: UnsafeMutableRawBufferPointer(params_memory))
         model.pointee.params_memory = params_memory.baseAddress
-    } catch { fatalError("Error reading params from model file") }
+    } catch { fatalError("Error reading params from model file \(checkpoint_path)") }
     try? model_file.close()
 
     // other inits

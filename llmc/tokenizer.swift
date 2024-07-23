@@ -59,16 +59,16 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ filename: St
     guard
         let file = FileHandle(forReadingAtPath: filename)
     else {
-        fatalError("Error opening tokens file (try `python train_gpt2.py`)")
+        fatalError("Error opening tokenizer file \(filename) (try `python train_gpt2.py`)")
     }
     // read in the header
     guard
         let header_data = try? file.read(upToCount: 256 * MemoryLayout<Int32>.size)
-    else { fatalError("Error reading header from tokens file") }
+    else { fatalError("Error reading header from tokenizer file \(filename)") }
     let header = header_data.withUnsafeBytes { (header_data: UnsafeRawBufferPointer) -> [Int] in
         header_data.bindMemory(to: Int32.self).map { Int($0) }
     }
-    assert(header[0] == 20240328, "Bad magic tokens file")
+    assert(header[0] == 20240328, "Bad magic tokenizer file \(filename)")
     let version = header[1]
     tokenizer.pointee.vocab_size = header[2]
     let vocab_size = tokenizer.pointee.vocab_size // for brevity
@@ -80,21 +80,21 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ filename: St
     } else if version == 2 {
         tokenizer.pointee.eot_token = Int32(header[3])
     } else {
-        fatalError("Wrong version \(version) of tokenizer file \(filename)")
+        fatalError("Wrong version \(version) found in tokenizer file \(filename)")
     }
     // read in all the tokens
     tokenizer.pointee.token_table = UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.allocate(capacity: vocab_size)
     for i in 0..<vocab_size {
         guard
             let length_data = try? file.read(upToCount: 1 * MemoryLayout<UInt8>.size)
-        else { fatalError("Error reading token length from tokens file") }
+        else { fatalError("Error reading token length from tokenizer file \(filename)") }
         let length = Int(length_data.withUnsafeBytes { $0.bindMemory(to: UInt8.self)[0] })
         assert(length > 0, "Every token should be at least one character")
         let token_bytes = UnsafeMutablePointer<UInt8>.allocate(capacity: length + 1)
         do {
             let fd = file.fileDescriptor
             _ = try FileDescriptor(rawValue: fd).read(into: UnsafeMutableRawBufferPointer(start: token_bytes, count: length))
-        } catch { fatalError("Error reading token bytes from tokens file") }
+        } catch { fatalError("Error reading token bytes from tokenizer file \(filename)") }
         token_bytes[length] = 0 // add null terminator for printing
         tokenizer.pointee.token_table[i] = token_bytes
     }
