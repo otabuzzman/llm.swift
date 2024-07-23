@@ -91,10 +91,6 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ filename: St
         let length = Int(length_data.withUnsafeBytes { $0.bindMemory(to: UInt8.self)[0] })
         assert(length > 0, "Every token should be at least one character")
         let token_bytes = UnsafeMutablePointer<UInt8>.allocate(capacity: length + 1)
-//        guard
-//            let token_bytes_data = try? file.read(upToCount: length * MemoryLayout<UInt8>.size)
-//        else { fatalError("Error reading token bytes from tokens file") }
-//        _ = token_bytes_data.withUnsafeBytes { $0.copyBytes(to: token_bytes) }
         do {
             let fd = file.fileDescriptor
             _ = try FileDescriptor(rawValue: fd).read(into: UnsafeMutableRawBufferPointer(start: token_bytes, count: length))
