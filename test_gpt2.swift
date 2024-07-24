@@ -43,7 +43,7 @@ func check_tensor(
 }
 
 // swiftlint:disable:next function_body_length
-func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async {
+func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws {
     let cwd = FileManager.default.currentDirectoryPath
     defer { FileManager.default.changeCurrentDirectoryPath(cwd) }
     if let folder = folder {
@@ -52,7 +52,11 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async {
 
     // build the GPT-2 model from a checkpoint
     var model = GPT2()
-    gpt2_build_from_checkpoint(&model, "gpt2_124M.bin", info)
+	let model_filename = "gpt2_124M.bin"
+	guard
+		let model_handle = FileHandle(forReadingAtPath: model_filename)
+	else { throw LlmSwiftError.runtime("Error opening model file \(model_filename)")
+    try gpt2_build_from_checkpoint(&model, model_handle, info)
 
     let C = model.config.channels
     let V = model.config.vocab_size
@@ -64,17 +68,14 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async {
     let state_filename = "gpt2_124M_debug_state.bin"
     guard
         let state_file = FileHandle(forReadingAtPath: state_filename)
-    else { fatalError("Error opening state file \(state_filename)") }
-    let state_fd = state_file.fileDescriptor
-    guard
-        let header_data = try? state_file.read(upToCount: 256 * MemoryLayout<Int32>.size)
-    else { fatalError("Error reading header from state file \(state_filename)") }
+    else { throw LlmSwiftError.runtime("Error opening state file \(state_filename)") }
+    let header_data = try state_file.read(upToCount: 256 * MemoryLayout<Int32>.size)
     let state_header = header_data.withUnsafeBytes { (state_header: UnsafeRawBufferPointer) -> [Int] in
         state_header.bindMemory(to: Int32.self).map { Int($0) }
     }
     assert(state_header[0] == 20240327, "Bad magic state file \(state_filename)")
     if state_header[1] != 2 {
-        fatalError("Wrong version \(state_header[1]) instead of 2 found in state file \(state_filename) (try `python train_gpt2.py`)")
+        throw LlmSwiftError.runtime("Wrong version \(state_header[1]) instead of 2 found in state file \(state_filename) (try `python train_gpt2.py`)")
     }
     let B = state_header[2] // batch size, e.g. 4
     let T = state_header[3] // time / sequence length (e.g. 64, up to maxT)
@@ -84,15 +85,14 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async {
 
     var expected_grads = ParameterTensors()
     let expected_grads_memory = malloc_and_point_parameters(&expected_grads, model.param_sizes)
+	var expected_grads_memory_buffer = UnsafeMutableRawBufferPointer(expected_grads_memory)
 
     // read reference information from Python
-    guard
-        let x_data = try? state_file.read(upToCount: B * T * MemoryLayout<Int32>.size),
-        let y_data = try? state_file.read(upToCount: B * T * MemoryLayout<Int32>.size),
-        let expected_logits_data = try? state_file.read(upToCount: B * T * V * MemoryLayout<Float>.size),
-        let expected_loss_data = try? state_file.read(upToCount: MemoryLayout<Float>.size),
-        (try? FileDescriptor(rawValue: state_fd).read(into: UnsafeMutableRawBufferPointer(expected_grads_memory))) != nil
-    else { fatalError("Error reading state file\(state_filename)") }
+    let x_data = try state_file.read(upToCount: B * T * MemoryLayout<Int32>.size),
+    let y_data = try state_file.read(upToCount: B * T * MemoryLayout<Int32>.size),
+    let expected_logits_data = try state_file.read(upToCount: B * T * V * MemoryLayout<Float>.size),
+    let expected_loss_data = try state_file.read(upToCount: MemoryLayout<Float>.size),
+    try FileDescriptor(rawValue: state_file.fileDescriptor).read(into: expected_grads_memory_buffer)
     // inputs and expected outputs, only used for error checking
     let x = x_data.withUnsafeBytes { $0.bindMemory(to: Int32.self) }
     let y = y_data.withUnsafeBytes { $0.bindMemory(to: Int32.self) }
@@ -116,13 +116,13 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async {
         0.6240804195404053,
         0.37651097774505615
     ]
-    for step in 0..<10 {
 
+    for step in 0..<10 {
         let start = Date.timeIntervalSinceReferenceDate
 
         await gpt2_forward(&model, x.baseAddress!, y.baseAddress!, B, T, info)
         gpt2_zero_grad(&model)
-        await gpt2_backward(&model)
+        await try gpt2_backward(&model)
 
         let end = Date.timeIntervalSinceReferenceDate
 
