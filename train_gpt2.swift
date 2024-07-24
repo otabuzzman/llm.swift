@@ -919,16 +919,17 @@ struct GPT2 {
 func gpt2_build_from_checkpoint(
     _ model: UnsafeMutablePointer<GPT2>,
     _ handle: FileHandle,
-    _ checkpoint_path: String,
     _ info: ((String) -> Void)?) throws {
     // read in model from a checkpoint file
-    let header_data = try handle.read(upToCount: 256 * MemoryLayout<Int32>.size)
+    guard
+        let header_data = try handle.read(upToCount: 256 * MemoryLayout<Int32>.size)
+    else { throw LlmSwiftError.runtime("Error reading model file") }
     let model_header = header_data.withUnsafeBytes { (header_data: UnsafeRawBufferPointer) -> [Int] in
         header_data.bindMemory(to: Int32.self).map { Int($0) }
     }
-    assert(model_header[0] == 20240326, "Bad magic model file \(checkpoint_path)")
+    assert(model_header[0] == 20240326, "Bad magic model file")
     if model_header[1] != 3 {
-        throw LlmSwiftError.runtime("Version \(model_header[1]) must equal 3 in model file \(checkpoint_path) (try `python train_gpt2.py`)")
+        throw LlmSwiftError.runtime("Version \(model_header[1]) must equal 3 in model file (try `python train_gpt2.py`)")
     }
 
     // read in hyperparameters
@@ -965,8 +966,8 @@ func gpt2_build_from_checkpoint(
 
     // read in all the parameters from file
     let params_memory = malloc_and_point_parameters(&model.pointee.params, model.pointee.param_sizes)
-	var params_memory_buffer = UnsafeMutableRawBufferPointer(params_memory)
-    try FileDescriptor(rawValue: handle.fileDescriptor).read(into: params_memory_buffer)
+	let params_memory_buffer = UnsafeMutableRawBufferPointer(params_memory)
+    _ = try FileDescriptor(rawValue: handle.fileDescriptor).read(into: params_memory_buffer)
     model.pointee.params_memory = params_memory.baseAddress
     try? handle.close()
 
@@ -988,7 +989,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     _ model: UnsafeMutablePointer<GPT2>,
     _ inputs: UnsafePointer<Int32>,
     _ targets: UnsafePointer<Int32>?,
-    _ B: Int, _ T: Int, _ info: ((String) -> Void)?) async {
+    _ B: Int, _ T: Int, _ info: ((String) -> Void)?) async throws {
 
     // targets are optional
 
@@ -1355,7 +1356,7 @@ func train_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws 
 	let model_filename = "gpt2_124M.bin"
 	guard
 		let model_handle = FileHandle(forReadingAtPath: model_filename)
-	else { throw LlmSwiftError.runtime("err_opening_file \(model_filename)")
+    else { throw LlmSwiftError.runtime("err_opening_file \(model_filename)") }
     try gpt2_build_from_checkpoint(&model, model_handle, info)
 
     // build the DataLoaders from tokens files. for now use tiny_shakespeare if available, else tiny_stories
@@ -1380,7 +1381,7 @@ func train_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws 
 	let tokenizer_filename = "gpt2_tokenizer.bin"
 	guard
 		let tokenizer_handle = FileHandle(forReadingAtPath: tokenizer_filename)
-	else { throw LlmSwiftError.runtime("err_opening_file \(tokenizer_filename)")
+    else { throw LlmSwiftError.runtime("err_opening_file \(tokenizer_filename)") }
     try tokenizer_init(&tokenizer, tokenizer_handle)
 
     // some memory for generating samples from the model
@@ -1398,10 +1399,10 @@ func train_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws 
         // once in a while estimate the validation loss
         if step % 10 == 0 {
             var val_loss: Float = 0
-            dataloader_reset(&val_loader)
+            try dataloader_reset(&val_loader)
             for _ in 0..<val_num_batches {
-                dataloader_next_batch(&val_loader)
-                await gpt2_forward(&model, val_loader.inputs, val_loader.targets, B, T, info)
+                try dataloader_next_batch(&val_loader)
+                try await gpt2_forward(&model, val_loader.inputs, val_loader.targets, B, T, info)
                 val_loss += model.mean_loss
             }
             val_loss /= Float(val_num_batches)
@@ -1421,7 +1422,7 @@ func train_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws 
                 // we re-calculate the forward pass for all of (B,T) positions from scratch
                 // but the inference here is just for sanity checking anyway
                 // and we can maybe optimize a bit more later, with careful tests
-                await gpt2_forward(&model, gen_tokens, nil, B, T, info)
+                try await gpt2_forward(&model, gen_tokens, nil, B, T, info)
                 // furthermore, below we're only using b=0 (i.e. the first row) of all B rows
                 // we're in principle running B "inference streams" in parallel here
                 // but only using position 0
@@ -1452,10 +1453,10 @@ func train_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws 
 
         // do a training step
         let start = Date.timeIntervalSinceReferenceDate
-        dataloader_next_batch(&train_loader)
-        await gpt2_forward(&model, train_loader.inputs, train_loader.targets, B, T, info)
+        try dataloader_next_batch(&train_loader)
+        try await gpt2_forward(&model, train_loader.inputs, train_loader.targets, B, T, info)
         gpt2_zero_grad(&model)
-        await try gpt2_backward(&model)
+        try await gpt2_backward(&model)
         gpt2_update(&model, 1e-4, 0.9, 0.999, 1e-8, 0, step + 1)
         let end = Date.timeIntervalSinceReferenceDate
         info?("step \(step): train loss \(model.mean_loss) (took \(String(format: "%1.2f", (end - start) * 1000)) ms)\n")

@@ -57,11 +57,13 @@ private func isspace(_ byte: UInt8) -> Bool {
 
 func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ handle: FileHandle) throws {
     // read in the header
-    let header_data = try file.read(upToCount: 256 * MemoryLayout<Int32>.size)
+    guard
+        let header_data = try handle.read(upToCount: 256 * MemoryLayout<Int32>.size)
+    else { throw LlmSwiftError.runtime("Error reading tokenizer file") }
     let header = header_data.withUnsafeBytes { (header_data: UnsafeRawBufferPointer) -> [Int] in
         header_data.bindMemory(to: Int32.self).map { Int($0) }
     }
-    assert(header[0] == 20240328, "Bad magic tokenizer file \(filename)")
+    assert(header[0] == 20240328, "Bad magic tokenizer file")
     let version = header[1]
     tokenizer.pointee.vocab_size = header[2]
     let vocab_size = tokenizer.pointee.vocab_size // for brevity
@@ -73,22 +75,24 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ handle: File
     } else if version == 2 {
         tokenizer.pointee.eot_token = Int32(header[3])
     } else {
-        LlmSwiftError.runtime("Wrong version \(version) found in tokenizer file")
+        throw LlmSwiftError.runtime("Wrong version \(version) found in tokenizer file")
     }
     // read in all the tokens
     tokenizer.pointee.token_table = UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.allocate(capacity: vocab_size)
     for i in 0..<vocab_size {
-        let length_data = try file.read(upToCount: 1 * MemoryLayout<UInt8>.size)
+        guard
+            let length_data = try handle.read(upToCount: 1 * MemoryLayout<UInt8>.size)
+        else { throw LlmSwiftError.runtime("Error reading tokenizer file") }
         let length = Int(length_data.withUnsafeBytes { $0.bindMemory(to: UInt8.self)[0] })
         assert(length > 0, "Every token should be at least one character")
         let token_bytes = UnsafeMutablePointer<UInt8>.allocate(capacity: length + 1)
 		let token_bytes_buffer = UnsafeMutableRawBufferPointer(start: token_bytes, count: length)
-        try FileDescriptor(rawValue: file.fileDescriptor).read(into: token_bytes_buffer)
+        _ = try FileDescriptor(rawValue: handle.fileDescriptor).read(into: token_bytes_buffer)
         token_bytes[length] = 0 // add null terminator for printing
         tokenizer.pointee.token_table[i] = token_bytes
     }
     // cleanups
-    try? file.close()
+    try? handle.close()
     tokenizer.pointee.init_ok = true
 }
 

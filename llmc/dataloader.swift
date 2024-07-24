@@ -61,9 +61,11 @@ private func dataloader_load_shard(_ loader: UnsafeMutablePointer<DataLoader>, _
     do {
         loader.pointee.tokens_file = try FileHandle(forReadingFrom: URL(string: filename)!)
     } catch { throw LlmSwiftError.runtime("Error opening data file \(filename)") }
-    let tokens_file = loader.pointee.tokens_file // brevity
+    let tokens_file = loader.pointee.tokens_file! // brevity
     // validate the header
-    let header_data = try tokens_file.read(upToCount: HEADER_SIZE * MemoryLayout<Int32>.size)
+    guard
+        let header_data = try tokens_file.read(upToCount: HEADER_SIZE * MemoryLayout<Int32>.size)
+    else { throw LlmSwiftError.runtime("Error reading data file \(filename)") }
     let header = header_data.withUnsafeBytes { (header_data: UnsafeRawBufferPointer) -> [Int] in
         header_data.bindMemory(to: Int32.self).map { Int($0) }
     }
@@ -95,7 +97,7 @@ private func prepare_intra_shard_indices(_ loader: UnsafeMutablePointer<DataLoad
     random_permutation(loader.pointee.intra_shard_indices!, loader.pointee.shard_num_samples, &loader.pointee.shuffle_rng)
 }
 
-func dataloader_reset(_ loader: UnsafeMutablePointer<DataLoader>) {
+func dataloader_reset(_ loader: UnsafeMutablePointer<DataLoader>) throws {
     loader.pointee.current_shard_idx = 0
     loader.pointee.current_sample_idx = 0
 
@@ -110,10 +112,10 @@ func dataloader_reset(_ loader: UnsafeMutablePointer<DataLoader>) {
     }
 }
 
-private func dataloader_advance(_ loader: UnsafeMutablePointer<DataLoader>) {
+private func dataloader_advance(_ loader: UnsafeMutablePointer<DataLoader>) throws {
     if loader.pointee.current_shard_idx == loader.pointee.glob_result.count - 1 {
         // if we are at the last shard, we reset the loader and start a new epoch
-        dataloader_reset(loader)
+        try dataloader_reset(loader)
         return
     }
 
@@ -177,7 +179,7 @@ func dataloader_init(_ loader: UnsafeMutablePointer<DataLoader>,
     loader.pointee.num_tokens = ntok_total
 
     // reset the loader, to initialize it
-    dataloader_reset(loader)
+    try dataloader_reset(loader)
 }
 
 func dataloader_load_batch(_ loader: UnsafeMutablePointer<DataLoader>) throws {
@@ -191,7 +193,9 @@ func dataloader_load_batch(_ loader: UnsafeMutablePointer<DataLoader>) throws {
     let T = loader.pointee.T
     // read B*T+1 uint16_t tokens from the file into buffer
     try loader.pointee.tokens_file!.seek(toOffset: UInt64(current_offset))
-    let file_data = try loader.pointee.tokens_file!.read(upToCount: (B * T + 1) * MemoryLayout<UInt16>.size)
+    guard
+        let file_data = try loader.pointee.tokens_file!.read(upToCount: (B * T + 1) * MemoryLayout<UInt16>.size)
+    else { throw LlmSwiftError.runtime("Error reading data file") }
     var token_data = file_data
     loader.pointee.buffer = token_data.withUnsafeMutableBytes { $0.bindMemory(to: UInt16.self) }.baseAddress
     // decode the buffer into inputs and targets (cast to int)
@@ -204,7 +208,7 @@ func dataloader_load_batch(_ loader: UnsafeMutablePointer<DataLoader>) throws {
 func dataloader_next_batch(_ loader: UnsafeMutablePointer<DataLoader>) throws {
     // if the next batch would go past the end of the file, advance the loader
     if loader.pointee.current_sample_idx >= loader.pointee.shard_num_samples {
-        dataloader_advance(loader)
+        try dataloader_advance(loader)
     }
     try dataloader_load_batch(loader)
     loader.pointee.current_sample_idx += 1

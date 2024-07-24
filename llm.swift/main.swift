@@ -8,8 +8,8 @@ let data = argv.count > 1 ? URL(fileURLWithPath: argv[1], isDirectory: true) : n
 
 do {
     if test {
-        await try test_gpt2(data, { print($0, terminator: "") })
+        try await test_gpt2(data, { print($0, terminator: "") })
     } else {
-        await try train_gpt2(data, { print($0, terminator: "") })
+        try await train_gpt2(data, { print($0, terminator: "") })
     }
-} catch { fatalError("\(error)")
+} catch { fatalError("\(error)") }
