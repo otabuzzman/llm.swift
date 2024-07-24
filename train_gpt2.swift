@@ -1009,9 +1009,9 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
 
     // validate inputs, all indices must be in the range [0, V]
     for i in 0..<B * T {
-        assert(0 <= inputs[i] && inputs[i] < V, "Input \(inputs[i]) not in range [0, \(V)]")
+        assert(0 <= inputs[i] && inputs[i] < V, "Input out of range")
         if let targets = targets {
-            assert(0 <= targets[i] && targets[i] < V, "Target \(targets[i]) not in range [0, \(V)]")
+            assert(0 <= targets[i] && targets[i] < V, "Target out of range")
         }
     }
 
@@ -1060,7 +1060,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         // validate B,T are not larger than the values used at initialisation
         // (smaller B,T are okay for inference only)
         if B > model.pointee.batch_size || T > model.pointee.seq_len {
-            throw LlmSwiftError.runtime("Model batch-size and sequence length greater than \(B) and \(T)")
+            throw LlmSwiftError.runtime("Model batch-size or sequence length greater than \(B) or \(T) respectively")
         }
     }
 
@@ -1356,7 +1356,7 @@ func train_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws 
 	let model_filename = "gpt2_124M.bin"
 	guard
 		let model_handle = FileHandle(forReadingAtPath: model_filename)
-    else { throw LlmSwiftError.runtime("err_opening_file \(model_filename)") }
+    else { throw LlmSwiftError.runtime("Error opening model file \(model_filename)") }
     try gpt2_build_from_checkpoint(&model, model_handle, info)
 
     // build the DataLoaders from tokens files. for now use tiny_shakespeare if available, else tiny_stories
@@ -1381,7 +1381,7 @@ func train_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws 
 	let tokenizer_filename = "gpt2_tokenizer.bin"
 	guard
 		let tokenizer_handle = FileHandle(forReadingAtPath: tokenizer_filename)
-    else { throw LlmSwiftError.runtime("err_opening_file \(tokenizer_filename)") }
+    else { throw LlmSwiftError.runtime("Error opening tokenizer file \(tokenizer_filename)") }
     try tokenizer_init(&tokenizer, tokenizer_handle)
 
     // some memory for generating samples from the model

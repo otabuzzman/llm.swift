@@ -145,7 +145,7 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws {
                     let diff = fabsf(expected_logits[bt * V + v] - calculated_logits![i])
                     max_diff = fmaxf(max_diff, diff)
                     if diff >= 1e-2 {
-                        info?("MISMATCH AT INDEX \(bt),\(v): \(expected_logits[bt*V + v]) \(calculated_logits![i])\n")
+                        info?("MISMATCH AT INDEX \(bt),\(v): \(expected_logits[bt * V + v]) \(calculated_logits![i])\n")
                         logits_ok = false
                         break // break out of both loops
                     }

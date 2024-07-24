@@ -65,7 +65,7 @@ private func dataloader_load_shard(_ loader: UnsafeMutablePointer<DataLoader>, _
     // validate the header
     guard
         let header_data = try tokens_file.read(upToCount: HEADER_SIZE * MemoryLayout<Int32>.size)
-    else { throw LlmSwiftError.runtime("Error reading data file \(filename)") }
+    else { throw LlmSwiftError.runtime("Error reading data file") }
     let header = header_data.withUnsafeBytes { (header_data: UnsafeRawBufferPointer) -> [Int] in
         header_data.bindMemory(to: Int32.self).map { Int($0) }
     }
@@ -75,7 +75,7 @@ private func dataloader_load_shard(_ loader: UnsafeMutablePointer<DataLoader>, _
     }
 
     let ntok = header[2] // number of tokens in the file
-    assert(ntok > 0, "Header states no tokens in data file \(filename)") // we expect some tokens in the file. this should never trip, right?
+    assert(ntok > 0, "Header records no tokens in data file \(filename)") // we expect some tokens in the file. this should never trip, right?
     // determine the file size and make sure it is consistent with the number of tokens
     loader.pointee.file_size_bytes = Int((try? tokens_file.seekToEnd()) ?? 0)
     try? tokens_file.seek(toOffset: 0)
@@ -183,7 +183,7 @@ func dataloader_init(_ loader: UnsafeMutablePointer<DataLoader>,
 }
 
 func dataloader_load_batch(_ loader: UnsafeMutablePointer<DataLoader>) throws {
-    assert(!loader.pointee.should_shuffle || (loader.pointee.should_shuffle && loader.pointee.intra_shard_indices != nil), "No indices to shuffle")
+    assert(!loader.pointee.should_shuffle || (loader.pointee.should_shuffle && loader.pointee.intra_shard_indices != nil), "No shards to shuffle")
     assert(loader.pointee.current_sample_idx < loader.pointee.shard_num_samples, "Sample index out of bounds")
     let idx = loader.pointee.should_shuffle ? Int(loader.pointee.intra_shard_indices![loader.pointee.current_sample_idx]) : loader.pointee.current_sample_idx
     let global_batch_offset_bytes = idx * loader.pointee.total_batch_size_bytes
