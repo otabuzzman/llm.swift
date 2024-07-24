@@ -9,12 +9,12 @@ import System
 // poor man's tensor checker
 func check_tensor(
     _ a: UnsafePointer<Float>, _ b: UnsafePointer<Float>, _ n: Int,
-    _ label: String, _ info: ((String) -> Void)?) -> Bool {
+    _ label: String, _ stdlog: ((String) -> Void)?) -> Bool {
     let print_upto = 5
     var ok = true
     var maxdiff: Float = 0
     let tol: Float = 2e-2
-    info?("\(label)\n")
+    stdlog?("\(label)\n")
     for i in 0..<n {
         // look at the diffence at position i of these two tensors
         let diff = fabsf(a[i] - b[i])
@@ -27,23 +27,23 @@ func check_tensor(
         // the actual numbers, so we can do a visual, qualitative proof/assessment
         if i < print_upto {
             if diff <= tol {
-                info?("OK \(a[i]) \(b[i])\n")
+                stdlog?("OK \(a[i]) \(b[i])\n")
             } else {
-                info?("NOT OK \(a[i]) \(b[i])\n")
+                stdlog?("NOT OK \(a[i]) \(b[i])\n")
             }
         }
     }
     // print the final result for this tensor
     if ok {
-        info?("TENSOR OK, maxdiff = \(maxdiff)\n")
+        stdlog?("TENSOR OK, maxdiff = \(maxdiff)\n")
     } else {
-        info?("TENSOR NOT OK, maxdiff = \(maxdiff)\n")
+        stdlog?("TENSOR NOT OK, maxdiff = \(maxdiff)\n")
     }
     return ok
 }
 
 // swiftlint:disable:next function_body_length
-func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws {
+func test_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws {
     let cwd = FileManager.default.currentDirectoryPath
     defer { FileManager.default.changeCurrentDirectoryPath(cwd) }
     if let folder = folder {
@@ -56,7 +56,7 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws {
 	guard
 		let model_handle = FileHandle(forReadingAtPath: model_filename)
     else { throw LlmSwiftError.runtime("Error opening model file \(model_filename)") }
-    try gpt2_build_from_checkpoint(&model, model_handle, info)
+    try gpt2_build_from_checkpoint(&model, model_handle, stdlog)
 
     let C = model.config.channels
     let V = model.config.vocab_size
@@ -81,9 +81,9 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws {
     }
     let B = state_header[2] // batch size, e.g. 4
     let T = state_header[3] // time / sequence length (e.g. 64, up to maxT)
-    info?("[State]\n")
-    info?("batch_size: \(B)\n")
-    info?("seq_len: \(T)\n")
+    stdlog?("[State]\n")
+    stdlog?("batch_size: \(B)\n")
+    stdlog?("seq_len: \(T)\n")
 
     var expected_grads = ParameterTensors()
     let expected_grads_memory = malloc_and_point_parameters(&expected_grads, model.param_sizes)
@@ -124,7 +124,7 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws {
     for step in 0..<10 {
         let start = Date.timeIntervalSinceReferenceDate
 
-        try await gpt2_forward(&model, x.baseAddress!, y.baseAddress!, B, T, info)
+        try await gpt2_forward(&model, x.baseAddress!, y.baseAddress!, B, T, stdlog)
         gpt2_zero_grad(&model)
         try await gpt2_backward(&model)
 
@@ -140,48 +140,48 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws {
                 for v in 0..<V { // note we only loop to V (ignoring padding)
                     let i = bt * Vp + v // linearized index, using Vp
                     if i < 10 {
-                        info?("\(expected_logits[i]) \(calculated_logits![i])\n")
+                        stdlog?("\(expected_logits[i]) \(calculated_logits![i])\n")
                     }
                     let diff = fabsf(expected_logits[bt * V + v] - calculated_logits![i])
                     max_diff = fmaxf(max_diff, diff)
                     if diff >= 1e-2 {
-                        info?("MISMATCH AT INDEX \(bt),\(v): \(expected_logits[bt * V + v]) \(calculated_logits![i])\n")
+                        stdlog?("MISMATCH AT INDEX \(bt),\(v): \(expected_logits[bt * V + v]) \(calculated_logits![i])\n")
                         logits_ok = false
                         break // break out of both loops
                     }
                 }
                 if !logits_ok { break }
             }
-            info?("\(logits_ok ? "" : "NOT ")OK (LOGITS), max_diff = \(max_diff)\n")
+            stdlog?("\(logits_ok ? "" : "NOT ")OK (LOGITS), max_diff = \(max_diff)\n")
             allok = allok && logits_ok
 
             // compare the achieved loss
             if fabsf(model.mean_loss - expected_loss) >= 1e-2 {
-                info?("LOSS MISMATCH: \(model.mean_loss) \(expected_loss)\n")
+                stdlog?("LOSS MISMATCH: \(model.mean_loss) \(expected_loss)\n")
                 allok = false
             } else {
-                info?("LOSS OK: \(model.mean_loss) \(expected_loss)\n")
+                stdlog?("LOSS OK: \(model.mean_loss) \(expected_loss)\n")
             }
 
             // finally check all the gradients
             var gradoks = [Bool](repeating: false, count: 16)
             let grads = model.grads
-            gradoks[0] = check_tensor(grads.wte, expected_grads.wte, V * C, "dwte", info)
-            gradoks[1] = check_tensor(grads.wpe, expected_grads.wpe, maxT * C, "dwpe", info)
-            gradoks[2] = check_tensor(grads.ln1w, expected_grads.ln1w, L * C, "dln1w", info)
-            gradoks[3] = check_tensor(grads.ln1b, expected_grads.ln1b, L * C, "dln1b", info)
-            gradoks[4] = check_tensor(grads.qkvw, expected_grads.qkvw, L * 3 * C * C, "dqkvw", info)
-            gradoks[5] = check_tensor(grads.qkvb, expected_grads.qkvb, L * 3 * C, "dqkvb", info)
-            gradoks[6] = check_tensor(grads.attprojw, expected_grads.attprojw, L * C * C, "dattprojw", info)
-            gradoks[7] = check_tensor(grads.attprojb, expected_grads.attprojb, L * C, "dattprojb", info)
-            gradoks[8] = check_tensor(grads.ln2w, expected_grads.ln2w, L * C, "dln2w", info)
-            gradoks[9] = check_tensor(grads.ln2b, expected_grads.ln2b, L * C, "dln2b", info)
-            gradoks[10] = check_tensor(grads.fcw, expected_grads.fcw, L * 4 * C * C, "dfcw", info)
-            gradoks[11] = check_tensor(grads.fcb, expected_grads.fcb, L * 4 * C, "dfcb", info)
-            gradoks[12] = check_tensor(grads.fcprojw, expected_grads.fcprojw, L * C * 4 * C, "dfcprojw", info)
-            gradoks[13] = check_tensor(grads.fcprojb, expected_grads.fcprojb, L * C, "dfcprojb", info)
-            gradoks[14] = check_tensor(grads.lnfw, expected_grads.lnfw, C, "dlnfw", info)
-            gradoks[15] = check_tensor(grads.lnfb, expected_grads.lnfb, C, "dlnfb", info)
+            gradoks[0] = check_tensor(grads.wte, expected_grads.wte, V * C, "dwte", stdlog)
+            gradoks[1] = check_tensor(grads.wpe, expected_grads.wpe, maxT * C, "dwpe", stdlog)
+            gradoks[2] = check_tensor(grads.ln1w, expected_grads.ln1w, L * C, "dln1w", stdlog)
+            gradoks[3] = check_tensor(grads.ln1b, expected_grads.ln1b, L * C, "dln1b", stdlog)
+            gradoks[4] = check_tensor(grads.qkvw, expected_grads.qkvw, L * 3 * C * C, "dqkvw", stdlog)
+            gradoks[5] = check_tensor(grads.qkvb, expected_grads.qkvb, L * 3 * C, "dqkvb", stdlog)
+            gradoks[6] = check_tensor(grads.attprojw, expected_grads.attprojw, L * C * C, "dattprojw", stdlog)
+            gradoks[7] = check_tensor(grads.attprojb, expected_grads.attprojb, L * C, "dattprojb", stdlog)
+            gradoks[8] = check_tensor(grads.ln2w, expected_grads.ln2w, L * C, "dln2w", stdlog)
+            gradoks[9] = check_tensor(grads.ln2b, expected_grads.ln2b, L * C, "dln2b", stdlog)
+            gradoks[10] = check_tensor(grads.fcw, expected_grads.fcw, L * 4 * C * C, "dfcw", stdlog)
+            gradoks[11] = check_tensor(grads.fcb, expected_grads.fcb, L * 4 * C, "dfcb", stdlog)
+            gradoks[12] = check_tensor(grads.fcprojw, expected_grads.fcprojw, L * C * 4 * C, "dfcprojw", stdlog)
+            gradoks[13] = check_tensor(grads.fcprojb, expected_grads.fcprojb, L * C, "dfcprojb", stdlog)
+            gradoks[14] = check_tensor(grads.lnfw, expected_grads.lnfw, C, "dlnfw", stdlog)
+            gradoks[15] = check_tensor(grads.lnfb, expected_grads.lnfb, C, "dlnfb", stdlog)
             for i in 0..<16 {
                 allok = allok && gradoks[i]
             }
@@ -196,11 +196,11 @@ func test_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws {
         allok = allok && step_loss_ok
 
         // print the timing information at the end
-        info?("step \(step): loss \(model.mean_loss) (took \(String(format: "%1.2f", (end - start) * 1000)) ms) OK = \(step_loss_ok)\n")
+        stdlog?("step \(step): loss \(model.mean_loss) (took \(String(format: "%1.2f", (end - start) * 1000)) ms) OK = \(step_loss_ok)\n")
     }
 
     // final judgement
-    info?("overall okay: \(allok)\n")
+    stdlog?("overall okay: \(allok)\n")
 
     // free everything
     expected_grads_memory.deallocate()
