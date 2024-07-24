@@ -968,7 +968,7 @@ func gpt2_build_from_checkpoint(
 	var params_memory_buffer = UnsafeMutableRawBufferPointer(params_memory)
     try FileDescriptor(rawValue: handle.fileDescriptor).read(into: params_memory_buffer)
     model.pointee.params_memory = params_memory.baseAddress
-    try handle.close()
+    try? handle.close()
 
     // other inits
     model.pointee.acts_memory = nil
@@ -1369,15 +1369,19 @@ func train_gpt2(_ folder: URL?, _ info: ((String) -> Void)? = nil) async throws 
     let T = 64 // sequence length 64 (i.e. each sequence is 64 tokens long). must be <= maxT, which is 1024 for GPT-2
     var train_loader = DataLoader()
     var val_loader = DataLoader()
-    dataloader_init(&train_loader, train_tokens, B, T, 0, 1, true)
-    dataloader_init(&val_loader, val_tokens, B, T, 0, 1, false)
+    try dataloader_init(&train_loader, train_tokens, B, T, 0, 1, true)
+    try dataloader_init(&val_loader, val_tokens, B, T, 0, 1, false)
     info?("train dataset num_batches: \(train_loader.num_tokens / (B * T))\n")
     info?("val dataset num_batches: \(val_loader.num_tokens / (B * T))\n")
     let val_num_batches = 5
 
     // build the Tokenizer
     var tokenizer = Tokenizer()
-    tokenizer_init(&tokenizer, "gpt2_tokenizer.bin")
+	let tokenizer_filename = "gpt2_tokenizer.bin"
+	guard
+		let tokenizer_handle = FileHandle(forReadingAtPath: tokenizer_filename)
+	else { throw LlmSwiftError.runtime("err_opening_file \(tokenizer_filename)")
+    try tokenizer_init(&tokenizer, tokenizer_handle)
 
     // some memory for generating samples from the model
     let rng_state = UnsafeMutablePointer<UInt64>.allocate(capacity: 1)
