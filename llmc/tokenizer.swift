@@ -1,9 +1,6 @@
 // swiftlint:disable:next blanket_disable_command
 // swiftlint:disable identifier_name
 
-import Foundation
-import System
-
 /*
  Defines the GPT-2 Tokenizer.
  Only supports decoding, i.e.: tokens (integers) -> strings
@@ -12,7 +9,12 @@ import System
  Which could be tricky in C because of the regex involved, to look into later.
  */
 
-// ----------------------------------------------------------------------------
+import Foundation
+import System
+
+enum TokenizerError: Error {
+    case corrupted
+}
 
 struct Tokenizer {
     var vocab_size = 0
@@ -59,34 +61,33 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ handle: File
     // read in the header
     guard
         let header_data = try handle.read(upToCount: 256 * MemoryLayout<Int32>.size)
-    else { throw LlmSwiftError.runtime("Error reading tokenizer file") }
+    else { throw LlmSwiftError.apiReturnedNil }
     let header = header_data.withUnsafeBytes { (header_data: UnsafeRawBufferPointer) -> [Int] in
         header_data.bindMemory(to: Int32.self).map { Int($0) }
     }
-    assert(header[0] == 20240328, "Bad magic tokenizer file")
+    assert(header[0] == 20240328, "Bad magic in tokenizer file")
+    assert(header[1] ~= 1...2, "Wrong version in tokenizer file")
     let version = header[1]
     tokenizer.pointee.vocab_size = header[2]
     let vocab_size = tokenizer.pointee.vocab_size // for brevity
     if version == 1 {
         // version 1 didn't include the EOT token id
         // so we assume it is 50256, the EOT in GPT-2
-        assert(vocab_size == 50257, "Wrong tokenizer vocabulary size") // let's be defensive here
+        if vocab_size != 50257 { throw TokenizerError.corrupted } // let's be defensive here
         tokenizer.pointee.eot_token = 50256
-    } else if version == 2 {
+    } else { // version == 2
         tokenizer.pointee.eot_token = Int32(header[3])
-    } else {
-        throw LlmSwiftError.runtime("Wrong version \(version) found in tokenizer file")
     }
     // read in all the tokens
     tokenizer.pointee.token_table = UnsafeMutablePointer<UnsafeMutablePointer<UInt8>>.allocate(capacity: vocab_size)
     for i in 0..<vocab_size {
         guard
             let length_data = try handle.read(upToCount: 1 * MemoryLayout<UInt8>.size)
-        else { throw LlmSwiftError.runtime("Error reading tokenizer file") }
+        else { throw LlmSwiftError.apiReturnedNil }
         let length = Int(length_data.withUnsafeBytes { $0.bindMemory(to: UInt8.self)[0] })
-        assert(length > 0, "Every token should be at least one character")
+        if length == 0 { throw TokenizerError.corrupted }
         let token_bytes = UnsafeMutablePointer<UInt8>.allocate(capacity: length + 1)
-		let token_bytes_buffer = UnsafeMutableRawBufferPointer(start: token_bytes, count: length)
+        let token_bytes_buffer = UnsafeMutableRawBufferPointer(start: token_bytes, count: length)
         _ = try FileDescriptor(rawValue: handle.fileDescriptor).read(into: token_bytes_buffer)
         token_bytes[length] = 0 // add null terminator for printing
         tokenizer.pointee.token_table[i] = token_bytes

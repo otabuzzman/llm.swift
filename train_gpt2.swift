@@ -5,7 +5,9 @@ import Foundation
 import System
 
 enum LlmSwiftError: Error {
-    case runtime(String)
+    case wrongApiUsage
+    case apiReturnedNil
+    case outOfBounds
 }
 
 // ----------------------------------------------------------------------------
@@ -923,14 +925,12 @@ func gpt2_build_from_checkpoint(
     // read in model from a checkpoint file
     guard
         let header_data = try handle.read(upToCount: 256 * MemoryLayout<Int32>.size)
-    else { throw LlmSwiftError.runtime("Error reading model file") }
+    else { throw LlmSwiftError.apiReturnedNil }
     let model_header = header_data.withUnsafeBytes { (header_data: UnsafeRawBufferPointer) -> [Int] in
         header_data.bindMemory(to: Int32.self).map { Int($0) }
     }
-    assert(model_header[0] == 20240326, "Bad magic model file")
-    if model_header[1] != 3 {
-        throw LlmSwiftError.runtime("Version \(model_header[1]) must equal 3 in model file (try `python train_gpt2.py`)")
-    }
+    assert(model_header[0] == 20240326, "Bad magic in model file (try `python train_gpt2.py`)")
+    assert(model_header[1] == 3, "Wrong version in model file (try `python train_gpt2.py`)")
 
     // read in hyperparameters
     let maxT = model_header[2]
@@ -966,7 +966,7 @@ func gpt2_build_from_checkpoint(
 
     // read in all the parameters from file
     let params_memory = malloc_and_point_parameters(&model.pointee.params, model.pointee.param_sizes)
-	let params_memory_buffer = UnsafeMutableRawBufferPointer(params_memory)
+    let params_memory_buffer = UnsafeMutableRawBufferPointer(params_memory)
     _ = try FileDescriptor(rawValue: handle.fileDescriptor).read(into: params_memory_buffer)
     model.pointee.params_memory = params_memory.baseAddress
     try? handle.close()
@@ -991,14 +991,10 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     _ targets: UnsafePointer<Int32>?,
     _ B: Int, _ T: Int, _ stdlog: ((String) -> Void)?) async throws {
 
-    // targets are optional
-
     // ensure the model was initialized or error out
-    // params_memory available or app crashed in Swift
-    // if (model->params_memory == NULL) {
-    //     printf("Error: model was not initialized properly.\n");
-    //     exit(1);
-    // }
+    guard
+        model.pointee.params_memory != nil
+    else { throw LlmSwiftError.wrongApiUsage }
 
     // convenience parameters
     let V = model.pointee.config.vocab_size
@@ -1009,9 +1005,9 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
 
     // validate inputs, all indices must be in the range [0, V]
     for i in 0..<B * T {
-        assert(0 <= inputs[i] && inputs[i] < V, "Input out of range")
+        if !(inputs[i] ~= 0..<V) { throw LlmSwiftError.outOfBounds }
         if let targets = targets {
-            assert(0 <= targets[i] && targets[i] < V, "Target out of range")
+            if !(targets[i] ~= 0..<V) { throw LlmSwiftError.outOfBounds }
         }
     }
 
@@ -1060,7 +1056,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         // validate B,T are not larger than the values used at initialisation
         // (smaller B,T are okay for inference only)
         if B > model.pointee.batch_size || T > model.pointee.seq_len {
-            throw LlmSwiftError.runtime("Model batch-size or sequence length greater than \(B) or \(T) respectively")
+            throw LlmSwiftError.wrongApiUsage
         }
     }
 
@@ -1154,7 +1150,7 @@ func gpt2_zero_grad(_ model: UnsafeMutablePointer<GPT2>) {
 func gpt2_backward(_ model: UnsafeMutablePointer<GPT2>) async throws {
     // double check we forwarded previously, with targets
     if model.pointee.mean_loss == -1 {
-        throw LlmSwiftError.runtime("Must call gpt2_forward with `targets´ before gpt2_backward")
+        throw LlmSwiftError.wrongApiUsage // must call gpt2_forward with `targets´ before this API
     }
 
     // lazily allocate the memory for gradients of the weights and activations, if needed
@@ -1353,10 +1349,10 @@ func train_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throw
 
     // build the GPT-2 model from a checkpoint
     var model = GPT2()
-	let model_filename = "gpt2_124M.bin"
-	guard
-		let model_handle = FileHandle(forReadingAtPath: model_filename)
-    else { throw LlmSwiftError.runtime("Error opening model file \(model_filename)") }
+    let model_filename = "gpt2_124M.bin"
+    guard
+        let model_handle = FileHandle(forReadingAtPath: model_filename)
+    else { throw LlmSwiftError.apiReturnedNil }
     try gpt2_build_from_checkpoint(&model, model_handle, stdlog)
 
     // build the DataLoaders from tokens files. for now use tiny_shakespeare if available, else tiny_stories
@@ -1378,10 +1374,10 @@ func train_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throw
 
     // build the Tokenizer
     var tokenizer = Tokenizer()
-	let tokenizer_filename = "gpt2_tokenizer.bin"
-	guard
-		let tokenizer_handle = FileHandle(forReadingAtPath: tokenizer_filename)
-    else { throw LlmSwiftError.runtime("Error opening tokenizer file \(tokenizer_filename)") }
+    let tokenizer_filename = "gpt2_tokenizer.bin"
+    guard
+        let tokenizer_handle = FileHandle(forReadingAtPath: tokenizer_filename)
+    else { throw LlmSwiftError.apiReturnedNil }
     try tokenizer_init(&tokenizer, tokenizer_handle)
 
     // some memory for generating samples from the model

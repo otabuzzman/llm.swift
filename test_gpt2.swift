@@ -52,10 +52,10 @@ func test_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws
 
     // build the GPT-2 model from a checkpoint
     var model = GPT2()
-	let model_filename = "gpt2_124M.bin"
-	guard
-		let model_handle = FileHandle(forReadingAtPath: model_filename)
-    else { throw LlmSwiftError.runtime("Error opening model file \(model_filename)") }
+    let model_filename = "gpt2_124M.bin"
+    guard
+        let model_handle = FileHandle(forReadingAtPath: model_filename)
+    else { throw LlmSwiftError.apiReturnedNil }
     try gpt2_build_from_checkpoint(&model, model_handle, stdlog)
 
     let C = model.config.channels
@@ -68,17 +68,15 @@ func test_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws
     let state_filename = "gpt2_124M_debug_state.bin"
     guard
         let state_file = FileHandle(forReadingAtPath: state_filename)
-    else { throw LlmSwiftError.runtime("Error opening state file \(state_filename)") }
+    else { throw LlmSwiftError.apiReturnedNil }
     guard
         let header_data = try state_file.read(upToCount: 256 * MemoryLayout<Int32>.size)
-    else { throw LlmSwiftError.runtime("Error reading state file") }
+    else { throw LlmSwiftError.apiReturnedNil }
     let state_header = header_data.withUnsafeBytes { (state_header: UnsafeRawBufferPointer) -> [Int] in
         state_header.bindMemory(to: Int32.self).map { Int($0) }
     }
-    assert(state_header[0] == 20240327, "Bad magic state file \(state_filename)")
-    if state_header[1] != 2 {
-        throw LlmSwiftError.runtime("Wrong version \(state_header[1]) instead of 2 found in state file \(state_filename) (try `python train_gpt2.py`)")
-    }
+    assert(state_header[0] == 20240327, "Bad magic in state file (try `python train_gpt2.py`)")
+    assert(state_header[1] == 2, "Bad version in state file (try `python train_gpt2.py`)")
     let B = state_header[2] // batch size, e.g. 4
     let T = state_header[3] // time / sequence length (e.g. 64, up to maxT)
     stdlog?("[State]\n")
@@ -87,7 +85,7 @@ func test_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws
 
     var expected_grads = ParameterTensors()
     let expected_grads_memory = malloc_and_point_parameters(&expected_grads, model.param_sizes)
-	let expected_grads_memory_buffer = UnsafeMutableRawBufferPointer(expected_grads_memory)
+    let expected_grads_memory_buffer = UnsafeMutableRawBufferPointer(expected_grads_memory)
 
     // read reference information from Python
     guard
@@ -95,7 +93,7 @@ func test_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws
         let y_data = try state_file.read(upToCount: B * T * MemoryLayout<Int32>.size),
         let expected_logits_data = try state_file.read(upToCount: B * T * V * MemoryLayout<Float>.size),
         let expected_loss_data = try state_file.read(upToCount: MemoryLayout<Float>.size)
-    else { throw LlmSwiftError.runtime("Error reading state file") }
+    else { throw LlmSwiftError.apiReturnedNil }
     _ = try FileDescriptor(rawValue: state_file.fileDescriptor).read(into: expected_grads_memory_buffer)
     // inputs and expected outputs, only used for error checking
     let x = x_data.withUnsafeBytes { $0.bindMemory(to: Int32.self) }

@@ -130,7 +130,7 @@ func next_state(_ state: UnsafeMutablePointer<mt19937_state>) {
     state.pointee.next = 0
     var y = 0, j = 0
     for i in 0..<MERSENNE_STATE_N - MERSENNE_STATE_M {
-		j = i
+        j = i
         y = (Int(state.pointee.state[j]) & UMASK) | (Int(state.pointee.state[j + 1]) & LMASK)
         state.pointee.state[j] = state.pointee.state[j + MERSENNE_STATE_M] ^ UInt32(y >> 1) ^ state.pointee.MATRIX_A[y & 0x1]
     }
@@ -146,12 +146,12 @@ func next_state(_ state: UnsafeMutablePointer<mt19937_state>) {
 
 func randint32(_ state: UnsafeMutablePointer<mt19937_state>) -> UInt32 {
     if state.pointee.MATRIX_A[0] != 0 || state.pointee.MATRIX_A[1] != 0x9908b0df { manual_seed(state, 5489) } // auto-initialize
-	state.pointee.left -= 1
+    state.pointee.left -= 1
     if state.pointee.left <= 0 {
         next_state(state)
     }
     var y = state.pointee.state[Int(state.pointee.next)]
-	state.pointee.next += 1
+    state.pointee.next += 1
     y ^= y >> 11
     y ^= (y << 7) & 0x9d2c5680
     y ^= (y << 15) & 0xefc60000
@@ -201,12 +201,12 @@ func normal_fill(_ data: UnsafeMutablePointer<Float>, _ numel: Int, _ mean: Floa
     for t in 0..<numel {
         data[t] = Float(randfloat32(state))
     }
-	var i = 0
-	while i < numel - 15 {
+    var i = 0
+    while i < numel - 15 {
         let data = (data.advanced(by: i))
         normal_fill_16(data, mean, std)
-		i += 16
-	}
+        i += 16
+    }
     if numel % 16 != 0 {
         // recompute the last 16 values
         let data = (data.advanced(by: numel - 16))
