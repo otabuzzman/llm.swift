@@ -66,7 +66,7 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ handle: File
         header_data.bindMemory(to: Int32.self).map { Int($0) }
     }
     assert(header[0] == 20240328, "Bad magic in tokenizer file")
-    assert(header[1] ~= 1...2, "Wrong version in tokenizer file")
+    assert(1...2 ~= header[1], "Wrong version in tokenizer file")
     let version = header[1]
     tokenizer.pointee.vocab_size = header[2]
     let vocab_size = tokenizer.pointee.vocab_size // for brevity

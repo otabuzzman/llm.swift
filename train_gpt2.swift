@@ -917,7 +917,6 @@ struct GPT2 {
     var mean_loss: Float = 0 // after a forward pass with targets, will be populated with the mean loss
 }
 
-// swiftlint:disable:next function_body_length
 func gpt2_build_from_checkpoint(
     _ model: UnsafeMutablePointer<GPT2>,
     _ handle: FileHandle,
@@ -1005,9 +1004,9 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
 
     // validate inputs, all indices must be in the range [0, V]
     for i in 0..<B * T {
-        if !(inputs[i] ~= 0..<V) { throw LlmSwiftError.outOfBounds }
+        if !(0..<V ~= Int(inputs[i])) { throw LlmSwiftError.outOfBounds }
         if let targets = targets {
-            if !(targets[i] ~= 0..<V) { throw LlmSwiftError.outOfBounds }
+            if !(0..<V ~= Int(targets[i])) { throw LlmSwiftError.outOfBounds }
         }
     }
 
