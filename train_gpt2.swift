@@ -1078,7 +1078,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         model.pointee.batch_size = B
         model.pointee.seq_len = T
         // and now allocate the space
-        fill_in_activation_sizes(&model.pointee.acts_sizes, model.pointee.config, B, T)
+        fill_in_activation_sizes(&model.pointee.act_sizes, model.pointee.config, B, T)
         var num_activations = 0
         for i in 0..<NUM_ACTIVATION_TENSORS {
             num_activations += model.pointee.act_sizes[i]
