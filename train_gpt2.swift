@@ -825,6 +825,36 @@ struct ActivationTensors {
     var losses: UnsafeMutablePointer<Float>! // (B, T)
 }
 
+func fill_in_activation_sizes(_ act_sizes: UnsafeMutablePointer<Int>, _ config: GPT2Config, _ B: Int, _ T: Int) {
+    let C = config.channels
+    let NH = config.num_heads
+    let L = config.num_layers
+    let Vp = config.padded_vocab_size
+    act_sizes[0] = B * T * C // encoded
+    act_sizes[1] = L * B * T * C // ln1
+    act_sizes[2] = L * B * T // ln1_mean
+    act_sizes[3] = L * B * T // ln1_rstd
+    act_sizes[4] = L * B * T * 3 * C // qkv
+    act_sizes[5] = L * B * T * C // atty
+    act_sizes[6] = L * B * NH * T * T // preatt
+    act_sizes[7] = L * B * NH * T * T // att
+    act_sizes[8] = L * B * T * C // attproj
+    act_sizes[9] = L * B * T * C // residual2
+    act_sizes[10] = L * B * T * C // ln2
+    act_sizes[11] = L * B * T // ln2_mean
+    act_sizes[12] = L * B * T // ln2_rstd
+    act_sizes[13] = L * B * T * 4 * C // fch
+    act_sizes[14] = L * B * T * 4 * C // fch_gelu
+    act_sizes[15] = L * B * T * C // fcproj
+    act_sizes[16] = L * B * T * C // residual3
+    act_sizes[17] = B * T * C // lnf
+    act_sizes[18] = B * T // lnf_mean
+    act_sizes[19] = B * T // lnf_rstd
+    act_sizes[20] = B * T * Vp // logits
+    act_sizes[21] = B * T * Vp // probs
+    act_sizes[22] = B * T // losses
+}
+
 // swiftlint:disable:next function_body_length
 func malloc_and_point_activations(
     _ acts: UnsafeMutablePointer<ActivationTensors>,
@@ -1048,29 +1078,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         model.pointee.batch_size = B
         model.pointee.seq_len = T
         // and now allocate the space
-        model.pointee.act_sizes[0] = B * T * C // encoded
-        model.pointee.act_sizes[1] = L * B * T * C // ln1
-        model.pointee.act_sizes[2] = L * B * T  // ln1_mean
-        model.pointee.act_sizes[3] = L * B * T  // ln1_rstd
-        model.pointee.act_sizes[4] = L * B * T * 3 * C // qkv
-        model.pointee.act_sizes[5] = L * B * T * C  // atty
-        model.pointee.act_sizes[6] = L * B * NH * T * T  // preatt
-        model.pointee.act_sizes[7] = L * B * NH * T * T  // att
-        model.pointee.act_sizes[8] = L * B * T * C // attproj
-        model.pointee.act_sizes[9] = L * B * T * C // residual2
-        model.pointee.act_sizes[10] = L * B * T * C // ln2
-        model.pointee.act_sizes[11] = L * B * T // ln2_mean
-        model.pointee.act_sizes[12] = L * B * T // ln2_rstd
-        model.pointee.act_sizes[13] = L * B * T * 4 * C // fch
-        model.pointee.act_sizes[14] = L * B * T * 4 * C // fch_gelu
-        model.pointee.act_sizes[15] = L * B * T * C // fcproj
-        model.pointee.act_sizes[16] = L * B * T * C // residual3
-        model.pointee.act_sizes[17] = B * T * C // lnf
-        model.pointee.act_sizes[18] = B * T // lnf_mean
-        model.pointee.act_sizes[19] = B * T // lnf_rstd
-        model.pointee.act_sizes[20] = B * T * Vp // logits
-        model.pointee.act_sizes[21] = B * T * Vp // probs
-        model.pointee.act_sizes[22] = B * T // losses
+        fill_in_activation_sizes(&model.pointee.acts_sizes, model.pointee.config, B, T)
         var num_activations = 0
         for i in 0..<NUM_ACTIVATION_TENSORS {
             num_activations += model.pointee.act_sizes[i]
