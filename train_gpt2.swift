@@ -2,6 +2,7 @@
 // swiftlint:disable identifier_name
 
 import Foundation
+import Accelerate
 import System
 
 enum LlmSwiftError: Error {
@@ -166,6 +167,37 @@ func layernorm_backward(
 }
 
 // swiftlint:disable:next function_parameter_count
+func matmul_forward_cblas(
+    _ out: UnsafeMutablePointer<Float>,
+    _ inp: UnsafePointer<Float>,
+    _ weight: UnsafePointer<Float>,
+    _ bias: UnsafePointer<Float>?,
+    _ B: Int, _ T: Int, _ C: Int, _ OC: Int) async {
+    // the most naive implementation of matrix multiplication
+    // this serves as an algorithmic reference, and as a fallback for
+    // unfriendly input shapes inside matmul_forward(), below.
+    // #pragma omp parallel for collapse(2)
+    DispatchQueue.global(qos: .userInteractive).sync {
+        DispatchQueue.concurrentPerform(iterations: B * T) { bt in
+            if let bias = bias {
+                (out + bt * OC).update(from: bias, count: OC)
+            } else {
+                (out + bt * OC).initialize(repeating: 0, count: OC)
+            }
+            // mat A is inp, mat B is weight, mat C is out
+            // mat A and C are row-major, mat B column-major, thus transposed
+            // mind lba, lbb and lbc original values, not transposed ones
+            cblas_sgemm(
+                CblasRowMajor, CblasNoTrans, CblasTrans,
+                1, Int32(OC), Int32(C),
+                1, inp + bt * C, Int32(C),
+                weight, Int32(C), 1,
+                out + bt * OC, Int32(OC))
+        }
+    }
+}
+
+// swiftlint:disable:next function_parameter_count
 func matmul_forward_naive(
     _ out: UnsafeMutablePointer<Float>,
     _ inp: UnsafePointer<Float>,
@@ -200,7 +232,7 @@ func matmul_forward_naive(
 }
 
 // swiftlint:disable:next function_parameter_count
-func matmul_forward(
+func matmul_forward_default(
     _ out: UnsafeMutablePointer<Float>,
     _ inp: UnsafePointer<Float>,
     _ weight: UnsafePointer<Float>,
