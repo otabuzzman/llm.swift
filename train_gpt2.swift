@@ -182,7 +182,7 @@ func matmul_forward_cblas(
             if let bias = bias {
                 (out + bt * OC).update(from: bias, count: OC)
             } else {
-                (out + bt * OC).initialize(repeating: 0, count: OC)
+                (out + bt * OC).update(repeating: 0, count: OC)
             }
             // mat A is inp, mat B is weight, mat C is out
             // mat A and C are row-major, mat B column-major, thus transposed
