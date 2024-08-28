@@ -1,6 +1,6 @@
 # llm.swift
 
-A Swift port of Andrej Karpathy‘s [llm.c](https://github.com/karpathy/llm.c). 
+A Swift port of Andrej Karpathy‘s [llm.c](https://github.com/karpathy/llm.c). The C version was ported with the necessary changes due to differences in the ecosystems, mainly file I/O and parallelization, with the latter using Grand Central Dispatch instead of OpenMP.
 
 ## Quick start
 
@@ -19,7 +19,7 @@ A Swift port of Andrej Karpathy‘s [llm.c](https://github.com/karpathy/llm.c).
   #   test_gpt2 [ <llm.c folder> ]
   #   train_gpt2 [ <llm.c folder> ]
   
-  ./test_gpt2 ../llm.c # llm.c data in sibling folder
+  ./test_gpt2 ../llm.c # assuming llm.c in sibling folder
   ./train_gpt2 ../llm.c
   ```
 
