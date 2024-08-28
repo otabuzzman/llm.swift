@@ -15,6 +15,8 @@
 		1883FC092C354E5700F75687 /* dataloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC082C354E5700F75687 /* dataloader.swift */; };
 		1883FC0D2C355A1200F75687 /* Glob in Frameworks */ = {isa = PBXBuildFile; productRef = 1883FC0C2C355A1200F75687 /* Glob */; };
 		1883FC0F2C36B35000F75687 /* rand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC0E2C36B35000F75687 /* rand.swift */; };
+		B08B389F2D2C704D007ED5D0 /* DefaultLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */; };
+		B08B38A12D2C712E007ED5D0 /* LaunchPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08B38A02D2C712E007ED5D0 /* LaunchPad.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,7 +31,8 @@
 		1883FC072BFF3A3C00F75687 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		1883FC082C354E5700F75687 /* dataloader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = dataloader.swift; path = llmc/dataloader.swift; sourceTree = SOURCE_ROOT; };
 		1883FC0E2C36B35000F75687 /* rand.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = rand.swift; sourceTree = "<group>"; };
-		1883FC372C501EE900F75687 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultLibrary.swift; sourceTree = "<group>"; };
+		B08B38A02D2C712E007ED5D0 /* LaunchPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchPad.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,10 +50,11 @@
 		1883FBE52BF6714200F75687 = {
 			isa = PBXGroup;
 			children = (
-				1883FC372C501EE900F75687 /* Localizable.xcstrings */,
+				B08B389E2D2C704D007ED5D0 /* dev */,
 				1883FC122C43CCC500F75687 /* llmc */,
 				1883FC072BFF3A3C00F75687 /* .gitignore */,
 				1883FBFC2BF6746D00F75687 /* README.md */,
+				B08B38A02D2C712E007ED5D0 /* LaunchPad.swift */,
 				1883FBFD2BF6746D00F75687 /* test_gpt2.swift */,
 				1883FBFB2BF6746D00F75687 /* train_gpt2.swift */,
 				1883FBF02BF6714200F75687 /* llm.swift */,
@@ -84,6 +88,22 @@
 				1883FC052BFF2D9600F75687 /* utils.swift */,
 			);
 			path = llmc;
+			sourceTree = "<group>";
+		};
+		B08B389D2D2C704D007ED5D0 /* metal */ = {
+			isa = PBXGroup;
+			children = (
+				B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */,
+			);
+			path = metal;
+			sourceTree = "<group>";
+		};
+		B08B389E2D2C704D007ED5D0 /* dev */ = {
+			isa = PBXGroup;
+			children = (
+				B08B389D2D2C704D007ED5D0 /* metal */,
+			);
+			path = dev;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -177,9 +197,11 @@
 			files = (
 				1883FC062BFF2D9600F75687 /* utils.swift in Sources */,
 				1883FC0F2C36B35000F75687 /* rand.swift in Sources */,
+				B08B389F2D2C704D007ED5D0 /* DefaultLibrary.swift in Sources */,
 				1883FBFF2BF6746D00F75687 /* train_gpt2.swift in Sources */,
 				1883FC092C354E5700F75687 /* dataloader.swift in Sources */,
 				1883FC002BF6746D00F75687 /* test_gpt2.swift in Sources */,
+				B08B38A12D2C712E007ED5D0 /* LaunchPad.swift in Sources */,
 				1883FC042BF677E200F75687 /* main.swift in Sources */,
 				1883FBFE2BF6746D00F75687 /* tokenizer.swift in Sources */,
 			);
@@ -361,6 +383,7 @@
 				OTHER_CFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.otabuzzman.llm-swift";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=macosx*]" = LLMSWIFT_STANDALONE;
 				SWIFT_DISABLE_SAFETY_CHECKS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_REFLECTION_METADATA_LEVEL = none;

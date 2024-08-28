@@ -53,9 +53,7 @@ func test_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws
     // build the GPT-2 model from a checkpoint
     var model = GPT2()
     let model_filename = "gpt2_124M.bin"
-    guard
-        let model_handle = FileHandle(forReadingAtPath: model_filename)
-    else { throw LlmSwiftError.apiReturnedNil }
+    let model_handle = try FileHandle(forReadingFrom: URL(string: model_filename)!)
     try gpt2_build_from_checkpoint(&model, model_handle, stdlog)
 
     let C = model.config.channels
@@ -66,12 +64,10 @@ func test_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws
 
     // load additional information that we will use for debugging and error checking
     let state_filename = "gpt2_124M_debug_state.bin"
-    guard
-        let state_file = FileHandle(forReadingAtPath: state_filename)
-    else { throw LlmSwiftError.apiReturnedNil }
+    let state_file = try FileHandle(forReadingFrom: URL(string: state_filename)!)
     guard
         let header_data = try state_file.read(upToCount: 256 * MemoryLayout<Int32>.size)
-    else { throw LlmSwiftError.apiReturnedNil }
+    else { throw LlmSwiftError.apiReturnedNil(api: "read (in \(#function)") }
     let state_header = header_data.withUnsafeBytes { (state_header: UnsafeRawBufferPointer) -> [Int] in
         state_header.bindMemory(to: Int32.self).map { Int($0) }
     }
@@ -99,7 +95,7 @@ func test_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws
         let y_data = try state_file.read(upToCount: B * T * MemoryLayout<Int32>.size),
         let expected_logits_data = try state_file.read(upToCount: B * T * V * MemoryLayout<Float>.size),
         let expected_loss_data = try state_file.read(upToCount: MemoryLayout<Float>.size)
-    else { throw LlmSwiftError.apiReturnedNil }
+    else { throw LlmSwiftError.apiReturnedNil(api: "read (in \(#function))") }
     _ = try FileDescriptor(rawValue: state_file.fileDescriptor).read(into: expected_grads_memory_buffer)
     // inputs and expected outputs, only used for error checking
     let x = x_data.withUnsafeBytes { $0.bindMemory(to: Int32.self) }
@@ -107,6 +103,17 @@ func test_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws
     let expected_logits = expected_logits_data.withUnsafeBytes { $0.bindMemory(to: Float.self) }
     let expected_loss = expected_loss_data.withUnsafeBytes { $0.load(as: Float.self) }
     try? state_file.close()
+
+    // register inputs/targets for Metal
+    let buffer_length = B * T * MemoryLayout<Int32>.size
+    let inputs_memory = UnsafeMutableRawPointer(mutating: x.baseAddress!)
+    let targets_memory = UnsafeMutableRawPointer(mutating: y.baseAddress!)
+    try launchPad?.registerBuffer(address: inputs_memory, length: buffer_length)
+    try launchPad?.registerBuffer(address: targets_memory, length: buffer_length)
+    defer {
+        launchPad?.unregisterBuffer(address: inputs_memory)
+        launchPad?.unregisterBuffer(address: targets_memory)
+    }
 
     // overall OK signal for the test
     var allok = true

@@ -61,7 +61,7 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ handle: File
     // read in the header
     guard
         let header_data = try handle.read(upToCount: 256 * MemoryLayout<Int32>.size)
-    else { throw LlmSwiftError.apiReturnedNil }
+    else { throw LlmSwiftError.apiReturnedNil(api: "read (in \(#function))") }
     let header = header_data.withUnsafeBytes { (header_data: UnsafeRawBufferPointer) -> [Int] in
         header_data.bindMemory(to: Int32.self).map { Int($0) }
     }
@@ -83,7 +83,7 @@ func tokenizer_init(_ tokenizer: UnsafeMutablePointer<Tokenizer>, _ handle: File
     for i in 0..<vocab_size {
         guard
             let length_data = try handle.read(upToCount: 1 * MemoryLayout<UInt8>.size)
-        else { throw LlmSwiftError.apiReturnedNil }
+        else { throw LlmSwiftError.apiReturnedNil(api: "read (in \(#function))") }
         let length = Int(length_data.withUnsafeBytes { $0.bindMemory(to: UInt8.self)[0] })
         if length == 0 { throw TokenizerError.corrupted }
         let token_bytes = UnsafeMutablePointer<UInt8>.allocate(capacity: length + 1)

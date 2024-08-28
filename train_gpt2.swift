@@ -6,26 +6,32 @@ import Accelerate
 import System
 
 enum LlmSwiftError: Error {
-    case wrongApiUsage
-    case apiReturnedNil
+    case wrongApiUsage(api: String)
+    case apiReturnedNil(api: String)
     case outOfBounds
     case noSpace
 }
 
-extension LlmSwiftError: CustomStringConvertible {
-    var description: String {
+extension LlmSwiftError: LocalizedError {
+    var errorDescription: String? {
         switch self {
-        case .wrongApiUsage:
-            return "Wrong API usage"
-        case .apiReturnedNil:
-            return "API returned nil"
+        case .wrongApiUsage(let api):
+            return NSLocalizedString("Wrong \(api) API usage", comment: "")
+        case .apiReturnedNil(let api):
+            return NSLocalizedString("API \(api) returned nil", comment: "")
         case .outOfBounds:
-            return "Index out of bounds"
+            return NSLocalizedString("Index out of bounds", comment: "")
         case .noSpace:
-            return "No space left on device"
+            return NSLocalizedString("No space left on device", comment: "")
         }
     }
 }
+
+// matmul_forward_default, matmul_forward_cblas or matmul_forward_naive
+private let matmul_forward = matmul_forward_default
+
+// metal support
+var launchPad: LaunchPad?
 
 // ----------------------------------------------------------------------------
 // all the individual layers' forward and backward passes
@@ -37,11 +43,27 @@ func encoder_forward(
     _ inp: UnsafePointer<Int32>,
     _ wte: UnsafePointer<Float>,
     _ wpe: UnsafePointer<Float>,
-    _ B: Int, _ T: Int, _ C: Int) {
+    _ B: Int, _ T: Int, _ C: Int) throws {
     // out is (B,T,C). At each position (b,t), a C-dimensional vector summarizing token & position
     // inp is (B,T) of integers, holding the token ids at each (b,t) position
     // wte is (V,C) of token embeddings, short for "weight token embeddings"
     // wpe is (maxT,C) of position embeddings, short for "weight positional embedding"
+    if let launchPad = launchPad {
+        let context = KernelContext(
+            threadsPerGrid: MTLSize(width: B * T * C, height: 1, depth: 1),
+            threadsPerGroup: MTLSize(width: 512, height: 1, depth: 1))
+        let params: [KernelParam] = [
+            UnsafeMutableRawPointer(out),
+            UnsafeMutableRawPointer(mutating: inp),
+            UnsafeMutableRawPointer(mutating: wte),
+            UnsafeMutableRawPointer(mutating: wpe),
+            Int32(B), Int32(T), Int32(C)]
+        try launchPad.dispatchKernel(
+                name: "encoder_forward",
+                context: context,
+                params: params)
+        return
+    }
     for b in 0..<B {
         for t in 0..<T {
             // seek to the output position in out[b,t,:]
@@ -748,6 +770,10 @@ func malloc_and_point_parameters(
     }
     // malloc all parameters all at once (https://stackoverflow.com/a/74021402)
     let params_memory = UnsafeMutableBufferPointer<Float>.allocate(capacity: num_parameters)
+
+    let params_length = num_parameters * MemoryLayout<Float>.size
+    try? launchPad?.registerBuffer(address: params_memory.baseAddress!, length: params_length)
+
     // assign all the tensors
     var params_memory_iterator = params_memory.baseAddress!
     // Pointer initialization in Swift
@@ -880,6 +906,10 @@ func malloc_and_point_activations(
         num_activations += act_sizes[i]
     }
     let acts_memory = UnsafeMutableBufferPointer<Float>.allocate(capacity: num_activations)
+
+    let acts_length = num_activations * MemoryLayout<Float>.size
+    try? launchPad?.registerBuffer(address: acts_memory.baseAddress!, length: acts_length)
+
     var acts_memory_iterator = acts_memory.baseAddress!
     // Pointer initialization in Swift
     acts.pointee.encoded = acts_memory_iterator
@@ -1002,7 +1032,7 @@ func gpt2_build_from_checkpoint(
     // read in model from a checkpoint file
     guard
         let header_data = try handle.read(upToCount: 256 * MemoryLayout<Int32>.size)
-    else { throw LlmSwiftError.apiReturnedNil }
+        else { throw LlmSwiftError.apiReturnedNil(api: "read (in \(#function))") }
     let model_header = header_data.withUnsafeBytes { (header_data: UnsafeRawBufferPointer) -> [Int] in
         header_data.bindMemory(to: Int32.self).map { Int($0) }
     }
@@ -1071,7 +1101,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     // ensure the model was initialized or error out
     guard
         model.pointee.params_memory != nil
-    else { throw LlmSwiftError.wrongApiUsage }
+        else { throw LlmSwiftError.wrongApiUsage(api: "\(#function)") }
 
     // convenience parameters
     let V = model.pointee.config.vocab_size
@@ -1111,7 +1141,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         // validate B,T are not larger than the values used at initialisation
         // (smaller B,T are okay for inference only)
         if B > model.pointee.batch_size || T > model.pointee.seq_len {
-            throw LlmSwiftError.wrongApiUsage
+            throw LlmSwiftError.wrongApiUsage(api: "\(#function)")
         }
     }
 
@@ -1121,11 +1151,30 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         model.pointee.targets!.update(from: targets, count: B * T)
     }
 
+    let layers = [
+        "encoder",
+        "layernorm",
+        "matmul",
+        "attention",
+        "residual",
+        "gelu",
+        "softmax",
+        "crossentropy"
+    ]
+    for layer in layers {
+        do {
+            // register layer kernels (shader) for Metal if available
+            try launchPad?.registerKernel(name: "\(layer)_forward")
+        } catch { stdlog?("\(error.localizedDescription)\n") }
+    }
+
     // forward pass
     let params = model.pointee.params // for brevity
     let acts = model.pointee.acts
     var residual: UnsafeMutablePointer<Float>
-    encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
+
+    try encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
+    try launchPad?.commit(wait: true)
     for l in 0..<L {
         try Task.checkCancellation()
         residual = l == 0 ? acts.encoded : acts.residual3 + (l - 1) * B * T * C
@@ -1206,7 +1255,7 @@ func gpt2_zero_grad(_ model: UnsafeMutablePointer<GPT2>) {
 func gpt2_backward(_ model: UnsafeMutablePointer<GPT2>) async throws {
     // double check we forwarded previously, with targets
     if model.pointee.mean_loss == -1 {
-        throw LlmSwiftError.wrongApiUsage // must call gpt2_forward with `targets´ before this API
+        throw LlmSwiftError.wrongApiUsage(api: "\(#function)") // must call gpt2_forward with `targets´ before this API
     }
 
     // lazily allocate the memory for gradients of the weights and activations, if needed
@@ -1354,11 +1403,17 @@ func gpt2_update(
 }
 
 func gpt2_free(_ model: UnsafeMutablePointer<GPT2>) {
-    model.pointee.params_memory?.deallocate()
+    if let params_memory = model.pointee.params_memory {
+        launchPad?.unregisterBuffer(address: params_memory)
+        params_memory.deallocate()
+    }
     model.pointee.grads_memory?.deallocate()
     model.pointee.m_memory?.deallocate()
     model.pointee.v_memory?.deallocate()
-    model.pointee.acts_memory?.deallocate()
+    if let acts_memory = model.pointee.acts_memory {
+        launchPad?.unregisterBuffer(address: acts_memory)
+        acts_memory.deallocate()
+    }
     model.pointee.grads_acts_memory?.deallocate()
     model.pointee.inputs?.deallocate()
     model.pointee.targets?.deallocate()
@@ -1407,9 +1462,7 @@ func train_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throw
     // build the GPT-2 model from a checkpoint
     var model = GPT2()
     let model_filename = "gpt2_124M.bin"
-    guard
-        let model_handle = FileHandle(forReadingAtPath: model_filename)
-    else { throw LlmSwiftError.apiReturnedNil }
+    let model_handle = try FileHandle(forReadingFrom: URL(string: model_filename)!)
     try gpt2_build_from_checkpoint(&model, model_handle, stdlog)
 
     // build the DataLoaders from tokens files. for now use tiny_shakespeare if available, else tiny_stories
@@ -1432,17 +1485,22 @@ func train_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throw
     // build the Tokenizer
     var tokenizer = Tokenizer()
     let tokenizer_filename = "gpt2_tokenizer.bin"
-    guard
-        let tokenizer_handle = FileHandle(forReadingAtPath: tokenizer_filename)
-    else { throw LlmSwiftError.apiReturnedNil }
+    let tokenizer_handle = try FileHandle(forReadingFrom: URL(string: tokenizer_filename)!)
     try tokenizer_init(&tokenizer, tokenizer_handle)
 
     // some memory for generating samples from the model
     let rng_state = UnsafeMutablePointer<UInt64>.allocate(capacity: 1)
     let gen_tokens = UnsafeMutablePointer<Int32>.allocate(capacity: B * T)
+
+    // register buffer for Metal
+    let gen_tokens_length = B * T * MemoryLayout<Int32>.size
+    let gen_tokens_memory = UnsafeMutableRawPointer(mutating: gen_tokens)
+    try launchPad?.registerBuffer(address: gen_tokens_memory, length: gen_tokens_length)
+
     defer {
         // free on leaving
         rng_state.deallocate()
+        launchPad?.unregisterBuffer(address: gen_tokens_memory)
         gen_tokens.deallocate()
 
         dataloader_free(&train_loader)
