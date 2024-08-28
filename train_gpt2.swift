@@ -27,6 +27,9 @@ extension LlmSwiftError: CustomStringConvertible {
     }
 }
 
+// matmul_forward_default, matmul_forward_naive or matmul_forward_cblas
+let matmul_forward: (UnsafeMutablePointer<Float>, UnsafePointer<Float>, UnsafePointer<Float>, UnsafePointer<Float>?, Int, Int, Int, Int) async -> Void = matmul_forward_default(_:_:_:_:_:_:_:_:)
+
 // ----------------------------------------------------------------------------
 // all the individual layers' forward and backward passes
 // B = batch_size, T = sequence_length, C = channels, V = vocab_size
