@@ -3,6 +3,7 @@
 A Swift port of Andrej Karpathy‘s [llm.c](https://github.com/karpathy/llm.c). 
 
 ## Quick start
+
 - Clone [llm.c](https://github.com/karpathy/llm.c) and follow instructions given there in README, section [quick start (CPU)](https://github.com/otabuzzman/llm.c/blob/2346cdac931f544d63ce816f7e3f5479a917eef5/README.md#quick-start-cpu). This will get you the dataset, the tokens, the small GPT-2 model (124M) released by OpenAI, and two executables for testing and training.
 
 - Clone this repository, cd into it, build and run the executables for testing and training. 
@@ -15,37 +16,12 @@ A Swift port of Andrej Karpathy‘s [llm.c](https://github.com/karpathy/llm.c).
   xcodebuild -scheme llm.swift -configuration Release
   
   # usage:
-  #   test_gpt2 [ llm.c data folder ]
-  #   train_gpt2 [ llm.c data folder ]
+  #   test_gpt2 [ <llm.c folder> ]
+  #   train_gpt2 [ <llm.c folder> ]
   
   ./test_gpt2 ../llm.c # llm.c data in sibling folder
   ./train_gpt2 ../llm.c
   ```
-
-### Performance notes
-Swift porting done one-to-one with existing parallelization tools is slower than C and probably worth further investigation (preliminary conclusion).
-
-The sequential (`NO_OMP=1`) code from the C compiler runs roughly 3 times faster than the code produced by the Swift compiler (20/ 60 seconds), measured in step duration of `test_gpt2` on a Macbook Air (2015) (Intel, 4 cores, 8 GB).
-
-Parallelization with OpenMP (`NO_OMP=0`) in C and built-in _Structured Concurrency_ in Swift (using `withTaskGroup`) cuts down execution times to a half on both sides (10/ 30 seconds).
-
-Regarding Swift, almost all of the performance gain came from parallelizing `matmul_forward`. The contribution of parallelization of the remaining functions that use OpenMP in C was marginal.
-
-Parallelization of `matmul_backward` was strange as it lengthens execution time (40 seconds); thus left out `matmul_backword` parallelization for later investigation.
-
-Using the _Grand Central Dispatch_ API `concurrentPerform` instead of `withTaskGroup` for any function that uses OpenMP on the C side yields an execution time on 25 seconds. 
-
-Execution times of setups with notable impact:
-
-|#|Setup|Time (seconds)|
-|---:|:---|---:|
-|1|C, `-march=native`, OpenMP|10|
-|2|C, `-march=native`, no OpenMP|20|
-|3|C, no `-march=native`, OpenMP|15|
-|4|C, no `-march=native`, no OpenMP|25|
-|5|Swift, `-march=native`, `matmul_backward`|50|
-|6|Swift, `-march=native`, no `matmul_backward`|30|
-|7|Swift, `-march=native`, GCD|25|
 
 ## Output samples
 
