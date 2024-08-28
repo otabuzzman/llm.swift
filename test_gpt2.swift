@@ -87,6 +87,12 @@ func test_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws
     let expected_grads_memory = malloc_and_point_parameters(&expected_grads, model.param_sizes)
     let expected_grads_memory_buffer = UnsafeMutableRawBufferPointer(expected_grads_memory)
 
+    defer {
+        // free on leaving
+        expected_grads_memory.deallocate()
+        gpt2_free(&model)
+    }
+
     // read reference information from Python
     guard
         let x_data = try state_file.read(upToCount: B * T * MemoryLayout<Int32>.size),
@@ -199,8 +205,4 @@ func test_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws
 
     // final judgement
     stdlog?("overall okay: \(allok)\n")
-
-    // free everything
-    expected_grads_memory.deallocate()
-    gpt2_free(&model)
 }

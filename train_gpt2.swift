@@ -9,6 +9,22 @@ enum LlmSwiftError: Error {
     case wrongApiUsage
     case apiReturnedNil
     case outOfBounds
+    case noSpace
+}
+
+extension LlmSwiftError: CustomStringConvertible {
+    var description: String {
+        switch self {
+        case .wrongApiUsage:
+            return "Wrong API usage"
+        case .apiReturnedNil:
+            return "API returned nil"
+        case .outOfBounds:
+            return "Index out of bounds"
+        case .noSpace:
+            return "No space left on device"
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -767,7 +783,7 @@ func malloc_and_point_parameters(
     params_memory_iterator += param_sizes[14]
     params.pointee.lnfb = params_memory_iterator
     params_memory_iterator += param_sizes[15]
-/*    
+/*
  A 1:1 port of the C implementation for pointer initialization.
  Quite verbose in Swift and also far too difficult to read and understand.
     let ptrs: [UnsafeMutablePointer<UnsafeMutablePointer<Float>>] = [
@@ -1111,6 +1127,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     var residual: UnsafeMutablePointer<Float>
     encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
     for l in 0..<L {
+        try Task.checkCancellation()
         residual = l == 0 ? acts.encoded : acts.residual3 + (l - 1) * B * T * C
 
         // get the pointers of the weights for this layer
@@ -1229,6 +1246,7 @@ func gpt2_backward(_ model: UnsafeMutablePointer<GPT2>) async throws {
     layernorm_backward(dresidual, grads.lnfw, grads.lnfb, grads_acts.lnf, residual, params.lnfw, acts.lnf_mean, acts.lnf_rstd, B, T, C)
 
     for l in (0..<L).reversed() {
+        try Task.checkCancellation()
         residual = l == 0 ? acts.encoded : acts.residual3 + (l - 1) * B * T * C
         dresidual = l == 0 ? grads_acts.encoded : grads_acts.residual3 + (l - 1) * B * T * C
 
@@ -1423,8 +1441,14 @@ func train_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throw
     let rng_state = UnsafeMutablePointer<UInt64>.allocate(capacity: 1)
     let gen_tokens = UnsafeMutablePointer<Int32>.allocate(capacity: B * T)
     defer {
+        // free on leaving
         rng_state.deallocate()
         gen_tokens.deallocate()
+
+        dataloader_free(&train_loader)
+        dataloader_free(&val_loader)
+        tokenizer_free(&tokenizer)
+        gpt2_free(&model)
     }
     rng_state.initialize(to: 1337)
     let genT = 64 // number of steps of inference we will do
@@ -1496,12 +1520,6 @@ func train_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throw
         let end = Date.timeIntervalSinceReferenceDate
         stdlog?("step \(step): train loss \(model.mean_loss) (took \(String(format: "%1.2f", (end - start) * 1000)) ms)\n")
     }
-
-    // free
-    dataloader_free(&train_loader)
-    dataloader_free(&val_loader)
-    tokenizer_free(&tokenizer)
-    gpt2_free(&model)
 }
 // #endif
 // swiftlint:disable:this file_length
