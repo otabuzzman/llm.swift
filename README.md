@@ -26,6 +26,8 @@ A Swift port of Andrej Karpathy‘s [llm.c](https://github.com/karpathy/llm.c). 
 
 ## Output samples
 
+Programms built and ran on MacBook Air 2015.
+
 Output of Swift's `train_gpt2`:
 ```
 [GPT-2]
