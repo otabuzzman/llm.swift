@@ -13,7 +13,8 @@ A Swift port of Andrej Karpathy‘s [llm.c](https://github.com/karpathy/llm.c). 
   cd llm.swift
   
   # build for production
-  xcodebuild -scheme llm.swift -configuration Release SWIFT_ACTIVE_COMPILATION_CONDITIONS="$SWIFT_ACTIVE_COMPILATION_CONDITIONS LLMSWIFT_STANDALONE"
+  xcodebuild -scheme llm.swift -configuration Release \
+  SWIFT_ACTIVE_COMPILATION_CONDITIONS="$SWIFT_ACTIVE_COMPILATION_CONDITIONS LLMSWIFT_STANDALONE"
   
   # usage:
   #   test_gpt2 [ <llm.c folder> ]
