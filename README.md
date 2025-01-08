@@ -28,6 +28,9 @@ The [samples.md](samples.md) file provides the output of llm.swift captured from
 
 ## Acknowledgements
 
+Andrej Karpathy - (llm.c)
+<br>Copyright (c) 2024 Andrej Karpathy - MIT License
+
 **Metal implementation**
 
 James Thompson - (Metal implementation)
