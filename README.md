@@ -24,6 +24,15 @@ A Swift port of Andrej Karpathy‘s [llm.c](https://github.com/karpathy/llm.c). 
   ./train_gpt2 ../llm.c
   ```
 
+## Acknowledgements
+
+**Metal implementation**
+
+James Thompson - (Metal implementation)
+<br>Copyright (c) 2024 James Thomson - MIT License
+
+Adopted a concept shared by [@regrettable-username](https://github.com/regrettable-username) in his Metal port [llm.metal](https://github.com/regrettable-username/llm.metal).
+
 ## Output samples
 
 Programms built and ran on MacBook Air 2015.
