@@ -10,6 +10,27 @@ kernel void encoder_forward(device float* out [[ buffer(0) ]],
                                 constant uint& T [[ buffer(5) ]],
                                 constant uint& C [[ buffer(6) ]],
                                 uint tid [[ thread_position_in_grid ]]) {
+    if (tid >= B * T) { return; }
+
+    int b = tid / T;
+    int t = tid % T;
+    device float* out_bt = out + b * T * C + t * C;
+    int ix = inp[b * T + t];
+    const device float* wte_ix = wte + ix * C;
+    const device float* wpe_t = wpe + t * C;
+    for (int i = 0; i < C; i++) {
+        out_bt[i] = (float)((float)wte_ix[i] + (float)wpe_t[i]);
+    }
+}
+
+kernel void encoder_forward2(device float* out [[ buffer(0) ]],
+                                device int* inp [[ buffer(1) ]],
+                                device float* wte [[ buffer(2) ]],
+                                device float* wpe [[ buffer(3) ]],
+                                constant uint& B [[ buffer(4) ]],
+                                constant uint& T [[ buffer(5) ]],
+                                constant uint& C [[ buffer(6) ]],
+                                uint tid [[ thread_position_in_grid ]]) {
     if (tid >= B * T * C) { return; }
 
     int bt = tid / C;
@@ -19,8 +40,8 @@ kernel void encoder_forward(device float* out [[ buffer(0) ]],
 
     int ix = inp[b * T + t];
     device float* out_btc = out + b * T * C + t * C + c;
-    device float* wte_ix = wte + ix * C + c;
-    device float* wpe_tc = wpe + t * C + c;
+    const device float* wte_ix = wte + ix * C + c;
+    const device float* wpe_tc = wpe + t * C + c;
     *out_btc = *wte_ix + *wpe_tc;
 }
 """
