@@ -1,6 +1,25 @@
 // swiftlint:disable:next blanket_disable_command
 // swiftlint:disable identifier_name
 
+/*
+Kernel benchmark for the positional encoder forward pass in GPT-2.
+
+Kernels (Metal shaders) are in `DefaultLibrary.swift´
+
+Compile:
+xcodebuild -scheme encoder_forward -configuration Release \
+   SWIFT_ACTIVE_COMPILATION_CONDITIONS="$SWIFT_ACTIVE_COMPILATION_CONDITIONS ENCODER_FORWARD_STANDALONE"
+
+version 1 is naive port from CPU code to kernel: parallelizes over B,T, loops over C
+./encoder_forward 1
+
+version 2 is more optimized, parallelizes over all of B,T,C
+./encoder_forward 2
+
+version 3 is like version 2 but uses float4 reads/writes
+./encoder_forward 3
+*/
+
 import Metal
 
 // known kernel (Metal shader) versions
