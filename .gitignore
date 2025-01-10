@@ -1,6 +1,7 @@
 *.trace
 test_gpt2
 train_gpt2
+dev/metal/encoder_forward
 .DS_Store
 
 *.bin

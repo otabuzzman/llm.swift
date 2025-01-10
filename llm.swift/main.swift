@@ -1,7 +1,6 @@
 #if LLMSWIFT_STANDALONE
 
 import Foundation
-import System
 
 let argv = CommandLine.arguments
 
@@ -16,6 +15,12 @@ do {
     } else {
         try await train_gpt2(data, { print($0, terminator: "") })
     }
-} catch { fatalError("\(error)") }
+} catch let error as LlmSwiftError {
+    fatalError("\(error.localizedDescription)")
+} catch let error as LaunchPadError {
+    fatalError("\(error.localizedDescription)")
+} catch {
+    fatalError("caught exception: \(error)")
+}
 
 #endif // LLMSWIFT_STANDALONE

@@ -43,27 +43,11 @@ func encoder_forward(
     _ inp: UnsafePointer<Int32>,
     _ wte: UnsafePointer<Float>,
     _ wpe: UnsafePointer<Float>,
-    _ B: Int, _ T: Int, _ C: Int) throws {
+    _ B: Int, _ T: Int, _ C: Int) {
     // out is (B,T,C). At each position (b,t), a C-dimensional vector summarizing token & position
     // inp is (B,T) of integers, holding the token ids at each (b,t) position
     // wte is (V,C) of token embeddings, short for "weight token embeddings"
     // wpe is (maxT,C) of position embeddings, short for "weight positional embedding"
-    if let launchPad = launchPad {
-        let context = KernelContext(
-            threadsPerGrid: MTLSize(width: B * T * C, height: 1, depth: 1),
-            threadsPerGroup: MTLSize(width: 512, height: 1, depth: 1))
-        let params: [KernelParam] = [
-            UnsafeMutableRawPointer(out),
-            UnsafeMutableRawPointer(mutating: inp),
-            UnsafeMutableRawPointer(mutating: wte),
-            UnsafeMutableRawPointer(mutating: wpe),
-            Int32(B), Int32(T), Int32(C)]
-        try launchPad.dispatchKernel(
-                name: "encoder_forward",
-                context: context,
-                params: params)
-        return
-    }
     for b in 0..<B {
         for t in 0..<T {
             // seek to the output position in out[b,t,:]
@@ -1151,20 +1135,15 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         model.pointee.targets!.update(from: targets, count: B * T)
     }
 
-    let layers = [
-        "encoder",
-        "layernorm",
-        "matmul",
-        "attention",
-        "residual",
-        "gelu",
-        "softmax",
-        "crossentropy"
+    let kernels = [
+        "encoder_forward_kernel1",
+        "encoder_forward_kernel2",
+        "encoder_forward_kernel3"
     ]
-    for layer in layers {
+    for kernel in kernels {
         do {
             // register layer kernels (shader) for Metal if available
-            try launchPad?.registerKernel(name: "\(layer)_forward")
+            try launchPad?.registerKernel(name: "\(kernel)")
         } catch { stdlog?("\(error.localizedDescription)\n") }
     }
 
@@ -1173,7 +1152,8 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     let acts = model.pointee.acts
     var residual: UnsafeMutablePointer<Float>
 
-    try encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
+//    encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
+    try encoder_forward3(acts.encoded, inputs, params.wte, params.wpe, B, T, C)
     try launchPad?.commit(wait: true)
     for l in 0..<L {
         try Task.checkCancellation()
@@ -1494,13 +1474,12 @@ func train_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throw
 
     // register buffer for Metal
     let gen_tokens_length = B * T * MemoryLayout<Int32>.size
-    let gen_tokens_memory = UnsafeMutableRawPointer(mutating: gen_tokens)
-    try launchPad?.registerBuffer(address: gen_tokens_memory, length: gen_tokens_length)
+    try launchPad?.registerBuffer(address: gen_tokens, length: gen_tokens_length)
 
     defer {
         // free on leaving
         rng_state.deallocate()
-        launchPad?.unregisterBuffer(address: gen_tokens_memory)
+        launchPad?.unregisterBuffer(address: gen_tokens)
         gen_tokens.deallocate()
 
         dataloader_free(&train_loader)

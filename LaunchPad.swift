@@ -1,6 +1,7 @@
 import Metal
 
 enum LaunchPadError: Error {
+    case apiException(api: String, error: Error)
     case apiReturnedNil(api: String)
     case miscellaneous(info: String)
 }
@@ -8,6 +9,8 @@ enum LaunchPadError: Error {
 extension LaunchPadError: LocalizedError {
     var errorDescription: String? {
         switch self {
+        case .apiException(let api, let error):
+            return NSLocalizedString("API \(api) threw error:\n\(error)", comment: "")
         case .apiReturnedNil(let api):
             return NSLocalizedString("API \(api) returned nil", comment: "")
         case .miscellaneous(let info):
@@ -18,7 +21,6 @@ extension LaunchPadError: LocalizedError {
 
 struct KernelContext {
     let threadsPerGrid: MTLSize
-    let threadsPerGroup: MTLSize
 }
 
 protocol KernelParam {}
@@ -56,11 +58,9 @@ extension LaunchPad {
             throw LaunchPadError.apiReturnedNil(api: "makeCommandQueue")
         }
         self.queue = queue
-        // guard let library = device.makeDefaultLibrary() else {
-        guard let library = try? device.makeLibrary(source: defaultLibrary, options: nil) else {
-            throw LaunchPadError.apiReturnedNil(api: "makeDefaultLibrary")
-        }
-        self.library = library
+        do {
+            self.library = try device.makeLibrary(source: defaultLibrary, options: nil)
+        } catch { throw LaunchPadError.apiException(api: "makeLibrary", error: error)}
 
         try makeTransientObjects()
     }
@@ -115,13 +115,13 @@ extension LaunchPad {
                 }
             }
         }
-        throw LaunchPadError.miscellaneous(info: "no buffer found")
+        throw LaunchPadError.miscellaneous(info: "\(#function): no buffer found")
     }
 
     func dispatchKernel(name: String, context: KernelContext, params: [KernelParam]) throws {
         guard
             let kernel = self.kernel[name]
-        else { throw LaunchPadError.miscellaneous(info: "kernel \(name) not registered") }
+        else { throw LaunchPadError.miscellaneous(info: "\(#function): kernel \(name) not registered") }
         encoder?.setComputePipelineState(kernel)
 
         var index = 0
@@ -146,7 +146,10 @@ extension LaunchPad {
             }
         }
 
-        encoder?.dispatchThreadgroups(context.threadsPerGrid, threadsPerThreadgroup: context.threadsPerGroup)
+        let threadsPerWarp = kernel.threadExecutionWidth // CUDA warp
+        let warpsPerGroup = kernel.maxTotalThreadsPerThreadgroup / threadsPerWarp
+        let threadsPerGroup = MTLSize(width: warpsPerGroup, height: threadsPerWarp, depth: 1)
+        encoder?.dispatchThreadgroups(context.threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
     }
 
     mutating func commit(wait: Bool = false) throws {

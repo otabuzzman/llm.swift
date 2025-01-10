@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -15,6 +15,19 @@
 		1883FC092C354E5700F75687 /* dataloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC082C354E5700F75687 /* dataloader.swift */; };
 		1883FC0D2C355A1200F75687 /* Glob in Frameworks */ = {isa = PBXBuildFile; productRef = 1883FC0C2C355A1200F75687 /* Glob */; };
 		1883FC0F2C36B35000F75687 /* rand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC0E2C36B35000F75687 /* rand.swift */; };
+		B01BDF832D2FAEDC004CBF13 /* common.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01BDF822D2FAED9004CBF13 /* common.swift */; };
+		B01BDF852D2FC257004CBF13 /* encoder_forward.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01BDF842D2FC24C004CBF13 /* encoder_forward.swift */; };
+		B01BDFAD2D304F55004CBF13 /* encoder_forward.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01BDF842D2FC24C004CBF13 /* encoder_forward.swift */; };
+		B01BDFAE2D304F55004CBF13 /* utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC052BFF2D9600F75687 /* utils.swift */; };
+		B01BDFAF2D304F55004CBF13 /* rand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC0E2C36B35000F75687 /* rand.swift */; };
+		B01BDFB02D304F55004CBF13 /* DefaultLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */; };
+		B01BDFB12D304F55004CBF13 /* train_gpt2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FBFB2BF6746D00F75687 /* train_gpt2.swift */; };
+		B01BDFB22D304F55004CBF13 /* dataloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC082C354E5700F75687 /* dataloader.swift */; };
+		B01BDFB32D304F55004CBF13 /* test_gpt2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FBFD2BF6746D00F75687 /* test_gpt2.swift */; };
+		B01BDFB42D304F55004CBF13 /* common.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01BDF822D2FAED9004CBF13 /* common.swift */; };
+		B01BDFB52D304F55004CBF13 /* LaunchPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08B38A02D2C712E007ED5D0 /* LaunchPad.swift */; };
+		B01BDFB72D304F55004CBF13 /* tokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FBFA2BF6746D00F75687 /* tokenizer.swift */; };
+		B01BDFB92D304F55004CBF13 /* Glob in Frameworks */ = {isa = PBXBuildFile; productRef = B01BDFAA2D304F55004CBF13 /* Glob */; };
 		B08B389F2D2C704D007ED5D0 /* DefaultLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */; };
 		B08B38A12D2C712E007ED5D0 /* LaunchPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08B38A02D2C712E007ED5D0 /* LaunchPad.swift */; };
 /* End PBXBuildFile section */
@@ -31,9 +44,26 @@
 		1883FC072BFF3A3C00F75687 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		1883FC082C354E5700F75687 /* dataloader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = dataloader.swift; path = llmc/dataloader.swift; sourceTree = SOURCE_ROOT; };
 		1883FC0E2C36B35000F75687 /* rand.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = rand.swift; sourceTree = "<group>"; };
+		B01BDF822D2FAED9004CBF13 /* common.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = common.swift; sourceTree = "<group>"; };
+		B01BDF842D2FC24C004CBF13 /* encoder_forward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = encoder_forward.swift; sourceTree = "<group>"; };
+		B01BDFBE2D304F55004CBF13 /* encoder_forward */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = encoder_forward; sourceTree = BUILT_PRODUCTS_DIR; };
 		B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultLibrary.swift; sourceTree = "<group>"; };
 		B08B38A02D2C712E007ED5D0 /* LaunchPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchPad.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B01BDFCC2D305740004CBF13 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				main.swift,
+			);
+			target = 1883FBED2BF6714200F75687 /* llm.swift */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		B01BDFCB2D3056A0004CBF13 /* encoder_forward */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (B01BDFCC2D305740004CBF13 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = encoder_forward; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		1883FBEB2BF6714200F75687 /* Frameworks */ = {
@@ -41,6 +71,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				1883FC0D2C355A1200F75687 /* Glob in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B01BDFB82D304F55004CBF13 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B01BDFB92D304F55004CBF13 /* Glob in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -58,6 +96,7 @@
 				1883FBFD2BF6746D00F75687 /* test_gpt2.swift */,
 				1883FBFB2BF6746D00F75687 /* train_gpt2.swift */,
 				1883FBF02BF6714200F75687 /* llm.swift */,
+				B01BDFCB2D3056A0004CBF13 /* encoder_forward */,
 				1883FBEF2BF6714200F75687 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -66,6 +105,7 @@
 			isa = PBXGroup;
 			children = (
 				1883FBEE2BF6714200F75687 /* llm.swift */,
+				B01BDFBE2D304F55004CBF13 /* encoder_forward */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -94,6 +134,8 @@
 			isa = PBXGroup;
 			children = (
 				B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */,
+				B01BDF822D2FAED9004CBF13 /* common.swift */,
+				B01BDF842D2FC24C004CBF13 /* encoder_forward.swift */,
 			);
 			path = metal;
 			sourceTree = "<group>";
@@ -122,12 +164,39 @@
 			dependencies = (
 				1883FC362C4FA70300F75687 /* PBXTargetDependency */,
 			);
+			fileSystemSynchronizedGroups = (
+				B01BDFCB2D3056A0004CBF13 /* encoder_forward */,
+			);
 			name = llm.swift;
 			packageProductDependencies = (
 				1883FC0C2C355A1200F75687 /* Glob */,
 			);
 			productName = llm.swift;
 			productReference = 1883FBEE2BF6714200F75687 /* llm.swift */;
+			productType = "com.apple.product-type.tool";
+		};
+		B01BDFA82D304F55004CBF13 /* encoder_forward */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B01BDFBB2D304F55004CBF13 /* Build configuration list for PBXNativeTarget "encoder_forward" */;
+			buildPhases = (
+				B01BDFAC2D304F55004CBF13 /* Sources */,
+				B01BDFB82D304F55004CBF13 /* Frameworks */,
+				B01BDFBA2D304F55004CBF13 /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B01BDFA92D304F55004CBF13 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				B01BDFCB2D3056A0004CBF13 /* encoder_forward */,
+			);
+			name = encoder_forward;
+			packageProductDependencies = (
+				B01BDFAA2D304F55004CBF13 /* Glob */,
+			);
+			productName = llm.swift;
+			productReference = B01BDFBE2D304F55004CBF13 /* encoder_forward */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -137,7 +206,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1520;
+				LastSwiftUpdateCheck = 1620;
 				LastUpgradeCheck = 1520;
 				TargetAttributes = {
 					1883FBED2BF6714200F75687 = {
@@ -163,6 +232,7 @@
 			projectRoot = "";
 			targets = (
 				1883FBED2BF6714200F75687 /* llm.swift */,
+				B01BDFA82D304F55004CBF13 /* encoder_forward */,
 			);
 		};
 /* End PBXProject section */
@@ -188,6 +258,25 @@
 			shellPath = /bin/sh;
 			shellScript = "test $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME test_gpt2\ntest $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME train_gpt2\nexit 0\n";
 		};
+		B01BDFBA2D304F55004CBF13 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 12;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				$BUILD_DIR/$CONFIGURATION/$TARGET_NAME,
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				dev/metal/$TARGET_NAME,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "test $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME dev/metal/$TARGET_NAME\nexit 0\n";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -195,15 +284,34 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B01BDF852D2FC257004CBF13 /* encoder_forward.swift in Sources */,
 				1883FC062BFF2D9600F75687 /* utils.swift in Sources */,
 				1883FC0F2C36B35000F75687 /* rand.swift in Sources */,
 				B08B389F2D2C704D007ED5D0 /* DefaultLibrary.swift in Sources */,
 				1883FBFF2BF6746D00F75687 /* train_gpt2.swift in Sources */,
 				1883FC092C354E5700F75687 /* dataloader.swift in Sources */,
 				1883FC002BF6746D00F75687 /* test_gpt2.swift in Sources */,
+				B01BDF832D2FAEDC004CBF13 /* common.swift in Sources */,
 				B08B38A12D2C712E007ED5D0 /* LaunchPad.swift in Sources */,
 				1883FC042BF677E200F75687 /* main.swift in Sources */,
 				1883FBFE2BF6746D00F75687 /* tokenizer.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B01BDFAC2D304F55004CBF13 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B01BDFAD2D304F55004CBF13 /* encoder_forward.swift in Sources */,
+				B01BDFAE2D304F55004CBF13 /* utils.swift in Sources */,
+				B01BDFAF2D304F55004CBF13 /* rand.swift in Sources */,
+				B01BDFB02D304F55004CBF13 /* DefaultLibrary.swift in Sources */,
+				B01BDFB12D304F55004CBF13 /* train_gpt2.swift in Sources */,
+				B01BDFB22D304F55004CBF13 /* dataloader.swift in Sources */,
+				B01BDFB32D304F55004CBF13 /* test_gpt2.swift in Sources */,
+				B01BDFB42D304F55004CBF13 /* common.swift in Sources */,
+				B01BDFB52D304F55004CBF13 /* LaunchPad.swift in Sources */,
+				B01BDFB72D304F55004CBF13 /* tokenizer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -211,6 +319,10 @@
 
 /* Begin PBXTargetDependency section */
 		1883FC362C4FA70300F75687 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = 1883FC352C4FA70300F75687 /* SwiftLintBuildToolPlugin */;
+		};
+		B01BDFA92D304F55004CBF13 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			productRef = 1883FC352C4FA70300F75687 /* SwiftLintBuildToolPlugin */;
 		};
@@ -415,6 +527,49 @@
 			};
 			name = Release;
 		};
+		B01BDFBC2D304F55004CBF13 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ANALYZER_GCD = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 28FV44657B;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=1";
+				OTHER_CFLAGS = "";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.otabuzzman.llm-swift";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=macosx*]" = ENCODER_FORWARD_STANDALONE;
+				SWIFT_DISABLE_SAFETY_CHECKS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_REFLECTION_METADATA_LEVEL = none;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B01BDFBD2D304F55004CBF13 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ANALYZER_GCD = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 28FV44657B;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_OPTIMIZATION_LEVEL = fast;
+				GCC_PREPROCESSOR_DEFINITIONS = "";
+				OTHER_CFLAGS = "";
+				OTHER_SWIFT_FLAGS = "-Xcc -ffast-math";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.otabuzzman.llm-swift";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_DISABLE_SAFETY_CHECKS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Ounchecked";
+				SWIFT_REFLECTION_METADATA_LEVEL = none;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -432,6 +587,15 @@
 			buildConfigurations = (
 				1883FBF62BF6714300F75687 /* Debug */,
 				1883FBF72BF6714300F75687 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B01BDFBB2D304F55004CBF13 /* Build configuration list for PBXNativeTarget "encoder_forward" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B01BDFBC2D304F55004CBF13 /* Debug */,
+				B01BDFBD2D304F55004CBF13 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -455,6 +619,14 @@
 				minimumVersion = 0.55.1;
 			};
 		};
+		B01BDFAB2D304F55004CBF13 /* XCRemoteSwiftPackageReference "Glob" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Bouke/Glob";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.5;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -467,6 +639,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 1883FC342C4FA6C700F75687 /* XCRemoteSwiftPackageReference "SwiftLintPlugins" */;
 			productName = "plugin:SwiftLintBuildToolPlugin";
+		};
+		B01BDFAA2D304F55004CBF13 /* Glob */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B01BDFAB2D304F55004CBF13 /* XCRemoteSwiftPackageReference "Glob" */;
+			productName = Glob;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
