@@ -7,7 +7,7 @@
 ///
 /// Compile:
 /// xcodebuild -scheme encoder_forward -configuration Release \
-///    SWIFT_ACTIVE_COMPILATION_CONDITIONS="$SWIFT_ACTIVE_COMPILATION_CONDITIONS ENCODER_FORWARD_STANDALONE"
+///   SWIFT_ACTIVE_COMPILATION_CONDITIONS="$SWIFT_ACTIVE_COMPILATION_CONDITIONS ENCODER_FORWARD_STANDALONE"
 ///
 /// version 1 is naive port from CPU code to kernel: parallelizes over B,T, loops over C
 /// ./encoder_forward 1
