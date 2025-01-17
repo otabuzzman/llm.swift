@@ -20,7 +20,8 @@ extension LaunchPadError: LocalizedError {
 }
 
 struct KernelContext {
-    let threadsPerGrid: MTLSize
+    let threadsPerGrid: Int // CUDA grid size
+    let threadsPerGroup: Int // CUDA block size
 }
 
 protocol KernelParam {}
@@ -146,10 +147,16 @@ extension LaunchPad {
             }
         }
 
-        let threadsPerWarp = kernel.threadExecutionWidth // CUDA warp
-        let warpsPerGroup = kernel.maxTotalThreadsPerThreadgroup / threadsPerWarp
-        let threadsPerGroup = MTLSize(width: warpsPerGroup, height: threadsPerWarp, depth: 1)
-        encoder?.dispatchThreadgroups(context.threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
+        let threadsPerGrid = MTLSize(width: context.threadsPerGrid, height: 1, depth: 1)
+        var threadsPerGroup: MTLSize
+        if context.threadsPerGroup > 0 {
+            threadsPerGroup = MTLSize(width: context.threadsPerGroup, height: 1, depth: 1)
+        } else {
+            let threadsPerSimdGroup = kernel.threadExecutionWidth // CUDA warp size
+            let simdGroupsPerGroup = kernel.maxTotalThreadsPerThreadgroup / threadsPerSimdGroup
+            threadsPerGroup = MTLSize(width: simdGroupsPerGroup, height: threadsPerSimdGroup, depth: 1)
+        }
+        encoder?.dispatchThreadgroups(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
     }
 
     mutating func commit(wait: Bool = false) throws {

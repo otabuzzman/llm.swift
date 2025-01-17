@@ -30,10 +30,8 @@ func encoder_forward1(
     _ wte: UnsafePointer<Float>,
     _ wpe: UnsafePointer<Float>,
     _ B: Int, _ T: Int, _ C: Int,
-    _ block_size: Int = 256) throws {
-    let threadsPerGrid = B * T
-    let context = KernelContext(
-        threadsPerGrid: MTLSize(width: threadsPerGrid, height: 1, depth: 1))
+    _ block_size: Int = 0) throws {
+    let context = KernelContext(threadsPerGrid: B * T, threadsPerGroup: block_size)
 
     let params: [KernelParam] = [
         UnsafeMutableRawPointer(out),
@@ -55,10 +53,8 @@ func encoder_forward2(
     _ wte: UnsafePointer<Float>,
     _ wpe: UnsafePointer<Float>,
     _ B: Int, _ T: Int, _ C: Int,
-    _ block_size: Int = 256) throws {
-    let threadsPerGrid = (B * T * C) / 4
-    let context = KernelContext(
-        threadsPerGrid: MTLSize(width: threadsPerGrid, height: 1, depth: 1))
+    _ block_size: Int = 0) throws {
+    let context = KernelContext(threadsPerGrid: (B * T * C) / 4, threadsPerGroup: block_size)
 
     let params: [KernelParam] = [
         UnsafeMutableRawPointer(out),
@@ -80,10 +76,8 @@ func encoder_forward3(
     _ wte: UnsafePointer<Float>,
     _ wpe: UnsafePointer<Float>,
     _ B: Int, _ T: Int, _ C: Int,
-    _ block_size: Int = 256) throws {
-    let threadsPerGrid = B * T * C
-    let context = KernelContext(
-        threadsPerGrid: MTLSize(width: threadsPerGrid, height: 1, depth: 1))
+    _ block_size: Int = 0) throws {
+    let context = KernelContext(threadsPerGrid: B * T * C, threadsPerGroup: block_size)
 
     let params: [KernelParam] = [
         UnsafeMutableRawPointer(out),
@@ -106,7 +100,7 @@ private func encoder_forward(
     _ wte: UnsafePointer<Float>,
     _ wpe: UnsafePointer<Float>,
     _ B: Int, _ T: Int, _ C: Int,
-    _ block_size: Int = 256) throws {
+    _ block_size: Int = 0) throws {
     guard
         versions.contains(version) == true
     else { throw LlmSwiftError.wrongApiUsage(api: "\(#function) version \(version)") }
@@ -179,9 +173,9 @@ func main(_ argc: Int, _ argv: [String]) throws {
     encoder_forward(out_cpu, inp, wte, wpe, B, T, C)
 
     // time the kernel at different block sizes
-    let block_sizes = [64, 128, 256, 512, 1024]
+    let block_sizes = [0, 64, 128, 256, 512, 1024]
     for block_size in block_sizes {
-        print("Checking block size \(block_size) (no block size in Metal)")
+        print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
         try encoder_forward(kernel_num, out_gpu, inp, wte, wpe, B, T, C, block_size)
         try launchPad?.commit(wait: true)
         let tol: Float = 1e-5
