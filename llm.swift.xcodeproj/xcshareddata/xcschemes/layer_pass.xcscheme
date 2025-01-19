@@ -15,9 +15,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "B01BDFA82D304F55004CBF13"
-               BuildableName = "encoder_forward"
-               BlueprintName = "encoder_forward"
+               BlueprintIdentifier = "B01BDFD02D3D8BD1004CBF13"
+               BuildableName = "layer_pass"
+               BlueprintName = "layer_pass"
                ReferencedContainer = "container:llm.swift.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -45,9 +45,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "B01BDFA82D304F55004CBF13"
-            BuildableName = "encoder_forward"
-            BlueprintName = "encoder_forward"
+            BlueprintIdentifier = "B01BDFD02D3D8BD1004CBF13"
+            BuildableName = "layer_pass"
+            BlueprintName = "layer_pass"
             ReferencedContainer = "container:llm.swift.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -64,15 +64,16 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
-      <MacroExpansion>
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "B01BDFA82D304F55004CBF13"
-            BuildableName = "encoder_forward"
-            BlueprintName = "encoder_forward"
+            BlueprintIdentifier = "B01BDFD02D3D8BD1004CBF13"
+            BuildableName = "layer_pass"
+            BlueprintName = "layer_pass"
             ReferencedContainer = "container:llm.swift.xcodeproj">
          </BuildableReference>
-      </MacroExpansion>
+      </BuildableProductRunnable>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">

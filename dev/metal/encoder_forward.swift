@@ -7,7 +7,7 @@
 ///
 /// Compile:
 /// xcodebuild -scheme encoder_forward -configuration Release \
-///   SWIFT_ACTIVE_COMPILATION_CONDITIONS="$SWIFT_ACTIVE_COMPILATION_CONDITIONS ENCODER_FORWARD_STANDALONE"
+///   SWIFT_ACTIVE_COMPILATION_CONDITIONS="$SWIFT_ACTIVE_COMPILATION_CONDITIONS LAYER_PASS_STANDALONE"
 ///
 /// version 1 is naive port from CPU code to kernel: parallelizes over B,T, loops over C
 /// ./encoder_forward 1
@@ -118,7 +118,7 @@ private func encoder_forward(
 }
 
 // swiftlint:disable:next function_body_length
-func main(_ argc: Int, _ argv: [String]) throws {
+func encoder_forward(_ argc: Int, _ argv: [String]) throws {
     let B = 8
     let T = 1024
     let C = 768
