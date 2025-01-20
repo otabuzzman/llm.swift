@@ -2,6 +2,31 @@ let defaultLibrary = """
 #include <metal_stdlib>
 using namespace metal;
 
+// --- matmul_forward.metal
+// #include <metal_stdlib>
+// using namespace metal;
+
+kernel void matmul_forward_kernel1(device float* out [[ buffer(0) ]],
+                                device float* inp  [[ buffer(1) ]],
+                                device float* weight [[ buffer(2) ]],
+                                device float* bias [[ buffer(3) ]],
+                                constant uint& BT [[ buffer(4) ]],
+                                constant uint& C [[ buffer(5) ]],
+                                constant uint& OC [[ buffer(6) ]],
+                                uint idx [[ thread_position_in_grid ]]) {
+    if (idx >= B * T * OC) { return; }
+
+    int bt = idx / OC;
+    int oc = idx % OC;
+    float val = (bias != NULL) ? bias[oc] : 0.0f;
+    const device float* wrow = weight + oc * C;
+    const device float* inp_bt = inp + bt * C;
+    for (int i = 0; i < C; i++) {
+        val += inp_bt[i] * wrow[i];
+    }
+    out[bt * OC + oc] = val;
+}
+
 // --- layernorm_forward.metal
 // #include <metal_stdlib>
 // using namespace metal;

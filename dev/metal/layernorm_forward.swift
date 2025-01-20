@@ -20,13 +20,13 @@
 ///
 /// version 4 uses a more clever way to estimate variance, var(x) = mean(x**2) - mean(x)**2
 ///           (allowing us to do a single pass over x on load)
-/// ./layernorm_forward 1
+/// ./layernorm_forward 4
 ///
 /// version 5 allocates blocks per row instead of warps per row, same alg as 4 otherwise
-/// ./layernorm_forward 2
+/// ./layernorm_forward 5
 ///
 /// version 6 inspired by `fused_residual_forward_kernel5´ in `fused_residual_forward.cu´
-/// ./layernorm_forward 3
+/// ./layernorm_forward 6
 
 import Metal
 
@@ -47,8 +47,8 @@ func layernorm_forward1(
 
     let params: [KernelParam] = [
         UnsafeMutableRawPointer(out),
-        UnsafeMutableRawPointer(mutating: mean),
-        UnsafeMutableRawPointer(mutating: rstd),
+        UnsafeMutableRawPointer(mean),
+        UnsafeMutableRawPointer(rstd),
         UnsafeMutableRawPointer(mutating: inp),
         UnsafeMutableRawPointer(mutating: weight),
         UnsafeMutableRawPointer(mutating: bias),
