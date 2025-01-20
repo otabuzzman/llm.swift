@@ -27,6 +27,8 @@
 		B01BE0012D3D9065004CBF13 /* dataloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC082C354E5700F75687 /* dataloader.swift */; };
 		B01BE0022D3D9074004CBF13 /* rand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FC0E2C36B35000F75687 /* rand.swift */; };
 		B01BE0032D3D908D004CBF13 /* tokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1883FBFA2BF6746D00F75687 /* tokenizer.swift */; };
+		B01BE0052D3E472B004CBF13 /* layernorm_forward.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01BE0042D3E472B004CBF13 /* layernorm_forward.swift */; };
+		B01BE0062D3E4983004CBF13 /* layernorm_forward.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01BE0042D3E472B004CBF13 /* layernorm_forward.swift */; };
 		B08B389F2D2C704D007ED5D0 /* DefaultLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */; };
 		B08B38A12D2C712E007ED5D0 /* LaunchPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08B38A02D2C712E007ED5D0 /* LaunchPad.swift */; };
 /* End PBXBuildFile section */
@@ -46,6 +48,7 @@
 		B01BDF822D2FAED9004CBF13 /* common.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = common.swift; sourceTree = "<group>"; };
 		B01BDF842D2FC24C004CBF13 /* encoder_forward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = encoder_forward.swift; sourceTree = "<group>"; };
 		B01BDFE62D3D8BD1004CBF13 /* layer_pass */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = layer_pass; sourceTree = BUILT_PRODUCTS_DIR; };
+		B01BE0042D3E472B004CBF13 /* layernorm_forward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = layernorm_forward.swift; sourceTree = "<group>"; };
 		B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultLibrary.swift; sourceTree = "<group>"; };
 		B08B38A02D2C712E007ED5D0 /* LaunchPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchPad.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -135,6 +138,7 @@
 				B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */,
 				B01BDF822D2FAED9004CBF13 /* common.swift */,
 				B01BDF842D2FC24C004CBF13 /* encoder_forward.swift */,
+				B01BE0042D3E472B004CBF13 /* layernorm_forward.swift */,
 			);
 			path = metal;
 			sourceTree = "<group>";
@@ -274,7 +278,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "test $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME dev/metal/encoder_forward\nexit 0\n";
+			shellScript = "test $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME dev/metal/encoder_forward\ntest $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME dev/metal/layernorm_forward\nexit 0\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -288,6 +292,7 @@
 				B08B389F2D2C704D007ED5D0 /* DefaultLibrary.swift in Sources */,
 				B01BDF832D2FAEDC004CBF13 /* common.swift in Sources */,
 				B01BDF852D2FC257004CBF13 /* encoder_forward.swift in Sources */,
+				B01BE0062D3E4983004CBF13 /* layernorm_forward.swift in Sources */,
 				1883FC092C354E5700F75687 /* dataloader.swift in Sources */,
 				1883FBFE2BF6746D00F75687 /* tokenizer.swift in Sources */,
 				1883FC062BFF2D9600F75687 /* utils.swift in Sources */,
@@ -305,6 +310,7 @@
 				B01BDFD82D3D8BD1004CBF13 /* DefaultLibrary.swift in Sources */,
 				B01BDFDC2D3D8BD1004CBF13 /* common.swift in Sources */,
 				B01BDFD52D3D8BD1004CBF13 /* encoder_forward.swift in Sources */,
+				B01BE0052D3E472B004CBF13 /* layernorm_forward.swift in Sources */,
 				B01BE0012D3D9065004CBF13 /* dataloader.swift in Sources */,
 				B01BE0032D3D908D004CBF13 /* tokenizer.swift in Sources */,
 				B01BE0002D3D9042004CBF13 /* utils.swift in Sources */,

@@ -111,7 +111,7 @@ func layernorm_forward(_ argc: Int, _ argv: [String]) throws {
     try launchPad?.registerBuffer(address: rstd_gpu, length: rstd_gpu_length)
 
     let inp = UnsafeMutablePointer<Float>.allocate(capacity: B * T * C)
-    for i in 0..<B * T * C{ inp[i] = Float(Int.random(in: -1.0...1.0)) }
+    for i in 0..<B * T * C { inp[i] = Float.random(in: -1.0...1.0) }
     let inp_length = B * T * C * MemoryLayout<Float>.size
     try launchPad?.registerBuffer(address: inp, length: inp_length)
 

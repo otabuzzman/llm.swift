@@ -36,7 +36,7 @@ kernel void layernorm_forward_kernel1(device float* out [[ buffer(0) ]],
     }
     v = v / C;
     // calculate the rstd
-    float s = 1.0f / sqrtf(v + eps);
+    float s = 1.0f / sqrt(v + eps);
     // seek to the output position in out[idx,:]
     device float* out_idx = out + idx * C;
     for (int i = 0; i < C; i++) {
