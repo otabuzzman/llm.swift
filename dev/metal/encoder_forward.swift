@@ -6,7 +6,7 @@
 /// Kernels (Metal shaders) are in `DefaultLibrary.swift´
 ///
 /// Compile:
-/// xcodebuild -scheme encoder_forward -configuration Release \
+/// xcodebuild -scheme layer_pass -configuration Release \
 ///   SWIFT_ACTIVE_COMPILATION_CONDITIONS="$SWIFT_ACTIVE_COMPILATION_CONDITIONS LAYER_PASS_STANDALONE"
 ///
 /// version 1 is naive port from CPU code to kernel: parallelizes over B,T, loops over C
@@ -103,7 +103,7 @@ private func encoder_forward(
     _ block_size: Int = 0) throws {
     guard
         versions.contains(version) == true
-    else { throw LlmSwiftError.wrongApiUsage(api: "\(#function) version \(version)") }
+    else { throw LlmSwiftError.wrongApiUsage(api: "\(#function) version \(version) unknown") }
 
     switch version {
     case 1:
