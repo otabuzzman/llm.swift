@@ -275,10 +275,11 @@
 			);
 			outputPaths = (
 				dev/metal/encoder_forward,
+				dev/metal/layernorm_forward,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "test $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME dev/metal/encoder_forward\ntest $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME dev/metal/layernorm_forward\nexit 0\n";
+			shellScript = "test $CONFIGURATION = Release && {\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/encoder_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/layernorm_forward\n}\nexit 0\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
