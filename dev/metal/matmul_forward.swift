@@ -26,22 +26,46 @@ import Metal
 // known kernel (Metal shader) versions
 private let versions = 1...4
 
+// overwrite async CPU version in `train_gpt2.swift´
+// swiftlint:disable:next function_parameter_count
+func matmul_forward(
+    _ out: UnsafeMutablePointer<Float>,
+    _ inp: UnsafePointer<Float>,
+    _ weight: UnsafePointer<Float>,
+    _ bias: UnsafePointer<Float>?,
+    _ B: Int, _ T: Int, _ C: Int, _ OC: Int) {
+    // the most naive implementation of matrix multiplication
+    // this serves as an algorithmic reference, and as a fallback for
+    // unfriendly input shapes inside matmul_forward(), below.
+    // #pragma omp parallel for collapse(2)
+    for bt in 0..<B * T {
+        for o in 0..<OC {
+            var val = bias?[o] ?? 0
+            for i in 0..<C {
+                val += inp[bt * C + i] * weight[o * C + i]
+            }
+            out[bt * OC + o] = val
+        }
+    }
+}
+
 // swiftlint:disable:next function_parameter_count
 func matmul_forward1(
     _ out: UnsafeMutablePointer<Float>,
     _ inp: UnsafePointer<Float>,
     _ weight: UnsafePointer<Float>,
-    _ bias: UnsafePointer<Float>?,
-    _ BT: Int, _ C: Int, _ OC: Int,
+//    _ bias: UnsafePointer<Float>?,
+    _ bias: UnsafePointer<Float>,
+    _ B: Int, _ T: Int, _ C: Int, _ OC: Int,
     _ block_size: Int = 0) throws {
-    let context = KernelContext(threadsPerGrid: B * T, threadsPerGroup: block_size)
+        let context = KernelContext(threadsPerGrid: B * T * OC, threadsPerGroup: block_size)
 
     let params: [KernelParam] = [
         UnsafeMutableRawPointer(out),
         UnsafeMutableRawPointer(mutating: inp),
         UnsafeMutableRawPointer(mutating: weight),
         UnsafeMutableRawPointer(mutating: bias),
-        Int32(B), Int32(T), Int32(C), Int32(OC)]
+        Int32(B * T), Int32(C), Int32(OC)]
 
     try launchPad?.dispatchKernel(
         name: "matmul_forward_kernel1",
@@ -64,7 +88,7 @@ private func matmul_forward(
 
     switch version {
     case 1:
-        try matmul_forward1(out, mean, rstd, inp, weight, bias, B * T, C, OC, block_size)
+        try matmul_forward1(out, inp, weight, bias, B, T, C, OC, block_size)
     case 2, 3, 4:
         fatalError("layer-pass function \(#function) version \(version) not implemented")
     default:
@@ -74,10 +98,10 @@ private func matmul_forward(
 
 // swiftlint:disable:next function_body_length
 func matmul_forward(_ argc: Int, _ argv: [String]) throws {
-    int B = 32
-    int T = 1024
-    int C = 768
-    int OC = 768 * 4 // expansion of 4, e.g. in the MLP
+    let B = 32
+    let T = 1024
+    let C = 768
+    let OC = 768 * 4 // expansion of 4, e.g. in the MLP
 
     try launchPad?.registerKernel(name: "matmul_forward_kernel1")
 
@@ -85,7 +109,7 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
     let out_cpu = UnsafeMutablePointer<Float>.allocate(capacity: B * T * OC)
 
     let out_gpu = UnsafeMutablePointer<Float>.allocate(capacity: B * T * OC)
-    let out_gpu_length = B * T * C * MemoryLayout<Float>.size
+    let out_gpu_length = B * T * OC * MemoryLayout<Float>.size
     try launchPad?.registerBuffer(address: out_gpu, length: out_gpu_length)
 
     let inp = UnsafeMutablePointer<Float>.allocate(capacity: B * T * C)
@@ -117,7 +141,7 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
 
     // read kernel_num from command line
     var kernel_num = 1
-    if argv.count > 0 {
+    if argv.count > 1 {
         kernel_num = Int(argv[1]) ?? 2
     }
     print("Using kernel \(kernel_num)")
@@ -132,26 +156,23 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
         try matmul_forward(kernel_num, out_gpu, inp, weight, bias, B, T, C, OC, sqrt_block_size)
         try launchPad?.commit(wait: true)
         let tol: Float = 1e-5
-        try validate_result(out_gpu, out_cpu, "out", B * T * C, tol)
+        try validate_result(out_gpu, out_cpu, "out", B * T * OC, tol)
     }
 
     print("All results match. Starting benchmarks.\n")
 
-    let repeat_times = 100
     var elapsed_time: Double = 0
     // CPU for comparison
-    for _ in 0..<repeat_times {
-        let start = Date()
-        matmul_forward(out_cpu, inp, weight, bias, B, T, C, OC)
-        let end = Date()
-        elapsed_time += end.timeIntervalSince(start)
-    }
-    elapsed_time /= Double(repeat_times)
+    let start = Date()
+    matmul_forward(out_cpu, inp, weight, bias, B, T, C, OC)
+    let end = Date()
+    elapsed_time = end.timeIntervalSince(start)
     elapsed_time *= 1e3 // ms
 
     print("CPU time \(String(format: "%.4f", elapsed_time)) ms")
 
     for sqrt_block_size in sqrt_block_sizes {
+        let repeat_times = 100
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h
         elapsed_time = 0
         for _ in 0..<repeat_times {

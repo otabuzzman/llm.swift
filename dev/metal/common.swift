@@ -22,7 +22,7 @@ func validate_result(
     let epsilon: Float = 0.079
 
     for i in 0..<num_elements {
-        // Skip maked elements
+        // Skip masked elements
         if !cpu_reference[i].isFinite { continue }
 
         // print the first few comparisons

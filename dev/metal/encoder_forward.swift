@@ -54,7 +54,7 @@ func encoder_forward2(
     _ wpe: UnsafePointer<Float>,
     _ B: Int, _ T: Int, _ C: Int,
     _ block_size: Int = 0) throws {
-    let context = KernelContext(threadsPerGrid: (B * T * C) / 4, threadsPerGroup: block_size)
+    let context = KernelContext(threadsPerGrid: B * T * C, threadsPerGroup: block_size)
 
     let params: [KernelParam] = [
         UnsafeMutableRawPointer(out),
@@ -77,7 +77,7 @@ func encoder_forward3(
     _ wpe: UnsafePointer<Float>,
     _ B: Int, _ T: Int, _ C: Int,
     _ block_size: Int = 0) throws {
-    let context = KernelContext(threadsPerGrid: B * T * C, threadsPerGroup: block_size)
+    let context = KernelContext(threadsPerGrid: (B * T * C) / 4, threadsPerGroup: block_size)
 
     let params: [KernelParam] = [
         UnsafeMutableRawPointer(out),
@@ -164,7 +164,7 @@ func encoder_forward(_ argc: Int, _ argv: [String]) throws {
 
     // read kernel_num from command line
     var kernel_num = 2
-    if argv.count > 0 {
+    if argv.count > 1 {
         kernel_num = Int(argv[1]) ?? 2
     }
     print("Using kernel \(kernel_num)")

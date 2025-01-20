@@ -11,18 +11,16 @@ kernel void matmul_forward_kernel1(device float* out [[ buffer(0) ]],
                                 device float* weight [[ buffer(2) ]],
                                 device float* bias [[ buffer(3) ]],
                                 constant uint& BT [[ buffer(4) ]],
-                                constant uint& C [[ buffer(5) ]],
+                                constant uint& C  [[ buffer(5) ]],
                                 constant uint& OC [[ buffer(6) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
-    if (idx >= B * T * OC) { return; }
+    if (idx >= BT * OC) { return; }
 
     int bt = idx / OC;
     int oc = idx % OC;
-    float val = (bias != NULL) ? bias[oc] : 0.0f;
-    const device float* wrow = weight + oc * C;
-    const device float* inp_bt = inp + bt * C;
+    float val = bias[oc];
     for (int i = 0; i < C; i++) {
-        val += inp_bt[i] * wrow[i];
+        val += inp[bt * C + i] * weight[oc * C + i];
     }
     out[bt * OC + oc] = val;
 }
