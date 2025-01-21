@@ -156,7 +156,7 @@ extension LaunchPad {
             let simdGroupsPerGroup = kernel.maxTotalThreadsPerThreadgroup / threadsPerSimdGroup
             threadsPerGroup = MTLSize(width: simdGroupsPerGroup, height: threadsPerSimdGroup, depth: 1)
         }
-        encoder?.dispatchThreadgroups(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
+        encoder?.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
     }
 
     mutating func commit(wait: Bool = false) throws {
