@@ -147,14 +147,14 @@ extension LaunchPad {
             }
         }
 
-        let threadsPerGrid = MTLSize(width: context.threadsPerGrid, height: 1, depth: 1)
+        let threadsPerGrid = MTLSize(context.threadsPerGrid)
         var threadsPerGroup: MTLSize
         if context.threadsPerGroup > 0 {
-            threadsPerGroup = MTLSize(width: context.threadsPerGroup, height: 1, depth: 1)
+            threadsPerGroup = MTLSize(context.threadsPerGroup)
         } else {
             let threadsPerSimdGroup = kernel.threadExecutionWidth // CUDA warp size
             let simdGroupsPerGroup = kernel.maxTotalThreadsPerThreadgroup / threadsPerSimdGroup
-            threadsPerGroup = MTLSize(width: simdGroupsPerGroup, height: threadsPerSimdGroup, depth: 1)
+            threadsPerGroup = MTLSize(simdGroupsPerGroup, threadsPerSimdGroup)
         }
         encoder?.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
     }
@@ -166,5 +166,12 @@ extension LaunchPad {
         if wait { command?.waitUntilCompleted() }
 
         try makeTransientObjects()
+    }
+}
+
+// for brevity
+extension MTLSize {
+    init(_ width: Int, _ height: Int = 1, _ depth: Int = 1) {
+        self.init(width: width, height: height, depth: depth)
     }
 }
