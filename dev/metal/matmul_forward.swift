@@ -54,7 +54,6 @@ func matmul_forward1(
     _ out: UnsafeMutablePointer<Float>,
     _ inp: UnsafePointer<Float>,
     _ weight: UnsafePointer<Float>,
-//    _ bias: UnsafePointer<Float>?,
     _ bias: UnsafePointer<Float>,
     _ B: Int, _ T: Int, _ C: Int, _ OC: Int,
     _ block_size: Int = 0) throws {

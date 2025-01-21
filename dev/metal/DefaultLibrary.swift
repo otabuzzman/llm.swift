@@ -14,7 +14,8 @@ kernel void matmul_forward_kernel1(device float* out [[ buffer(0) ]],
                                 constant uint& C  [[ buffer(5) ]],
                                 constant uint& OC [[ buffer(6) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
-    if (idx >= BT * OC) { return; }
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= BT * OC) { return; }
 
     int bt = idx / OC;
     int oc = idx % OC;
@@ -39,7 +40,8 @@ kernel void layernorm_forward_kernel1(device float* out [[ buffer(0) ]],
                                 constant uint& T [[ buffer(7) ]],
                                 constant uint& C [[ buffer(8) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
-    if (idx >= B * T) { return; }
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= B * T) { return; }
 
     float eps = 1e-5f;
 
@@ -84,7 +86,8 @@ kernel void encoder_forward_kernel1(device float* out [[ buffer(0) ]],
                                 constant uint& T [[ buffer(5) ]],
                                 constant uint& C [[ buffer(6) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
-    if (idx >= B * T) { return; }
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= B * T) { return; }
 
     int b = idx / T;
     int t = idx % T;
@@ -105,7 +108,8 @@ kernel void encoder_forward_kernel2(device float* out [[ buffer(0) ]],
                                 constant uint& T [[ buffer(5) ]],
                                 constant uint& C [[ buffer(6) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
-    if (idx >= B * T * C) { return; }
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= B * T * C) { return; }
 
     int bt = idx / C;
     int b = bt / T;
@@ -128,7 +132,8 @@ kernel void encoder_forward_kernel3(device float* out [[ buffer(0) ]],
                                 constant uint& C [[ buffer(6) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     int idx_packed_float4 = idx * 4; // packed_float4::size == 4
-    if (idx_packed_float4 >= B * T * C) { return; }
+    // uncomment if nonuniform threadgroups not available
+    // if (idx_packed_float4 >= B * T * C) { return; }
 
     int bt = idx_packed_float4 / C;
     int b = bt / T;
