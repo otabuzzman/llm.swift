@@ -20,7 +20,6 @@ import Metal
 private let versions = 1...2
 
 // shader specific launch stub
-// swiftlint:disable:next function_parameter_count
 func residual_forward1(
     _ out: UnsafeMutablePointer<Float>,
     _ inp1: UnsafePointer<Float>,
@@ -42,7 +41,6 @@ func residual_forward1(
 }
 
 // shader specific launch stub
-// swiftlint:disable:next function_parameter_count
 func residual_forward2(
     _ out: UnsafeMutablePointer<Float>,
     _ inp1: UnsafePointer<Float>,
@@ -64,7 +62,6 @@ func residual_forward2(
 }
 
 // version dispatcher
-// swiftlint:disable:next function_parameter_count
 private func residual_forward(
     _ version: Int,
     _ out: UnsafeMutablePointer<Float>,
@@ -80,7 +77,7 @@ private func residual_forward(
     case 1:
         try residual_forward1(out, inp1, inp2, N, block_size)
     case 2:
-        fatalError("layer-pass function \(#function) version \(version) not implemented")
+        try residual_forward2(out, inp1, inp2, N, block_size)
     default:
         break
     }
@@ -89,9 +86,9 @@ private func residual_forward(
 // standalone runner
 // swiftlint:disable:next function_body_length
 func residual_forward(_ argc: Int, _ argv: [String]) throws {
-    let B = 8;
-    let T = 1024;
-    let C = 768;
+    let B = 8
+    let T = 1024
+    let C = 768
 
     try launchPad?.registerKernel(name: "residual_forward_kernel1")
     try launchPad?.registerKernel(name: "residual_forward_kernel2")
@@ -131,13 +128,13 @@ func residual_forward(_ argc: Int, _ argv: [String]) throws {
     print("Using kernel \(kernel_num)")
 
     // first check the correctness of the kernel
-    residual_forward(out_cpu, inp1, inp2, N)
+    residual_forward(out_cpu, inp1, inp2, B * T * C)
 
     // time the kernel at different block sizes
     let block_sizes = [0, 32, 64, 128, 256, 512, 1024]
     for block_size in block_sizes {
         print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
-        try residual_forward(kernel_num, out_gpu, inp1, inp2, N, block_size)
+        try residual_forward(kernel_num, out_gpu, inp1, inp2, B * T * C, block_size)
         try launchPad?.commit(wait: true)
         // #if !defined(ENABLE_BF16) && !defined(ENABLE_FP16)
         let tol: Float = 1e-5
@@ -154,7 +151,7 @@ func residual_forward(_ argc: Int, _ argv: [String]) throws {
     // CPU for comparison
     for _ in 0..<repeat_times {
         let start = Date()
-        residual_forward(out_cpu, inp1, inp2, N)
+        residual_forward(out_cpu, inp1, inp2, B * T * C)
         let end = Date()
         elapsed_time += end.timeIntervalSince(start)
     }
@@ -171,7 +168,7 @@ func residual_forward(_ argc: Int, _ argv: [String]) throws {
             // TODO: if necessary and applicable
 
             let start = Date()
-            try residual_forward(kernel_num, out_gpu, inp1, inp2, N, block_size)
+            try residual_forward(kernel_num, out_gpu, inp1, inp2, B * T * C, block_size)
             let end = Date()
             elapsed_time += end.timeIntervalSince(start)
         }

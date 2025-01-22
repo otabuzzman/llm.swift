@@ -6,11 +6,11 @@ let argv = CommandLine.arguments
 let argc = argv.count
 
 let layers: [String: (Int, [String]) throws -> Void] = [
-    "encoder_forward":   encoder_forward,
+    "encoder_forward": encoder_forward,
     "layernorm_forward": layernorm_forward,
-    "matmul_forward":    matmul_forward,
+    "matmul_forward": matmul_forward,
     "attention_forward": attention_forward,
-    "residual_forward":  residual_forward
+    "residual_forward": residual_forward
 ]
 
 guard

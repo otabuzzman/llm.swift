@@ -14,7 +14,7 @@ kernel void residual_forward_kernel1(device float* out  [[ buffer(0) ]],
     // uncomment if nonuniform threadgroups not available
     // if (idx >= N) { return; }
 
-    out[idx] = inp1[idx] + inp2[idx]);
+    out[idx] = inp1[idx] + inp2[idx];
 }
 
 kernel void residual_forward_kernel2(device float* out  [[ buffer(0) ]],
@@ -27,15 +27,15 @@ kernel void residual_forward_kernel2(device float* out  [[ buffer(0) ]],
     // if (idx_packed_float4 >= N) { return; }
 
     packed_float4 packed_out;
-    const packed_float4 packed_inp1(((device packed_float4*)(inp1 + idx))[0]);
-    const packed_float4 packed_inp2(((device packed_float4*)(inp2 + idx))[0]);
+    const packed_float4 packed_inp1(((device packed_float4*)(inp1 + idx_packed_float4))[0]);
+    const packed_float4 packed_inp2(((device packed_float4*)(inp2 + idx_packed_float4))[0]);
 
     packed_out[0] = packed_inp1[0] + packed_inp2[0];
     packed_out[1] = packed_inp1[1] + packed_inp2[1];
     packed_out[2] = packed_inp1[2] + packed_inp2[2];
     packed_out[3] = packed_inp1[3] + packed_inp2[3];
 
-    ((device packed_float4*)(out))[0] = packed_out;
+    ((device packed_float4*)(out + idx_packed_float4))[0] = packed_out;
 
 }
 
