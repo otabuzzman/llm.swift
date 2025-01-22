@@ -183,13 +183,13 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
             let end = Date()
             elapsed_time += end.timeIntervalSince(start)
         }
-        elapsed_time /= Double(repeat_times)
         elapsed_time *= 1e3 // ms
+        elapsed_time /= Double(repeat_times)
 
         // napkin math: estimate the flops achieved
         // e.g. A100 40GB PCIe is advertised at 19.5 TFLOPS fp32
-        let tflops = Double(B * T * C * OC * 2) / elapsed_time * 1e3 / 1e12
+        let tflops = Double(B * T * C * OC * 2) / elapsed_time * 1e-3 / 1e12
 
-        print("block_size \(sqrt_block_size) | time \(String(format: "%.4f", elapsed_time)) ms | tflops \(String(format: "%.2f", tflops))")
+        print("block_size \(String(format: "%4d", sqrt_block_size)) | time \(String(format: "%.4f", elapsed_time)) ms | tflops \(String(format: "%.2f", tflops))")
     }
 }

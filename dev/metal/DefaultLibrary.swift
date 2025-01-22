@@ -65,7 +65,7 @@ kernel void layernorm_forward_kernel1(device float* out [[ buffer(0) ]],
     // seek to the output position in out[idx,:]
     device float* out_idx = out + idx * C;
     for (int i = 0; i < C; i++) {
-        float n = (s * (x[i] - m)); // normalized output
+        float n = s * (x[i] - m); // normalized output
         float o = n * weight[i] + bias[i]; // scale and shift it
         out_idx[i] = o; // write
     }
@@ -96,7 +96,7 @@ kernel void encoder_forward_kernel1(device float* out [[ buffer(0) ]],
     const device float* wte_ix = wte + ix * C;
     const device float* wpe_t = wpe + t * C;
     for (int i = 0; i < C; i++) {
-        out_bt[i] = (float)((float)wte_ix[i] + (float)wpe_t[i]);
+        out_bt[i] = wte_ix[i] + wpe_t[i];
     }
 }
 
@@ -150,10 +150,10 @@ kernel void encoder_forward_kernel3(device float* out [[ buffer(0) ]],
     const packed_float4 wte2(((device packed_float4*)(wte_ix))[0]);
     const packed_float4 wpe2(((device packed_float4*)(wpe_tc))[0]);
 
-    packed_out[0] = ((float)wte2[0] + (float)wpe2[0]);
-    packed_out[1] = (float)((float)wte2[1] + (float)wpe2[1]);
-    packed_out[2] = (float)((float)wte2[2] + (float)wpe2[2]);
-    packed_out[3] = (float)((float)wte2[3] + (float)wpe2[3]);
+    packed_out[0] = wte2[0] + wpe2[0];
+    packed_out[1] = wte2[1] + wpe2[1];
+    packed_out[2] = wte2[2] + wpe2[2];
+    packed_out[3] = wte2[3] + wpe2[3];
 
     ((device packed_float4*)(out_btc))[0] = packed_out;
 }

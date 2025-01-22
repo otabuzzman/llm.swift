@@ -210,15 +210,15 @@ func encoder_forward(_ argc: Int, _ argv: [String]) throws {
             let end = Date()
             elapsed_time += end.timeIntervalSince(start)
         }
-        elapsed_time /= Double(repeat_times)
         elapsed_time *= 1e3 // ms
+        elapsed_time /= Double(repeat_times)
 
         // napkin math: estimate the memory bandwidth achieved
         // for each (B,T,C) output element, we do 3 reads and 1 write, 4 bytes each
         // and e.g. A100 40GB PCIe is advertised at 1,555GB/s
         let memory_ops = B * T * C * 4 * 4
-        let memory_bandwidth = Double(memory_ops) / elapsed_time / 1e9
+        let memory_bandwidth = Double(memory_ops) / elapsed_time / 1e6
 
-        print("block_size \(block_size) | time \(String(format: "%.4f", elapsed_time)) ms | bandwidth \(String(format: "%.2f", memory_bandwidth)) GB/s")
+        print("block_size \(String(format: "%4d", block_size)) | time \(String(format: "%.4f", elapsed_time)) ms | bandwidth n/a (unified)")
     }
 }
