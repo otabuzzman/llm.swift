@@ -33,6 +33,7 @@ import Metal
 // known kernel (Metal shader) versions
 private let versions = 1...6
 
+// shader specific launch stub
 // swiftlint:disable:next function_parameter_count
 func layernorm_forward1(
     _ out: UnsafeMutablePointer<Float>,
@@ -60,6 +61,7 @@ func layernorm_forward1(
         params: params)
 }
 
+// version dispatcher
 // swiftlint:disable:next function_parameter_count
 private func layernorm_forward(
     _ version: Int,
@@ -85,6 +87,7 @@ private func layernorm_forward(
     }
 }
 
+// standalone runner
 // swiftlint:disable:next function_body_length
 func layernorm_forward(_ argc: Int, _ argv: [String]) throws {
     let B = 8
@@ -144,7 +147,7 @@ func layernorm_forward(_ argc: Int, _ argv: [String]) throws {
     }
 
     // read kernel_num from command line
-    var kernel_num = 2
+    var kernel_num = 1
     if argv.count > 1 {
         kernel_num = Int(argv[1]) ?? 2
     }

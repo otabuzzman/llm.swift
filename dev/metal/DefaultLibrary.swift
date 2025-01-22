@@ -2,6 +2,121 @@ let defaultLibrary = """
 #include <metal_stdlib>
 using namespace metal;
 
+// --- attention_forward.metal
+// #include <metal_stdlib>
+// using namespace metal;
+
+kernel void attention_query_key_kernel1(device float* preatt  [[ buffer(0) ]],
+                                device float* inp [[ buffer(1) ]],
+                                constant uint& B  [[ buffer(2) ]],
+                                constant uint& T  [[ buffer(3) ]],
+                                constant uint& C  [[ buffer(4) ]],
+                                constant uint& NH [[ buffer(5) ]],
+                                uint idx [[ thread_position_in_grid ]]) {
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= B * T * C * NH) { return; }
+
+    int t2 = idx % T;
+    int t = (idx / T) % T;
+    if (t2 > t) {
+        // autoregressive mask
+        preatt[idx] = -INFINITY;
+        return;
+    }
+    int h = (idx / (T * T)) % NH;
+    int b = idx / (NH * T * T);
+
+    int C3 = C*3;
+    int hs = C / NH; // head size
+    const device float* query_t = inp + b * T * C3 + t * C3 + h * hs;
+    const device float* key_t2 = inp + b * T * C3 + t2 * C3 + h * hs + C; // +C because it's key
+
+    // (query_t) dot (key_t2)
+    float val = 0.0f;
+    for (int i = 0; i < hs; i++) {
+        val += query_t[i] * key_t2[i];
+    }
+    val *= 1.0 / sqrtf(hs);
+
+    preatt[idx] = val;
+}
+
+kernel void attention_softmax_kernel1(device float* att  [[ buffer(0) ]],
+                                device float* preatt [[ buffer(1) ]],
+                                constant uint& B  [[ buffer(2) ]],
+                                constant uint& T  [[ buffer(3) ]],
+                                constant uint& NH [[ buffer(4) ]],
+                                uint idx [[ thread_position_in_grid ]]) {
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= B * T * NH) { return; }
+
+    int h = idx % NH;
+    int t = (idx / NH) % T;
+    int b = idx / (NH * T);
+
+    const device float* preatt_bth = preatt + b*NH*T*T + h*T*T + t*T;
+    device float* att_bth = att + b*NH*T*T + h*T*T + t*T;
+
+    // find maxval
+    float maxval = -FLT_MAX;
+    for (int t2 = 0; t2 <= t; t2++) {
+        if (preatt_bth[t2] > maxval) {
+            maxval = preatt_bth[t2];
+        }
+    }
+
+    // calculate the exp and keep track of sum
+    float expsum = 0.0f;
+    for (int t2 = 0; t2 <= t; t2++) {
+        float expv = exp(preatt_bth[t2] - maxval);
+        expsum += expv;
+        att_bth[t2] = expv;
+    }
+    float expsum_inv = expsum == 0.0f ? 0.0f : 1.0f / expsum;
+
+    // normalize to get the softmax
+    for (int t2 = 0; t2 < T; t2++) {
+        if (t2 <= t) {
+            att_bth[t2] *= expsum_inv;
+        } else {
+            // causal attention mask. not strictly necessary to set to zero here
+            // only doing this explicitly for debugging and checking to PyTorch
+            att_bth[t2] = 0.0f;
+        }
+    }
+}
+
+kernel void attention_value_kernel1(device float* out [[ buffer(0) ]],
+                                device float* att [[ buffer(1) ]],
+                                device float* inp [[ buffer(2) ]],
+                                constant uint& B  [[ buffer(3) ]],
+                                constant uint& T  [[ buffer(4) ]],
+                                constant uint& C  [[ buffer(5) ]],
+                                constant uint& NH [[ buffer(6) ]],
+                                uint idx [[ thread_position_in_grid ]]) {
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= B * T * C * NH) { return; }
+
+    int h = idx % NH;
+    int t = (idx / NH) % T;
+    int b = idx / (NH * T);
+
+    int C3 = C*3;
+    int hs = C / NH; // head size
+
+    device float* out_bth = out + b * T * C + t * C + h * hs;
+    const device float* att_bth = att + b*NH*T*T + h*T*T + t*T;
+
+    for (int i = 0; i < hs; i++) { out_bth[i] = 0.0f; }
+    for (int t2 = 0; t2 <= t; t2++) {
+       const device float* value_t2 = inp + b * T * C3 + t2 * C3 + h * hs + C*2; // +C*2 because it's value
+        float att_btht2 = att_bth[t2];
+        for (int i = 0; i < hs; i++) {
+            out_bth[i] += att_btht2 * value_t2[i];
+        }
+    }
+}
+
 // --- matmul_forward.metal
 // #include <metal_stdlib>
 // using namespace metal;

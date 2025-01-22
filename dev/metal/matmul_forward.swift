@@ -49,6 +49,7 @@ func matmul_forward(
     }
 }
 
+// shader specific launch stub
 // swiftlint:disable:next function_parameter_count
 func matmul_forward1(
     _ out: UnsafeMutablePointer<Float>,
@@ -72,6 +73,7 @@ func matmul_forward1(
         params: params)
 }
 
+// version dispatcher
 // swiftlint:disable:next function_parameter_count
 private func matmul_forward(
     _ version: Int,
@@ -95,6 +97,7 @@ private func matmul_forward(
     }
 }
 
+// standalone runner
 // swiftlint:disable:next function_body_length
 func matmul_forward(_ argc: Int, _ argv: [String]) throws {
     let B = 32

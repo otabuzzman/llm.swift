@@ -23,6 +23,7 @@ import Metal
 // known kernel (Metal shader) versions
 private let versions = 1...3
 
+// shader specific launch stub
 // swiftlint:disable:next function_parameter_count
 func encoder_forward1(
     _ out: UnsafeMutablePointer<Float>,
@@ -46,6 +47,7 @@ func encoder_forward1(
         params: params)
 }
 
+// shader specific launch stub
 // swiftlint:disable:next function_parameter_count
 func encoder_forward2(
     _ out: UnsafeMutablePointer<Float>,
@@ -69,6 +71,7 @@ func encoder_forward2(
         params: params)
 }
 
+// shader specific launch stub
 // swiftlint:disable:next function_parameter_count
 func encoder_forward3(
     _ out: UnsafeMutablePointer<Float>,
@@ -92,6 +95,7 @@ func encoder_forward3(
         params: params)
 }
 
+// version dispatcher
 // swiftlint:disable:next function_parameter_count
 private func encoder_forward(
     _ version: Int,
@@ -117,6 +121,7 @@ private func encoder_forward(
     }
 }
 
+// standalone runner
 // swiftlint:disable:next function_body_length
 func encoder_forward(_ argc: Int, _ argv: [String]) throws {
     let B = 8
