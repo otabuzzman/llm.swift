@@ -36,7 +36,7 @@ kernel void attention_query_key_kernel1(device float* preatt  [[ buffer(0) ]],
     for (int i = 0; i < hs; i++) {
         val += query_t[i] * key_t2[i];
     }
-    val *= 1.0 / sqrtf(hs);
+    val *= 1.0 / sqrt((float)hs);
 
     preatt[idx] = val;
 }

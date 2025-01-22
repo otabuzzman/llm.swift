@@ -1,7 +1,6 @@
 // swiftlint:disable:next blanket_disable_command
 // swiftlint:disable identifier_name
 
-
 /// Kernel benchmark for the positional attention forward pass in GPT-2.
 ///
 /// Kernels (Metal shaders) are in `DefaultLibrary.swift´
@@ -46,7 +45,7 @@ private let excludeVersions = 7...9
 
 // TODO: check if applicable for macOS
 // CUDA & cuDNN setup
-private let first_run_validation = true
+private var first_run_validation = true
 
 // overwrite async CPU version in `train_gpt2.swift´
 // swiftlint:disable:next function_parameter_count
@@ -138,7 +137,7 @@ func attention_forward1(
     _ inp: UnsafePointer<Float>,
     _ B: Int, _ T: Int, _ C: Int, _ NH: Int,
     _ block_size: Int = 0) throws {
-    var context = KernelContext(threadsPerGrid:  B * NH * T * T, threadsPerGroup: block_size)
+    var context = KernelContext(threadsPerGrid: B * NH * T * T, threadsPerGroup: block_size)
 
     var params: [KernelParam] = [
         UnsafeMutableRawPointer(preatt),
@@ -150,7 +149,7 @@ func attention_forward1(
         context: context,
         params: params)
 
-    context = KernelContext(threadsPerGrid:  B * T * NH, threadsPerGroup: block_size)
+    context = KernelContext(threadsPerGrid: B * T * NH, threadsPerGroup: block_size)
 
     params = [
         UnsafeMutableRawPointer(att),
@@ -186,12 +185,12 @@ private func attention_forward(
     _ block_size: Int = 0) throws {
     guard
         versions.contains(version) == true,
-        excludeVersions.contain(version) == false
+        excludeVersions.contains(version) == false
     else { throw LlmSwiftError.wrongApiUsage(api: "\(#function) version \(version) unknown") }
 
     switch version {
     case 1:
-        try attention_forward1(out, inp, B, T, C, , NH, block_size)
+        try attention_forward1(out, preatt, att, inp, B, T, C, NH, block_size)
     case 2, 3, 4, 5, 6, 10:
         fatalError("layer-pass function \(#function) version \(version) not implemented")
     default:
