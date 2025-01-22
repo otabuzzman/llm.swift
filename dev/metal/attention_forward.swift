@@ -265,14 +265,10 @@ func attention_forward(_ argc: Int, _ argv: [String]) throws {
         let accuracy_threshold: Float = kernel_num <= 4 ? 1e-3 : 1e-2
         try validate_result(out_gpu, out_cpu, "out", B * T * C, accuracy_threshold)
         if kernel_num != 2 && kernel_num < 5 {
-            do {
-                try validate_result(att_gpu, att_cpu, "att", B * NH * T * T, accuracy_threshold)
-            } catch { print("llm.c hint: kernel \(kernel_num) knowing to fail for att\n") }
+            try validate_result(att_gpu, att_cpu, "att", B * NH * T * T, accuracy_threshold)
         }
         if kernel_num != 2 && kernel_num < 4 {
-            do {
-                try validate_result(preatt_gpu, preatt_cpu, "preatt", B * NH * T * T, accuracy_threshold)
-            } catch { print("llm.c hint: kernel \(kernel_num) knowing to fail for preatt\n") }
+            try validate_result(preatt_gpu, preatt_cpu, "preatt", B * NH * T * T, accuracy_threshold)
         }
     }
 

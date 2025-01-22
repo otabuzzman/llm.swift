@@ -51,7 +51,7 @@ kernel void attention_query_key_kernel1(device float* preatt  [[ buffer(0) ]],
                                 constant uint& NH [[ buffer(5) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
-    // if (idx >= B * T * C * NH) { return; }
+    // if (idx >= B * NH * T * T) { return; }
 
     int t2 = idx % T;
     int t = (idx / T) % T;
