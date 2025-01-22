@@ -2,6 +2,43 @@ let defaultLibrary = """
 #include <metal_stdlib>
 using namespace metal;
 
+// --- residual_forward.metal
+// #include <metal_stdlib>
+// using namespace metal;
+
+kernel void residual_forward_kernel1(device float* out  [[ buffer(0) ]],
+                                device float* inp1 [[ buffer(1) ]],
+                                device float* inp2 [[ buffer(2) ]],
+                                constant uint& N [[ buffer(3) ]],
+                                uint idx [[ thread_position_in_grid ]]) {
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= N) { return; }
+
+    out[idx] = inp1[idx] + inp2[idx]);
+}
+
+kernel void residual_forward_kernel2(device float* out  [[ buffer(0) ]],
+                                device float* inp1 [[ buffer(1) ]],
+                                device float* inp2 [[ buffer(2) ]],
+                                constant uint& N [[ buffer(3) ]],
+                                uint idx [[ thread_position_in_grid ]]) {
+    int idx_packed_float4 = idx * 4; // packed_float4::size == 4
+    // uncomment if nonuniform threadgroups not available
+    // if (idx_packed_float4 >= N) { return; }
+
+    packed_float4 packed_out;
+    const packed_float4 packed_inp1(((device packed_float4*)(inp1 + idx))[0]);
+    const packed_float4 packed_inp2(((device packed_float4*)(inp2 + idx))[0]);
+
+    packed_out[0] = packed_inp1[0] + packed_inp2[0];
+    packed_out[1] = packed_inp1[1] + packed_inp2[1];
+    packed_out[2] = packed_inp1[2] + packed_inp2[2];
+    packed_out[3] = packed_inp1[3] + packed_inp2[3];
+
+    ((device packed_float4*)(out))[0] = packed_out;
+
+}
+
 // --- attention_forward.metal
 // #include <metal_stdlib>
 // using namespace metal;
