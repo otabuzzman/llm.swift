@@ -10,7 +10,8 @@ let layers: [String: (Int, [String]) throws -> Void] = [
     "layernorm_forward": layernorm_forward,
     "matmul_forward": matmul_forward,
     "attention_forward": attention_forward,
-    "residual_forward": residual_forward
+    "residual_forward": residual_forward,
+    "gelu_forward": gelu_forward
 ]
 
 guard

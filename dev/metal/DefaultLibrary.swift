@@ -2,6 +2,51 @@ let defaultLibrary = """
 #include <metal_stdlib>
 using namespace metal;
 
+// --- gelu_forward.metal
+// #include <metal_stdlib>
+// using namespace metal;
+
+#define GELU_SCALING_FACTOR sqrt(2.0f / M_PI_F)
+kernel void gelu_forward_kernel1(device float* out [[ buffer(0) ]],
+                                device float* inp [[ buffer(1) ]],
+                                constant uint& N [[ buffer(2) ]],
+                                uint idx [[ thread_position_in_grid ]]) {
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= N) { return; }
+
+    float xi = inp[i];
+    float cube = 0.044715f * xi * xi * xi;
+    out[i] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
+}
+
+kernel void gelu_forward_kernel2(device float* out [[ buffer(0) ]],
+                                device float* inp [[ buffer(1) ]],
+                                constant uint& N [[ buffer(2) ]],
+                                uint idx [[ thread_position_in_grid ]]) {
+    int idx_packed_float4 = idx * 4; // packed_float4::size == 4
+    // uncomment if nonuniform threadgroups not available
+    // if (idx_packed_float4 >= N) { return; }
+
+
+    packed_float4 packed_out;
+    const packed_float4 packed_inp(((device packed_float4*)(inp + idx_packed_float4))[0]);
+
+    float xi = packed_inp[0];
+    float cube = 0.044715f * xi * xi * xi;
+    packed_out[0] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
+    float xi = packed_inp[1];
+    float cube = 0.044715f * xi * xi * xi;
+    packed_out[1] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
+    float xi = packed_inp[2];
+    float cube = 0.044715f * xi * xi * xi;
+    packed_out[2] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
+    float xi = packed_inp[3];
+    float cube = 0.044715f * xi * xi * xi;
+    packed_out[3] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
+
+    ((device packed_float4*)(out + idx_packed_float4))[0] = packed_out;
+}
+
 // --- residual_forward.metal
 // #include <metal_stdlib>
 // using namespace metal;
