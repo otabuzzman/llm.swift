@@ -14,9 +14,9 @@ kernel void gelu_forward_kernel1(device float* out [[ buffer(0) ]],
     // uncomment if nonuniform threadgroups not available
     // if (idx >= N) { return; }
 
-    float xi = inp[i];
+    float xi = inp[idx];
     float cube = 0.044715f * xi * xi * xi;
-    out[i] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
+    out[idx] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
 }
 
 kernel void gelu_forward_kernel2(device float* out [[ buffer(0) ]],
@@ -34,14 +34,14 @@ kernel void gelu_forward_kernel2(device float* out [[ buffer(0) ]],
     float xi = packed_inp[0];
     float cube = 0.044715f * xi * xi * xi;
     packed_out[0] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
-    float xi = packed_inp[1];
-    float cube = 0.044715f * xi * xi * xi;
+    xi = packed_inp[1];
+    cube = 0.044715f * xi * xi * xi;
     packed_out[1] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
-    float xi = packed_inp[2];
-    float cube = 0.044715f * xi * xi * xi;
+    xi = packed_inp[2];
+    cube = 0.044715f * xi * xi * xi;
     packed_out[2] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
-    float xi = packed_inp[3];
-    float cube = 0.044715f * xi * xi * xi;
+    xi = packed_inp[3];
+    cube = 0.044715f * xi * xi * xi;
     packed_out[3] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
 
     ((device packed_float4*)(out + idx_packed_float4))[0] = packed_out;

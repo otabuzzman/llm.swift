@@ -105,7 +105,7 @@ func gelu_forward(_ argc: Int, _ argv: [String]) throws {
         out_cpu.deallocate()
         launchPad?.unregisterBuffer(address: out_gpu)
         out_gpu.deallocate()
-        launchPad?.unregisterBuffer(address: inp1)
+        launchPad?.unregisterBuffer(address: inp)
         inp.deallocate()
     }
 
