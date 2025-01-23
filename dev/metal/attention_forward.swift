@@ -91,6 +91,10 @@ func attention_forward(
 
                     preatt_bth[t2] = val
                 }
+                // pad with -INFINITY outside of autoregressive region for debugging comparisons
+                for t2 in t+1..<T {
+                    preatt_bth[t2] = Float.infinity
+                }
 
                 // pass 2: calculate the exp and keep track of sum
                 // maxval is being calculated and subtracted only for numerical stability
@@ -139,11 +143,12 @@ func attention_forward1(
     _ block_size: Int = 0) throws {
     var context = KernelContext(threadsPerGrid: B * NH * T * T, threadsPerGroup: block_size)
 
+    let param_preatt = UnsafeMutableRawPointer(preatt)
+    let param_inp = UnsafeMutableRawPointer(mutating: inp)
     var params: [KernelParam] = [
-        UnsafeMutableRawPointer(preatt),
-        UnsafeMutableRawPointer(mutating: inp),
+        param_preatt, param_inp,
         Int32(B), Int32(T), Int32(C), Int32(NH)]
-
+ 
     try launchPad?.dispatchKernel(
         name: "attention_query_key_kernel1",
         context: context,
@@ -151,9 +156,9 @@ func attention_forward1(
 
     context = KernelContext(threadsPerGrid: B * T * NH, threadsPerGroup: block_size)
 
+    let param_att = UnsafeMutableRawPointer(att)
     params = [
-        UnsafeMutableRawPointer(att),
-        UnsafeMutableRawPointer(preatt),
+        param_att, param_preatt,
         Int32(B), Int32(T), Int32(NH)]
 
     try launchPad?.dispatchKernel(
@@ -162,9 +167,7 @@ func attention_forward1(
         params: params)
 
     params = [
-        UnsafeMutableRawPointer(out),
-        UnsafeMutableRawPointer(att),
-        UnsafeMutableRawPointer(mutating: inp),
+        UnsafeMutableRawPointer(out), param_att, param_inp,
         Int32(B), Int32(T), Int32(C), Int32(NH)]
 
     try launchPad?.dispatchKernel(

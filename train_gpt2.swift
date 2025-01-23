@@ -407,7 +407,7 @@ func attention_forward(
             let att_bth = att + b * NH * T * T + h * T * T + t * T
 
             // pass 1: calculate query dot key and maxval
-            var maxval: Float = -10000 // TODO something better // swiftlint:disable:this todo
+            var maxval: Float = -10000 // TODO something better
             for t2 in 0...t {
                 let key_t2 = inp + b * T * C3 + t2 * C3 + h * hs + C // +C because it's key
 
@@ -611,7 +611,7 @@ func softmax_forward(
             let probs_bt = probs + b * T * Vp + t * Vp
 
             // maxval is only calculated and subtracted for numerical stability
-            var maxval: Float = -10000 // TODO something better // swiftlint:disable:this todo
+            var maxval: Float = -10000 // TODO something better
             for i in 0..<V where logits_bt[i] > maxval {
                 maxval = logits_bt[i]
             }

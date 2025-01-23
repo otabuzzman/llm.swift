@@ -132,7 +132,7 @@ kernel void attention_value_kernel1(device float* out [[ buffer(0) ]],
                                 constant uint& NH [[ buffer(6) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
-    // if (idx >= B * T * C * NH) { return; }
+    // if (idx >= B * T * NH) { return; }
 
     int h = idx % NH;
     int t = (idx / NH) % T;
