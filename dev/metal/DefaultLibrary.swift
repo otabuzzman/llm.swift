@@ -407,3 +407,4 @@ kernel void encoder_forward_kernel3(device float* out [[ buffer(0) ]],
     ((device packed_float4*)(out_btc))[0] = packed_out;
 }
 """
+// swiftlint:disable:this file_length

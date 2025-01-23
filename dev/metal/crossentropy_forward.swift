@@ -18,6 +18,7 @@ import Metal
 private let versions = 1...1
 
 // shader specific launch stub
+// swiftlint:disable:next function_parameter_count
 func crossentropy_forward1(
     _ losses: UnsafeMutablePointer<Float>,
     _ probs: UnsafePointer<Float>,
@@ -39,6 +40,7 @@ func crossentropy_forward1(
 }
 
 // version dispatcher
+// swiftlint:disable:next function_parameter_count
 private func crossentropy_forward(
     _ version: Int,
     _ losses: UnsafeMutablePointer<Float>,
@@ -80,7 +82,7 @@ func crossentropy_forward(_ argc: Int, _ argv: [String]) throws {
     try launchPad?.registerBuffer(address: losses, length: losses_length)
 
     let targets = UnsafeMutablePointer<Int32>.allocate(capacity: B * T)
-    for i in 0..<B * T { targets[i] = Int32.random(in: 0..<V) }
+    for i in 0..<B * T { targets[i] = Int32(Int.random(in: 0..<V)) }
     let targets_length = B * T * MemoryLayout<Int32>.size
     try launchPad?.registerBuffer(address: targets, length: targets_length)
 

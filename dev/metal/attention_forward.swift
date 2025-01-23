@@ -48,7 +48,7 @@ private let excludeVersions = 7...9
 private var first_run_validation = true
 
 // overwrite async CPU version in `train_gpt2.swift´
-// swiftlint:disable:next function_parameter_count
+// swiftlint:disable:next function_parameter_count function_body_length
 func attention_forward(
     _ out: UnsafeMutablePointer<Float>,
     _ preatt: UnsafeMutablePointer<Float>,
@@ -148,7 +148,7 @@ func attention_forward1(
     var params: [KernelParam] = [
         param_preatt, param_inp,
         Int32(B), Int32(T), Int32(C), Int32(NH)]
- 
+
     try launchPad?.dispatchKernel(
         name: "attention_query_key_kernel1",
         context: context,
