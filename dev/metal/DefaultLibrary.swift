@@ -2,6 +2,37 @@ let defaultLibrary = """
 #include <metal_stdlib>
 using namespace metal;
 
+// --- softmax_forward.metal
+// #include <metal_stdlib>
+// using namespace metal;
+
+kernel void softmax_forward_kernel1(device float* out [[ buffer(0) ]],
+                                device float* inp [[ buffer(1) ]],
+                                constant uint& N [[ buffer(2) ]],
+                                constant uint& C [[ buffer(3) ]],
+                                uint idx [[ thread_position_in_grid ]]) {
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= N) { return; }
+
+    const device float* inp_row = inp + i * C;
+    device float* out_row = out + i * C;
+
+    float maxval = -INFINITY;
+    for (int j = 0; j < C; j++) {
+        if (inp_row[j] > maxval) {
+            maxval = inp_row[j];
+        }
+    }
+    double sum = 0.0;
+    for (int j = 0; j < C; j++) {
+        out_row[j] = exp(inp_row[j] - maxval);
+        sum += out_row[j];
+    }
+    for (int j = 0; j < C; j++) {
+        out_row[j] /= (float)sum;
+    }
+}
+
 // --- gelu_forward.metal
 // #include <metal_stdlib>
 // using namespace metal;
