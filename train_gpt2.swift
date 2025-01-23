@@ -1152,9 +1152,9 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     let acts = model.pointee.acts
     var residual: UnsafeMutablePointer<Float>
 
-//    encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
-    try encoder_forward3(acts.encoded, inputs, params.wte, params.wpe, B, T, C)
-    try launchPad?.commit(wait: true)
+    encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
+//    try encoder_forward3(acts.encoded, inputs, params.wte, params.wpe, B, T, C)
+//    try launchPad?.commit(wait: true)
     for l in 0..<L {
         try Task.checkCancellation()
         residual = l == 0 ? acts.encoded : acts.residual3 + (l - 1) * B * T * C
