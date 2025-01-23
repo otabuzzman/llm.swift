@@ -77,7 +77,7 @@ func softmax_forward(
 }
 
 // shader specific launch stub
-func softmax_forward(
+func softmax_forward1(
     _ out: UnsafeMutablePointer<Float>,
     _ inp: UnsafePointer<Float>,
     _ N: Int, _ C: Int,
@@ -155,23 +155,26 @@ func softmax_forward(_ argc: Int, _ argv: [String]) throws {
     // first check the correctness of the kernel
     softmax_forward(out_cpu, inp, B, T, V, V)
 
+    var max_el = -Float.infinity
+    for i in 0..<B * T * V {
+        max_el = max(max_el, out_cpu[i])
+    }
+    assert(max_el > 1e-4)
+    print("Largest output is: \(max_el)\n")
+
     // time the kernel at different block sizes
     let block_sizes = [0, 32, 64, 128, 256, 512, 1024]
     for block_size in block_sizes {
         print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
-        try softmax_forward(kernel_num, out_gpu, inp, B, T, V, block_size)
+        try softmax_forward(kernel_num, out_gpu, inp, B * T, V, block_size)
         try launchPad?.commit(wait: true)
-        // #if !defined(ENABLE_BF16) && !defined(ENABLE_FP16)
         let tol: Float = 1e-4
-        // #else
-        // let tol: Float16 = 1e-2
-        // #endif
         try validate_result(out_gpu, out_cpu, "out", B * T * V, tol)
     }
 
     print("All results match. Starting benchmarks.\n")
 
-    let repeat_times = 1000
+    let repeat_times = 100
     var elapsed_time: Double = 0
     // CPU for comparison
     for _ in 0..<repeat_times {
@@ -193,7 +196,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) throws {
             // TODO: if necessary and applicable
 
             let start = Date()
-            try softmax_forward(kernel_num, out_gpu, inp, B, T, V, block_size)
+            try softmax_forward(kernel_num, out_gpu, inp, B * T, V, block_size)
             let end = Date()
             elapsed_time += end.timeIntervalSince(start)
         }

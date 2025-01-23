@@ -14,8 +14,8 @@ kernel void softmax_forward_kernel1(device float* out [[ buffer(0) ]],
     // uncomment if nonuniform threadgroups not available
     // if (idx >= N) { return; }
 
-    const device float* inp_row = inp + i * C;
-    device float* out_row = out + i * C;
+    const device float* inp_row = inp + idx * C;
+    device float* out_row = out + idx * C;
 
     float maxval = -INFINITY;
     for (int j = 0; j < C; j++) {
@@ -23,13 +23,13 @@ kernel void softmax_forward_kernel1(device float* out [[ buffer(0) ]],
             maxval = inp_row[j];
         }
     }
-    double sum = 0.0;
+    float sum = 0.0;
     for (int j = 0; j < C; j++) {
         out_row[j] = exp(inp_row[j] - maxval);
         sum += out_row[j];
     }
     for (int j = 0; j < C; j++) {
-        out_row[j] /= (float)sum;
+        out_row[j] /= sum;
     }
 }
 

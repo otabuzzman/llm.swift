@@ -37,6 +37,8 @@
 		B01BE0142D416D0A004CBF13 /* residual_forward.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01BE0122D416D0A004CBF13 /* residual_forward.swift */; };
 		B01BE0162D4246F6004CBF13 /* gelu_forward.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01BE0152D4246F6004CBF13 /* gelu_forward.swift */; };
 		B01BE0172D4246F6004CBF13 /* gelu_forward.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01BE0152D4246F6004CBF13 /* gelu_forward.swift */; };
+		B01BE0192D425109004CBF13 /* softmax_forward.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01BE0182D425109004CBF13 /* softmax_forward.swift */; };
+		B01BE01A2D425109004CBF13 /* softmax_forward.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01BE0182D425109004CBF13 /* softmax_forward.swift */; };
 		B08B389F2D2C704D007ED5D0 /* DefaultLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */; };
 		B08B38A12D2C712E007ED5D0 /* LaunchPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08B38A02D2C712E007ED5D0 /* LaunchPad.swift */; };
 /* End PBXBuildFile section */
@@ -61,6 +63,7 @@
 		B01BE00F2D40EECD004CBF13 /* attention_forward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = attention_forward.swift; sourceTree = "<group>"; };
 		B01BE0122D416D0A004CBF13 /* residual_forward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = residual_forward.swift; sourceTree = "<group>"; };
 		B01BE0152D4246F6004CBF13 /* gelu_forward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = gelu_forward.swift; sourceTree = "<group>"; };
+		B01BE0182D425109004CBF13 /* softmax_forward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = softmax_forward.swift; sourceTree = "<group>"; };
 		B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultLibrary.swift; sourceTree = "<group>"; };
 		B08B38A02D2C712E007ED5D0 /* LaunchPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchPad.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -155,6 +158,7 @@
 				B01BE00F2D40EECD004CBF13 /* attention_forward.swift */,
 				B01BE0122D416D0A004CBF13 /* residual_forward.swift */,
 				B01BE0152D4246F6004CBF13 /* gelu_forward.swift */,
+				B01BE0182D425109004CBF13 /* softmax_forward.swift */,
 			);
 			path = metal;
 			sourceTree = "<group>";
@@ -296,10 +300,11 @@
 				dev/metal/attention_forward,
 				dev/metal/residual_forward,
 				dev/metal/gelu_forward,
+				dev/metal/softmax_forward,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "test $CONFIGURATION = Release && {\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/encoder_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/layernorm_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/matmul_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/attention_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/residual_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/gelu_forward\n}\nexit 0\n";
+			shellScript = "test $CONFIGURATION = Release && {\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/encoder_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/layernorm_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/matmul_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/attention_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/residual_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/gelu_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/softmax_forward\n}\nexit 0\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -318,6 +323,7 @@
 				B01BE0102D40EECD004CBF13 /* attention_forward.swift in Sources */,
 				B01BE0132D416D0A004CBF13 /* residual_forward.swift in Sources */,
 				B01BE0162D4246F6004CBF13 /* gelu_forward.swift in Sources */,
+				B01BE01A2D425109004CBF13 /* softmax_forward.swift in Sources */,
 				1883FC092C354E5700F75687 /* dataloader.swift in Sources */,
 				1883FBFE2BF6746D00F75687 /* tokenizer.swift in Sources */,
 				1883FC062BFF2D9600F75687 /* utils.swift in Sources */,
@@ -340,6 +346,7 @@
 				B01BE0112D40EECD004CBF13 /* attention_forward.swift in Sources */,
 				B01BE0142D416D0A004CBF13 /* residual_forward.swift in Sources */,
 				B01BE0172D4246F6004CBF13 /* gelu_forward.swift in Sources */,
+				B01BE0192D425109004CBF13 /* softmax_forward.swift in Sources */,
 				B01BE0012D3D9065004CBF13 /* dataloader.swift in Sources */,
 				B01BE0032D3D908D004CBF13 /* tokenizer.swift in Sources */,
 				B01BE0002D3D9042004CBF13 /* utils.swift in Sources */,
