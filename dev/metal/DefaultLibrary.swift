@@ -2,6 +2,27 @@ let defaultLibrary = """
 #include <metal_stdlib>
 using namespace metal;
 
+// --- crossentropy_forward.metal
+// #include <metal_stdlib>
+// using namespace metal;
+
+kernel void crossentropy_forward_kernel1(device float* losses [[ buffer(0) ]],
+                                device float* probs [[ buffer(1) ]],
+                                device int* targets [[ buffer(2) ]],
+                                constant uint& B [[ buffer(3) ]],
+                                constant uint& T [[ buffer(4) ]],
+                                constant uint& V [[ buffer(5) ]],
+                                uint idx [[ thread_position_in_grid ]]) {
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= B * T) { return; }
+
+    int b = idx / T;
+    int t = idx % T;
+    const device float* probs_bt = probs + b * T * V + t * V;
+    int ix = targets[b * T + t];
+    losses[b * T + t] = -log(probs_bt[ix]);
+}
+
 // --- softmax_forward.metal
 // #include <metal_stdlib>
 // using namespace metal;

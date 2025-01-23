@@ -13,6 +13,7 @@ let layers: [String: (Int, [String]) throws -> Void] = [
     "residual_forward": residual_forward,
     "gelu_forward": gelu_forward,
     "softmax_forward": softmax_forward
+    "crossentropy_forward": crossentropy_forward
 ]
 
 guard
