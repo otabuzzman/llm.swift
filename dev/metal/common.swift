@@ -36,9 +36,7 @@ func validate_result(
         if abs(cpu_reference[i] - device_result[i]) > t_eff {
             print("Mismatch of \(name) at \(i): CPU_ref: \(cpu_reference[i]) vs GPU: \(device_result[i])\n---")
             nfaults += 1
-            if nfaults > 10 { break }
+            if nfaults > 10 { fatalError("too many mismatched elements") }
         }
     }
-
-    if nfaults > 0 { fatalError("mismatched elements") }
 }

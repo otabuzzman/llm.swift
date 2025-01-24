@@ -259,21 +259,31 @@ kernel void attention_value_kernel1(device float* out [[ buffer(0) ]],
 kernel void matmul_forward_kernel1(device float* out [[ buffer(0) ]],
                                 device float* inp  [[ buffer(1) ]],
                                 device float* weight [[ buffer(2) ]],
-                                device float* bias [[ buffer(3) ]],
-                                constant uint& BT [[ buffer(4) ]],
-                                constant uint& C  [[ buffer(5) ]],
-                                constant uint& OC [[ buffer(6) ]],
+                                constant uint& BT [[ buffer(3) ]],
+                                constant uint& C  [[ buffer(4) ]],
+                                constant uint& OC [[ buffer(5) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
     // if (idx >= BT * OC) { return; }
 
     int bt = idx / OC;
     int oc = idx % OC;
-    float val = bias[oc];
+    float val = 0;
     for (int i = 0; i < C; i++) {
         val += inp[bt * C + i] * weight[oc * C + i];
     }
     out[bt * OC + oc] = val;
+}
+
+kernel void add_bias_kernel1(device float* out [[ buffer(0) ]],
+                                device float* bias  [[ buffer(1) ]],
+                                constant uint& BT [[ buffer(2) ]],
+                                constant uint& OC [[ buffer(3) ]],
+                                uint idx [[ thread_position_in_grid ]]) {
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= BT * OC) { return; }
+
+    out[idx] += bias[idx % OC];
 }
 
 // --- layernorm_forward.metal

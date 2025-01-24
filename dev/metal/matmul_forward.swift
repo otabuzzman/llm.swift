@@ -55,20 +55,31 @@ func matmul_forward1(
     _ out: UnsafeMutablePointer<Float>,
     _ inp: UnsafePointer<Float>,
     _ weight: UnsafePointer<Float>,
-    _ bias: UnsafePointer<Float>,
+    _ bias: UnsafePointer<Float>?,
     _ B: Int, _ T: Int, _ C: Int, _ OC: Int,
     _ block_size: Int = 0) throws {
-        let context = KernelContext(threadsPerGrid: B * T * OC, threadsPerGroup: block_size)
+    let context = KernelContext(threadsPerGrid: B * T * OC, threadsPerGroup: block_size)
 
-    let params: [KernelParam] = [
-        UnsafeMutableRawPointer(out),
+    let param_out = UnsafeMutableRawPointer(out)
+    var params: [KernelParam] = [
+        param_out,
         UnsafeMutableRawPointer(mutating: inp),
         UnsafeMutableRawPointer(mutating: weight),
-        UnsafeMutableRawPointer(mutating: bias),
         Int32(B * T), Int32(C), Int32(OC)]
 
     try launchPad?.dispatchKernel(
         name: "matmul_forward_kernel1",
+        context: context,
+        params: params)
+
+    guard let bias = bias else { return }
+    params = [
+        param_out,
+        UnsafeMutableRawPointer(mutating: bias),
+        Int32(B * T), Int32(OC)]
+
+    try launchPad?.dispatchKernel(
+        name: "add_bias_kernel1",
         context: context,
         params: params)
 }
@@ -80,7 +91,7 @@ private func matmul_forward(
     _ out: UnsafeMutablePointer<Float>,
     _ inp: UnsafePointer<Float>,
     _ weight: UnsafePointer<Float>,
-    _ bias: UnsafePointer<Float>,
+    _ bias: UnsafePointer<Float>?,
     _ B: Int, _ T: Int, _ C: Int, _ OC: Int,
     _ block_size: Int = 0) throws {
     guard
@@ -106,6 +117,7 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
     let OC = 768 * 4 // expansion of 4, e.g. in the MLP
 
     try launchPad?.registerKernel(name: "matmul_forward_kernel1")
+    try launchPad?.registerKernel(name: "add_bias_kernel1")
 
     // create memory of random numbers
     let out_cpu = UnsafeMutablePointer<Float>.allocate(capacity: B * T * OC)
@@ -143,19 +155,25 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
 
     // read kernel_num from command line
     var kernel_num = 1
-    if argv.count > 1 {
-        kernel_num = Int(argv[1]) ?? 2
+    var biasOrNil: UnsafeMutablePointer<Float>? = bias
+    for arg in argv {
+        switch arg {
+        case "nobias":
+            biasOrNil = nil
+        default:
+            kernel_num = Int(arg) ?? 1
+        }
     }
     print("Using kernel \(kernel_num)")
 
     // first check the correctness of the kernel
-    matmul_forward(out_cpu, inp, weight, bias, B, T, C, OC)
+    matmul_forward(out_cpu, inp, weight, biasOrNil, B, T, C, OC)
 
     // time the kernel at different block sizes
     let sqrt_block_sizes = [0, 4, 8, 16, 32]
     for sqrt_block_size in sqrt_block_sizes {
         print("Checking block size \(sqrt_block_size)\(sqrt_block_size == 0 ? " (computed)" : "")")
-        try matmul_forward(kernel_num, out_gpu, inp, weight, bias, B, T, C, OC, sqrt_block_size)
+        try matmul_forward(kernel_num, out_gpu, inp, weight, biasOrNil, B, T, C, OC, sqrt_block_size)
         try launchPad?.commit(wait: true)
         let tol: Float = 1e-5
         try validate_result(out_gpu, out_cpu, "out", B * T * OC, tol)
@@ -166,7 +184,7 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
     var elapsed_time: Double = 0
     // CPU for comparison
     let start = Date()
-    matmul_forward(out_cpu, inp, weight, bias, B, T, C, OC)
+    matmul_forward(out_cpu, inp, weight, biasOrNil, B, T, C, OC)
     let end = Date()
     elapsed_time = end.timeIntervalSince(start)
     elapsed_time *= 1e3 // ms
@@ -182,7 +200,7 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
             // TODO: if necessary and applicable
 
             let start = Date()
-            try matmul_forward(kernel_num, out_gpu, inp, weight, bias, B, T, C, OC, sqrt_block_size)
+            try matmul_forward(kernel_num, out_gpu, inp, weight, biasOrNil, B, T, C, OC, sqrt_block_size)
             let end = Date()
             elapsed_time += end.timeIntervalSince(start)
         }

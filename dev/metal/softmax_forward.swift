@@ -148,7 +148,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) throws {
     // read kernel_num from command line
     var kernel_num = 1
     if argv.count > 1 {
-        kernel_num = Int(argv[1]) ?? 2
+        kernel_num = Int(argv[1]) ?? 1
     }
     print("Using kernel \(kernel_num)")
 
