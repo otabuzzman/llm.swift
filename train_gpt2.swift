@@ -1227,17 +1227,20 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     residual = acts.residual3 + (L - 1) * B * T * C // last residual is in residual3
 //    layernorm_forward(acts.lnf, acts.lnf_mean, acts.lnf_rstd, residual, params.lnfw, params.lnfb, B, T, C)
 //    await matmul_forward(acts.logits, acts.lnf, params.wte, nil, B, T, C, Vp)
+//    await softmax_forward(acts.probs, acts.logits, B, T, V, Vp)
     try layernorm_forward1(acts.lnf, acts.lnf_mean, acts.lnf_rstd, residual, params.lnfw, params.lnfb, B, T, C)
     try matmul_forward1(acts.logits, acts.lnf, params.wte, nil, B, T, C, Vp)
     try launchPad?.commit(wait: true)
     await softmax_forward(acts.probs, acts.logits, B, T, V, Vp)
+//    try softmax_forward1(acts.probs, acts.logits, B, T, V, Vp)
+//    try launchPad?.commit(wait: true)
 
     // also forward the cross-entropy loss function if we have the targets
     if let targets = targets {
-        crossentropy_forward(model.pointee.acts.losses, model.pointee.acts.probs, targets, B, T, Vp)
+        crossentropy_forward(acts.losses, acts.probs, targets, B, T, Vp)
         // for convenience also evaluate the mean loss
         var mean_loss: Float = 0
-        for i in 0..<B * T { mean_loss += model.pointee.acts.losses[i] }
+        for i in 0..<B * T { mean_loss += acts.losses[i] }
         mean_loss /= Float(B * T)
         model.pointee.mean_loss = mean_loss
     } else {

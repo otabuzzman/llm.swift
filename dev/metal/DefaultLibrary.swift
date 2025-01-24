@@ -29,28 +29,32 @@ kernel void crossentropy_forward_kernel1(device float* losses [[ buffer(0) ]],
 
 kernel void softmax_forward_kernel1(device float* out [[ buffer(0) ]],
                                 device float* inp [[ buffer(1) ]],
-                                constant uint& N [[ buffer(2) ]],
-                                constant uint& C [[ buffer(3) ]],
+                                constant uint& N  [[ buffer(2) ]],
+                                constant uint& V  [[ buffer(3) ]],
+                                constant uint& Vp [[ buffer(4) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
     // if (idx >= N) { return; }
 
-    const device float* inp_row = inp + idx * C;
-    device float* out_row = out + idx * C;
+    const device float* inp_row = inp + idx * Vp;
+    device float* out_row = out + idx * Vp;
 
     float maxval = -INFINITY;
-    for (int j = 0; j < C; j++) {
+    for (int j = 0; j < V; j++) {
         if (inp_row[j] > maxval) {
             maxval = inp_row[j];
         }
     }
     float sum = 0.0;
-    for (int j = 0; j < C; j++) {
+    for (int j = 0; j < V; j++) {
         out_row[j] = exp(inp_row[j] - maxval);
         sum += out_row[j];
     }
-    for (int j = 0; j < C; j++) {
+    for (int j = 0; j < V; j++) {
         out_row[j] /= sum;
+    }
+    for (int j = V; j < Vp; j++) {
+        out_row[j] = 0.0;
     }
 }
 

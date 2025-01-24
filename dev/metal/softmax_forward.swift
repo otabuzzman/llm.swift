@@ -80,14 +80,14 @@ func softmax_forward(
 func softmax_forward1(
     _ out: UnsafeMutablePointer<Float>,
     _ inp: UnsafePointer<Float>,
-    _ N: Int, _ C: Int,
+    _ B: Int, _ T: Int, _ V: Int, _ Vp: Int,
     _ block_size: Int = 0) throws {
-    let context = KernelContext(threadsPerGrid: N, threadsPerGroup: block_size)
+    let context = KernelContext(threadsPerGrid: B * T, threadsPerGroup: block_size)
 
     let params: [KernelParam] = [
         UnsafeMutableRawPointer(out),
         UnsafeMutableRawPointer(mutating: inp),
-        Int32(N), Int32(C)]
+        Int32(B * T), Int32(V), Int32(Vp)]
 
     try launchPad?.dispatchKernel(
         name: "softmax_forward_kernel1",
@@ -100,7 +100,7 @@ private func softmax_forward(
     _ version: Int,
     _ out: UnsafeMutablePointer<Float>,
     _ inp: UnsafePointer<Float>,
-    _ N: Int, _ C: Int,
+    _ B: Int, _ T: Int, _ V: Int, _ Vp: Int,
     _ block_size: Int = 0) throws {
     guard
         versions.contains(version) == true
@@ -108,7 +108,7 @@ private func softmax_forward(
 
     switch version {
     case 1:
-        try softmax_forward1(out, inp, N, C, block_size)
+        try softmax_forward1(out, inp, B, T, V, block_size)
     case 2, 3, 4, 5, 6, 7, 8:
         fatalError("layer-pass function \(#function) version \(version) not implemented")
     default:
@@ -166,7 +166,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) throws {
     let block_sizes = [0, 32, 64, 128, 256, 512, 1024]
     for block_size in block_sizes {
         print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
-        try softmax_forward(kernel_num, out_gpu, inp, B * T, V, block_size)
+        try softmax_forward(kernel_num, out_gpu, inp, B, T, V, V, block_size)
         try launchPad?.commit(wait: true)
         let tol: Float = 1e-4
         try validate_result(out_gpu, out_cpu, "out", B * T * V, tol)
@@ -196,7 +196,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) throws {
             // TODO: if necessary and applicable
 
             let start = Date()
-            try softmax_forward(kernel_num, out_gpu, inp, B * T, V, block_size)
+            try softmax_forward(kernel_num, out_gpu, inp, B, T, V, V, block_size)
             let end = Date()
             elapsed_time += end.timeIntervalSince(start)
         }
