@@ -53,7 +53,7 @@ func layernorm_forward1(
         UnsafeMutableRawPointer(mutating: inp),
         UnsafeMutableRawPointer(mutating: weight),
         UnsafeMutableRawPointer(mutating: bias),
-        Int32(B), Int32(T), Int32(C)]
+        Int32(B * T), Int32(C)]
 
     try launchPad?.dispatchKernel(
         name: "layernorm_forward_kernel1",

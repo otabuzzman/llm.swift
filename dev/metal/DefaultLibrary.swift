@@ -29,12 +29,12 @@ kernel void crossentropy_forward_kernel1(device float* losses [[ buffer(0) ]],
 
 kernel void softmax_forward_kernel1(device float* out [[ buffer(0) ]],
                                 device float* inp [[ buffer(1) ]],
-                                constant uint& N  [[ buffer(2) ]],
+                                constant uint& BT [[ buffer(2) ]],
                                 constant uint& V  [[ buffer(3) ]],
                                 constant uint& Vp [[ buffer(4) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
-    // if (idx >= N) { return; }
+    // if (idx >= BT) { return; }
 
     const device float* inp_row = inp + idx * Vp;
     device float* out_row = out + idx * Vp;
@@ -85,22 +85,21 @@ kernel void gelu_forward_kernel2(device float* out [[ buffer(0) ]],
     // uncomment if nonuniform threadgroups not available
     // if (idx_packed_float4 >= N) { return; }
 
-
     packed_float4 packed_out;
     const packed_float4 packed_inp(((device packed_float4*)(inp + idx_packed_float4))[0]);
 
     float xi = packed_inp[0];
     float cube = 0.044715f * xi * xi * xi;
-    packed_out[0] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
+    packed_out[0] = 0.5f * xi * (1.0f + precise::tanh(GELU_SCALING_FACTOR * (xi + cube)));
     xi = packed_inp[1];
     cube = 0.044715f * xi * xi * xi;
-    packed_out[1] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
+    packed_out[1] = 0.5f * xi * (1.0f + precise::tanh(GELU_SCALING_FACTOR * (xi + cube)));
     xi = packed_inp[2];
     cube = 0.044715f * xi * xi * xi;
-    packed_out[2] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
+    packed_out[2] = 0.5f * xi * (1.0f + precise::tanh(GELU_SCALING_FACTOR * (xi + cube)));
     xi = packed_inp[3];
     cube = 0.044715f * xi * xi * xi;
-    packed_out[3] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
+    packed_out[3] = 0.5f * xi * (1.0f + precise::tanh(GELU_SCALING_FACTOR * (xi + cube)));
 
     ((device packed_float4*)(out + idx_packed_float4))[0] = packed_out;
 }
@@ -139,7 +138,6 @@ kernel void residual_forward_kernel2(device float* out  [[ buffer(0) ]],
     packed_out[3] = packed_inp1[3] + packed_inp2[3];
 
     ((device packed_float4*)(out + idx_packed_float4))[0] = packed_out;
-
 }
 
 // --- attention_forward.metal
@@ -301,12 +299,11 @@ kernel void layernorm_forward_kernel1(device float* out [[ buffer(0) ]],
                                 device float* inp  [[ buffer(3) ]],
                                 device float* weight [[ buffer(4) ]],
                                 device float* bias [[ buffer(5) ]],
-                                constant uint& B [[ buffer(6) ]],
-                                constant uint& T [[ buffer(7) ]],
-                                constant uint& C [[ buffer(8) ]],
+                                constant uint& BT [[ buffer(6) ]],
+                                constant uint& C  [[ buffer(7) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
-    // if (idx >= B * T) { return; }
+    // if (idx >= BT) { return; }
 
     float eps = 1e-5f;
 

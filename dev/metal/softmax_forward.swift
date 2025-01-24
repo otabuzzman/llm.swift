@@ -110,7 +110,7 @@ private func softmax_forward(
 
     switch version {
     case 1:
-        try softmax_forward1(out, inp, B, T, V, block_size)
+        try softmax_forward1(out, inp, B, T, V, Vp, block_size)
     case 2, 3, 4, 5, 6, 7, 8:
         fatalError("layer-pass function \(#function) version \(version) not implemented")
     default:

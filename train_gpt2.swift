@@ -1085,7 +1085,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     // ensure the model was initialized or error out
     guard
         model.pointee.params_memory != nil
-        else { throw LlmSwiftError.wrongApiUsage(api: "\(#function)") }
+    else { throw LlmSwiftError.wrongApiUsage(api: "\(#function)") }
 
     // convenience parameters
     let V = model.pointee.config.vocab_size
@@ -1236,16 +1236,17 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     if let targets = targets {
 //        crossentropy_forward(acts.losses, acts.probs, targets, B, T, Vp)
         try crossentropy_forward1(acts.losses, acts.probs, targets, B, T, Vp)
+        try launchPad?.commit(wait: true)
         // for convenience also evaluate the mean loss
         var mean_loss: Float = 0
         for i in 0..<B * T { mean_loss += acts.losses[i] }
         mean_loss /= Float(B * T)
         model.pointee.mean_loss = mean_loss
     } else {
+        try launchPad?.commit(wait: true)
         // if we don't have targets, we don't have a loss
         model.pointee.mean_loss = -1
     }
-    try launchPad?.commit(wait: true)
 }
 
 func gpt2_zero_grad(_ model: UnsafeMutablePointer<GPT2>) {
