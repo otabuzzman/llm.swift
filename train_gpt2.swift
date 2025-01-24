@@ -1141,6 +1141,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         "encoder_forward_kernel3",
         "layernorm_forward_kernel1",
         "matmul_forward_kernel1",
+        "add_bias_kernel1",
         "attention_query_key_kernel1",
         "attention_softmax_kernel1",
         "attention_value_kernel1",
@@ -1223,10 +1224,12 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         try matmul_forward1(l_fcproj, l_fch_gelu, l_fcprojw, l_fcprojb, B, T, 4 * C, C)
         try residual_forward2(l_residual3, l_residual2, l_fcproj, B * T * C)
     }
-    try launchPad?.commit(wait: true)
     residual = acts.residual3 + (L - 1) * B * T * C // last residual is in residual3
-    layernorm_forward(acts.lnf, acts.lnf_mean, acts.lnf_rstd, residual, params.lnfw, params.lnfb, B, T, C)
-    await matmul_forward(acts.logits, acts.lnf, params.wte, nil, B, T, C, Vp)
+//    layernorm_forward(acts.lnf, acts.lnf_mean, acts.lnf_rstd, residual, params.lnfw, params.lnfb, B, T, C)
+//    await matmul_forward(acts.logits, acts.lnf, params.wte, nil, B, T, C, Vp)
+    try layernorm_forward1(acts.lnf, acts.lnf_mean, acts.lnf_rstd, residual, params.lnfw, params.lnfb, B, T, C)
+    try matmul_forward1(acts.logits, acts.lnf, params.wte, nil, B, T, C, Vp)
+    try launchPad?.commit(wait: true)
     await softmax_forward(acts.probs, acts.logits, B, T, V, Vp)
 
     // also forward the cross-entropy loss function if we have the targets
