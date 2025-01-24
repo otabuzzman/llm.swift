@@ -1138,7 +1138,18 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     let kernels = [
         "encoder_forward_kernel1",
         "encoder_forward_kernel2",
-        "encoder_forward_kernel3"
+        "encoder_forward_kernel3",
+        "layernorm_forward_kernel1",
+        "matmul_forward_kernel1",
+        "attention_query_key_kernel1",
+        "attention_softmax_kernel1",
+        "attention_value_kernel1",
+        "residual_forward_kernel1",
+        "residual_forward_kernel2",
+        "gelu_forward_kernel1",
+        "gelu_forward_kernel2",
+        "softmax_forward_kernel1",
+        "crossentropy_forward_kernel1"
     ]
     for kernel in kernels {
         do {
@@ -1152,9 +1163,8 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     let acts = model.pointee.acts
     var residual: UnsafeMutablePointer<Float>
 
-    encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
-//    try encoder_forward3(acts.encoded, inputs, params.wte, params.wpe, B, T, C)
-//    try launchPad?.commit(wait: true)
+//    encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
+    try encoder_forward3(acts.encoded, inputs, params.wte, params.wpe, B, T, C)
     for l in 0..<L {
         try Task.checkCancellation()
         residual = l == 0 ? acts.encoded : acts.residual3 + (l - 1) * B * T * C
@@ -1192,17 +1202,28 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         let l_residual3 = acts.residual3 + l * B * T * C
 
         // now do the forward pass
-        layernorm_forward(l_ln1, l_ln1_mean, l_ln1_rstd, residual, l_ln1w, l_ln1b, B, T, C)
-        await matmul_forward(l_qkv, l_ln1, l_qkvw, l_qkvb, B, T, C, 3 * C)
-        await attention_forward(l_atty, l_preatt, l_att, l_qkv, B, T, C, NH)
-        await matmul_forward(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C)
-        residual_forward(l_residual2, residual, l_attproj, B * T * C)
-        layernorm_forward(l_ln2, l_ln2_mean, l_ln2_rstd, l_residual2, l_ln2w, l_ln2b, B, T, C)
-        await matmul_forward(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4 * C)
-        gelu_forward(l_fch_gelu, l_fch, B * T * 4 * C)
-        await matmul_forward(l_fcproj, l_fch_gelu, l_fcprojw, l_fcprojb, B, T, 4 * C, C)
-        residual_forward(l_residual3, l_residual2, l_fcproj, B * T * C)
+//        layernorm_forward(l_ln1, l_ln1_mean, l_ln1_rstd, residual, l_ln1w, l_ln1b, B, T, C)
+//        await matmul_forward(l_qkv, l_ln1, l_qkvw, l_qkvb, B, T, C, 3 * C)
+//        await attention_forward(l_atty, l_preatt, l_att, l_qkv, B, T, C, NH)
+//        await matmul_forward(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C)
+//        residual_forward(l_residual2, residual, l_attproj, B * T * C)
+//        layernorm_forward(l_ln2, l_ln2_mean, l_ln2_rstd, l_residual2, l_ln2w, l_ln2b, B, T, C)
+//        await matmul_forward(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4 * C)
+//        gelu_forward(l_fch_gelu, l_fch, B * T * 4 * C)
+//        await matmul_forward(l_fcproj, l_fch_gelu, l_fcprojw, l_fcprojb, B, T, 4 * C, C)
+//        residual_forward(l_residual3, l_residual2, l_fcproj, B * T * C)
+        try layernorm_forward1(l_ln1, l_ln1_mean, l_ln1_rstd, residual, l_ln1w, l_ln1b, B, T, C)
+        try matmul_forward1(l_qkv, l_ln1, l_qkvw, l_qkvb, B, T, C, 3 * C)
+        try attention_forward1(l_atty, l_preatt, l_att, l_qkv, B, T, C, NH)
+        try matmul_forward1(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C)
+        try residual_forward2(l_residual2, residual, l_attproj, B * T * C)
+        try layernorm_forward1(l_ln2, l_ln2_mean, l_ln2_rstd, l_residual2, l_ln2w, l_ln2b, B, T, C)
+        try matmul_forward1(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4 * C)
+        try gelu_forward1(l_fch_gelu, l_fch, B * T * 4 * C)
+        try matmul_forward1(l_fcproj, l_fch_gelu, l_fcprojw, l_fcprojb, B, T, 4 * C, C)
+        try residual_forward2(l_residual3, l_residual2, l_fcproj, B * T * C)
     }
+    try launchPad?.commit(wait: true)
     residual = acts.residual3 + (L - 1) * B * T * C // last residual is in residual3
     layernorm_forward(acts.lnf, acts.lnf_mean, acts.lnf_rstd, residual, params.lnfw, params.lnfb, B, T, C)
     await matmul_forward(acts.logits, acts.lnf, params.wte, nil, B, T, C, Vp)

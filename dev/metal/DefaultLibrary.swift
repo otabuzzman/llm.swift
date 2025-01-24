@@ -68,7 +68,8 @@ kernel void gelu_forward_kernel1(device float* out [[ buffer(0) ]],
 
     float xi = inp[idx];
     float cube = 0.044715f * xi * xi * xi;
-    out[idx] = 0.5f * xi * (1.0f + tanh(GELU_SCALING_FACTOR * (xi + cube)));
+    // precise due to -ffast-math. without yields NANs in `gpt2_forward´ (but standalone ok).
+    out[idx] = 0.5f * xi * (1.0f + precise::tanh(GELU_SCALING_FACTOR * (xi + cube)));
 }
 
 kernel void gelu_forward_kernel2(device float* out [[ buffer(0) ]],
