@@ -171,14 +171,14 @@ func layernorm_forward(_ argc: Int, _ argv: [String]) throws {
     print("All results match. Starting benchmarks.\n")
 
     let repeat_times = 2000
-    var elapsed_time: Double = 0
+
     // CPU for comparison
+    let start = Date()
     for _ in 0..<repeat_times {
-        let start = Date()
         layernorm_forward(out_cpu, mean_cpu, rstd_cpu, inp, weight, bias, B, T, C)
-        let end = Date()
-        elapsed_time += end.timeIntervalSince(start)
     }
+    let end = Date()
+    var elapsed_time = end.timeIntervalSince(start)
     elapsed_time /= Double(repeat_times)
     elapsed_time *= 1e3 // ms
 
@@ -186,18 +186,17 @@ func layernorm_forward(_ argc: Int, _ argv: [String]) throws {
 
     for block_size in block_sizes {
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h
-        elapsed_time = 0
+        let start = Date()
         for _ in 0..<repeat_times {
             // clear L2
             // TODO: if necessary and applicable
 
-            let start = Date()
             try layernorm_forward(kernel_num, out_gpu, mean_gpu, rstd_gpu, inp, weight, bias, B, T, C, block_size)
-            let end = Date()
-            elapsed_time += end.timeIntervalSince(start)
         }
-        elapsed_time *= 1e3 // ms
+        let end = Date()
+        elapsed_time = end.timeIntervalSince(start)
         elapsed_time /= Double(repeat_times)
+        elapsed_time *= 1e3 // ms
 
         // napkin math: estimate the memory bandwidth achieved
         // and e.g. A100 40GB PCIe is advertised at 1,555GB/s

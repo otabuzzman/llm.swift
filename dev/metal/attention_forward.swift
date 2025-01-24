@@ -279,14 +279,14 @@ func attention_forward(_ argc: Int, _ argv: [String]) throws {
     first_run_validation = false
 
     let repeat_times = 100
-    var elapsed_time: Double = 0
+
     // CPU for comparison
+    let start = Date()
     for _ in 0..<repeat_times {
-        let start = Date()
         attention_forward(out_cpu, preatt_cpu, att_cpu, inp, B, T, C, NH)
-        let end = Date()
-        elapsed_time += end.timeIntervalSince(start)
     }
+    let end = Date()
+    var elapsed_time = end.timeIntervalSince(start)
     elapsed_time /= Double(repeat_times)
     elapsed_time *= 1e3 // ms
 
@@ -294,18 +294,17 @@ func attention_forward(_ argc: Int, _ argv: [String]) throws {
 
     for block_size in block_sizes {
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h
-        elapsed_time = 0
+        let start = Date()
         for _ in 0..<repeat_times {
             // clear L2
             // TODO: if necessary and applicable
 
-            let start = Date()
             try attention_forward(kernel_num, out_gpu, preatt_gpu, att_gpu, inp, B, T, C, NH, block_size)
-            let end = Date()
-            elapsed_time += end.timeIntervalSince(start)
         }
-        elapsed_time *= 1e3 // ms
+        let end = Date()
+        elapsed_time = end.timeIntervalSince(start)
         elapsed_time /= Double(repeat_times)
+        elapsed_time *= 1e3 // ms
 
         print("block_size \(String(format: "%4d", block_size)) | time \(String(format: "%.4f", elapsed_time)) ms")
     }

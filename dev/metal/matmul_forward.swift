@@ -181,31 +181,30 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
 
     print("All results match. Starting benchmarks.\n")
 
-    var elapsed_time: Double = 0
+    let repeat_times = 100
+
     // CPU for comparison
     let start = Date()
     matmul_forward(out_cpu, inp, weight, biasOrNil, B, T, C, OC)
     let end = Date()
-    elapsed_time = end.timeIntervalSince(start)
+    var elapsed_time = end.timeIntervalSince(start)
     elapsed_time *= 1e3 // ms
 
     print("CPU time \(String(format: "%.4f", elapsed_time)) ms")
 
     for sqrt_block_size in sqrt_block_sizes {
-        let repeat_times = 100
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h
-        elapsed_time = 0
+        let start = Date()
         for _ in 0..<repeat_times {
             // clear L2
             // TODO: if necessary and applicable
 
-            let start = Date()
             try matmul_forward(kernel_num, out_gpu, inp, weight, biasOrNil, B, T, C, OC, sqrt_block_size)
-            let end = Date()
-            elapsed_time += end.timeIntervalSince(start)
         }
-        elapsed_time *= 1e3 // ms
+        let end = Date()
+        elapsed_time = end.timeIntervalSince(start)
         elapsed_time /= Double(repeat_times)
+        elapsed_time *= 1e3 // ms
 
         // napkin math: estimate the flops achieved
         // e.g. A100 40GB PCIe is advertised at 19.5 TFLOPS fp32

@@ -119,14 +119,14 @@ func crossentropy_forward(_ argc: Int, _ argv: [String]) throws {
     print("All results match. Starting benchmarks.\n")
 
     let repeat_times = 1000
-    var elapsed_time: Double = 0
+
     // CPU for comparison
+    let start = Date()
     for _ in 0..<repeat_times {
-        let start = Date()
         crossentropy_forward(out_cpu, losses, targets, B, T, V)
-        let end = Date()
-        elapsed_time += end.timeIntervalSince(start)
     }
+    let end = Date()
+    var elapsed_time = end.timeIntervalSince(start)
     elapsed_time /= Double(repeat_times)
     elapsed_time *= 1e3 // ms
 
@@ -134,18 +134,17 @@ func crossentropy_forward(_ argc: Int, _ argv: [String]) throws {
 
     for block_size in block_sizes {
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h
-        elapsed_time = 0
+        let start = Date()
         for _ in 0..<repeat_times {
             // clear L2
             // TODO: if necessary and applicable
 
-            let start = Date()
             try crossentropy_forward(kernel_num, out_gpu, losses, targets, B, T, V, block_size)
-            let end = Date()
-            elapsed_time += end.timeIntervalSince(start)
         }
-        elapsed_time *= 1e3 // ms
+        let end = Date()
+        elapsed_time = end.timeIntervalSince(start)
         elapsed_time /= Double(repeat_times)
+        elapsed_time *= 1e3 // ms
 
         // napkin math: estimate the memory bandwidth achieved
         // and e.g. A100 40GB PCIe is advertised at 1,555GB/s
