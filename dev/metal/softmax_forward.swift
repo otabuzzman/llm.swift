@@ -77,6 +77,7 @@ func softmax_forward(
 }
 
 // shader specific launch stub
+// swiftlint:disable:next function_parameter_count
 func softmax_forward1(
     _ out: UnsafeMutablePointer<Float>,
     _ inp: UnsafePointer<Float>,
@@ -96,6 +97,7 @@ func softmax_forward1(
 }
 
 // version dispatcher
+// swiftlint:disable:next function_parameter_count
 private func softmax_forward(
     _ version: Int,
     _ out: UnsafeMutablePointer<Float>,

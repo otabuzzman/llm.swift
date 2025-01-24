@@ -1230,14 +1230,12 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
 //    await softmax_forward(acts.probs, acts.logits, B, T, V, Vp)
     try layernorm_forward1(acts.lnf, acts.lnf_mean, acts.lnf_rstd, residual, params.lnfw, params.lnfb, B, T, C)
     try matmul_forward1(acts.logits, acts.lnf, params.wte, nil, B, T, C, Vp)
-    try launchPad?.commit(wait: true)
-    await softmax_forward(acts.probs, acts.logits, B, T, V, Vp)
-//    try softmax_forward1(acts.probs, acts.logits, B, T, V, Vp)
-//    try launchPad?.commit(wait: true)
+    try softmax_forward1(acts.probs, acts.logits, B, T, V, Vp)
 
     // also forward the cross-entropy loss function if we have the targets
     if let targets = targets {
-        crossentropy_forward(acts.losses, acts.probs, targets, B, T, Vp)
+//        crossentropy_forward(acts.losses, acts.probs, targets, B, T, Vp)
+        try crossentropy_forward1(acts.losses, acts.probs, targets, B, T, Vp)
         // for convenience also evaluate the mean loss
         var mean_loss: Float = 0
         for i in 0..<B * T { mean_loss += acts.losses[i] }
@@ -1247,6 +1245,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         // if we don't have targets, we don't have a loss
         model.pointee.mean_loss = -1
     }
+    try launchPad?.commit(wait: true)
 }
 
 func gpt2_zero_grad(_ model: UnsafeMutablePointer<GPT2>) {

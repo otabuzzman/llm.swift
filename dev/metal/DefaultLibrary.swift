@@ -53,6 +53,7 @@ kernel void softmax_forward_kernel1(device float* out [[ buffer(0) ]],
     for (int j = 0; j < V; j++) {
         out_row[j] /= sum;
     }
+    // set probabilities for filled tokens to zero (as in CPU layer function)
     for (int j = V; j < Vp; j++) {
         out_row[j] = 0.0;
     }
