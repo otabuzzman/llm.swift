@@ -154,7 +154,7 @@ extension LaunchPad {
         } else {
             let threadsPerSimdGroup = kernel.threadExecutionWidth // CUDA warp size
             let simdGroupsPerGroup = kernel.maxTotalThreadsPerThreadgroup / threadsPerSimdGroup
-            threadsPerGroup = MTLSize(simdGroupsPerGroup, threadsPerSimdGroup)
+            threadsPerGroup = MTLSize(simdGroupsPerGroup * threadsPerSimdGroup)
         }
         encoder?.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
     }
