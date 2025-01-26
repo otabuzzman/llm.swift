@@ -135,9 +135,7 @@ func test_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws
     for step in 0..<10 {
         let start = Date.timeIntervalSinceReferenceDate
 
-        let forward_start = Date()
         try await gpt2_forward(&model, x.baseAddress!, y.baseAddress!, B, T, stdlog)
-        let forward_end = Date()
         gpt2_zero_grad(&model)
         try await gpt2_backward(&model)
 
@@ -210,8 +208,6 @@ func test_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws
 
         // print the timing information at the end
         stdlog?("step \(step): loss \(model.mean_loss) (took \(String(format: "%1.2f", (end - start) * 1000)) ms) OK = \(step_loss_ok)\n")
-
-        stdlog?("forward pass took \(String(format: "%.4f", forward_end.timeIntervalSince(forward_start) * 1e3)) ms\n")
     }
 
     // final judgement
