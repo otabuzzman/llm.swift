@@ -224,6 +224,7 @@
 				B01BDFD42D3D8BD1004CBF13 /* Sources */,
 				B01BDFE02D3D8BD1004CBF13 /* Frameworks */,
 				B01BDFE22D3D8BD1004CBF13 /* ShellScript */,
+				B01BE0272D4793F9004CBF13 /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -341,6 +342,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "test $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME test_gpt2\ntest $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME train_gpt2\nexit 0\n";
+		};
+		B01BE0272D4793F9004CBF13 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				$METAL_LIBRARY_OUTPUT_DIR/$METAL_LIBRARY_FILE_BASE.metallib,
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				dev/metal/$METAL_LIBRARY_FILE_BASE.metallib,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "test $CONFIGURATION = Release && ln -s $METAL_LIBRARY_OUTPUT_DIR/$METAL_LIBRARY_FILE_BASE.metallib dev/metal/$METAL_LIBRARY_FILE_BASE.metallib\nexit 0\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -623,6 +643,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=1";
+				MTL_MATH_MODE = FAST;
 				OTHER_CFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.otabuzzman.llm-swift";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -646,6 +667,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_OPTIMIZATION_LEVEL = fast;
 				GCC_PREPROCESSOR_DEFINITIONS = "";
+				MTL_MATH_MODE = FAST;
 				OTHER_CFLAGS = "";
 				OTHER_SWIFT_FLAGS = "-Xcc -ffast-math";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.otabuzzman.llm-swift";
