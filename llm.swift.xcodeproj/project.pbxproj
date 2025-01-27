@@ -334,10 +334,13 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				$BUILD_DIR/$CONFIGURATION/$TARGET_NAME,
 			);
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				test_gpt2,
+				train_gpt2,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

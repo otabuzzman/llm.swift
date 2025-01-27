@@ -173,7 +173,7 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
             biasOrNil = nil
         default:
             let argNum = Int(arg) ?? 0
-            if argBlockSize { block_sizes = [argNum] ; argBlockSize = false ; continue }
+            if argBlockSize { sqrt_block_sizes = [argNum] ; argBlockSize = false ; continue }
 
             kernel_num = argNum
         }
@@ -185,7 +185,7 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
         matmul_forward(out_cpu, inp, weight, biasOrNil, B, T, C, OC)
 
         // time the kernel at different block sizes
-        for block_size in block_sizes {
+        for sqrt_block_size in sqrt_block_sizes {
             print("Checking block size \(sqrt_block_size)\(sqrt_block_size == 0 ? " (computed)" : "")")
             try matmul_forward(kernel_num, out_gpu, inp, weight, biasOrNil, B, T, C, OC, sqrt_block_size)
             try launchPad?.commit(wait: true)
@@ -197,6 +197,8 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
 
     print("Starting benchmarks.\n")
 
+    let repeat_times = 100
+    var elapsed_time: Double = 0
     for sqrt_block_size in sqrt_block_sizes {
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h
         let start = Date()
