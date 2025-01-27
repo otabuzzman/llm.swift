@@ -40,7 +40,7 @@
 import Metal
 
 // known kernel (Metal shader) versions
-private let versions = 1...10
+private let versions = 0...10
 private let excludeVersions = 7...9
 
 // TODO: check if applicable for macOS
@@ -192,6 +192,8 @@ private func attention_forward(
     else { throw LlmSwiftError.wrongApiUsage(api: "\(#function) version \(version) unknown") }
 
     switch version {
+    case 0: // CPU layer-pass function for comparison
+        attention_forward(out, preatt, att, inp, B, T, C, NH)
     case 1:
         try attention_forward1(out, preatt, att, inp, B, T, C, NH, block_size)
     case 2, 3, 4, 5, 6, 10:
@@ -249,49 +251,55 @@ func attention_forward(_ argc: Int, _ argv: [String]) throws {
         inp.deallocate()
     }
 
-    // read kernel_num from command line
+    // defaults
     var kernel_num = 1
-    if argv.count > 1 {
-        kernel_num = Int(argv[1]) ?? 1
+    var block_sizes = [0, 32, 64, 128, 256, 512]
+
+    // command line arguments
+    var argNoCheck = false
+    var argBlockSize = false
+    for arg in argv[1..<argv.count] {
+        switch arg {
+        case "nocheck":
+            argNoCheck = true
+        case "blocksize":
+            argBlockSize = true
+        default:
+            let argNum = Int(arg) ?? 0
+            if argBlockSize { block_sizes = [argNum] ; argBlockSize = false ; continue }
+
+            kernel_num = argNum
+        }
     }
     print("Using kernel \(kernel_num)")
 
     // first check the correctness of the kernel
-    attention_forward(out_cpu, preatt_cpu, att_cpu, inp, B, T, C, NH)
+    if !argNoCheck {
+        attention_forward(out_gpu, preatt_gpu, att_gpu, inp, B, T, C, NH)
 
-    // time the kernel at different block sizes
-    let block_sizes = [0, 32, 64, 128, 256, 512]
-    for block_size in block_sizes {
-        print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
-        try attention_forward(kernel_num, out_gpu, preatt_gpu, att_gpu, inp, B, T, C, NH, block_size)
-        try launchPad?.commit(wait: true)
-        let accuracy_threshold: Float = kernel_num <= 4 ? 1e-3 : 1e-2
-        try validate_result(out_gpu, out_cpu, "out", B * T * C, accuracy_threshold)
-        if kernel_num != 2 && kernel_num < 5 {
-            try validate_result(att_gpu, att_cpu, "att", B * NH * T * T, accuracy_threshold)
+        // time the kernel at different block sizes
+        for block_size in block_sizes {
+            print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
+            try attention_forward(kernel_num, out_gpu, preatt_gpu, att_gpu, inp, B, T, C, NH, block_size)
+            try launchPad?.commit(wait: true)
+            let accuracy_threshold: Float = kernel_num <= 4 ? 1e-3 : 1e-2
+            try validate_result(out_gpu, out_cpu, "out", B * T * C, accuracy_threshold)
+            if kernel_num != 2 && kernel_num < 5 {
+                try validate_result(att_gpu, att_cpu, "att", B * NH * T * T, accuracy_threshold)
+            }
+            if kernel_num != 2 && kernel_num < 4 {
+                try validate_result(preatt_gpu, preatt_cpu, "preatt", B * NH * T * T, accuracy_threshold)
+            }
         }
-        if kernel_num != 2 && kernel_num < 4 {
-            try validate_result(preatt_gpu, preatt_cpu, "preatt", B * NH * T * T, accuracy_threshold)
-        }
+        print("All results match. ")
     }
 
-    print("All results match. Starting benchmarks.\n")
+    print("Starting benchmarks.\n")
+
     first_run_validation = false
 
     let repeat_times = 100
-
-    // CPU for comparison
-    let start = Date()
-    for _ in 0..<repeat_times {
-        attention_forward(out_cpu, preatt_cpu, att_cpu, inp, B, T, C, NH)
-    }
-    let end = Date()
-    var elapsed_time = end.timeIntervalSince(start)
-    elapsed_time /= Double(repeat_times)
-    elapsed_time *= 1e3 // ms
-
-    print("CPU time \(String(format: "%.4f", elapsed_time)) ms")
-
+    var elapsed_time: Double = 0
     for block_size in block_sizes {
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h
         let start = Date()
