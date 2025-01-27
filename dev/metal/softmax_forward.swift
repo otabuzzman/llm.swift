@@ -34,7 +34,7 @@
 import Metal
 
 // known kernel (Metal shader) versions
-private let versions = 1...8
+private let versions = 0...8
 
 // overwrite async CPU version in `train_gpt2.swift´
 // swiftlint:disable:next function_parameter_count
@@ -109,6 +109,8 @@ private func softmax_forward(
     else { throw LlmSwiftError.wrongApiUsage(api: "\(#function) version \(version) unknown") }
 
     switch version {
+    case 0: // CPU layer-pass function for comparison
+        softmax_forward(out, inp, B, T, V, Vp)
     case 1:
         try softmax_forward1(out, inp, B, T, V, Vp, block_size)
     case 2, 3, 4, 5, 6, 7, 8:
@@ -147,49 +149,47 @@ func softmax_forward(_ argc: Int, _ argv: [String]) throws {
         inp.deallocate()
     }
 
-    // read kernel_num from command line
+    // defaults
     var kernel_num = 1
-    if argv.count > 1 {
-        kernel_num = Int(argv[1]) ?? 1
+    var block_sizes = [0, 32, 64, 128, 256, 512, 1024]
+
+    // command line arguments
+    var argNoCheck = false
+    var argBlockSize = false
+    for arg in argv[1..<argv.count] {
+        switch arg {
+        case "nocheck":
+            argNoCheck = true
+        case "blocksize":
+            argBlockSize = true
+        default:
+            let argNum = Int(arg) ?? 0
+            if argBlockSize { block_sizes = [argNum] ; argBlockSize = false ; continue }
+
+            kernel_num = argNum
+        }
     }
     print("Using kernel \(kernel_num)")
 
     // first check the correctness of the kernel
-    softmax_forward(out_cpu, inp, B, T, V, V)
+    if !argNoCheck {
+        softmax_forward(out_cpu, inp, B, T, V, V)
 
-    var max_el = -Float.infinity
-    for i in 0..<B * T * V {
-        max_el = max(max_el, out_cpu[i])
-    }
-    assert(max_el > 1e-4)
-    print("Largest output is: \(max_el)\n")
-
-    // time the kernel at different block sizes
-    let block_sizes = [0, 32, 64, 128, 256, 512, 1024]
-    for block_size in block_sizes {
-        print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
-        try softmax_forward(kernel_num, out_gpu, inp, B, T, V, V, block_size)
-        try launchPad?.commit(wait: true)
-        let tol: Float = 1e-4
-        try validate_result(out_gpu, out_cpu, "out", B * T * V, tol)
+        // time the kernel at different block sizes
+        for block_size in block_sizes {
+            print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
+            try softmax_forward(kernel_num, out_gpu, inp, B, T, V, V, block_size)
+            try launchPad?.commit(wait: true)
+            let tol: Float = 1e-4
+            try validate_result(out_gpu, out_cpu, "out", B * T * V, tol)
+        }
+        print("All results match. ")
     }
 
-    print("All results match. Starting benchmarks.\n")
+    print("Starting benchmarks.\n")
 
     let repeat_times = 100
-
-    // CPU for comparison
-    let start = Date()
-    for _ in 0..<repeat_times {
-        softmax_forward(out_cpu, inp, B, T, V, V)
-    }
-    let end = Date()
-    var elapsed_time = end.timeIntervalSince(start)
-    elapsed_time /= Double(repeat_times)
-    elapsed_time *= 1e3 // ms
-
-    print("CPU time \(String(format: "%.4f", elapsed_time)) ms")
-
+    var elapsed_time: Double = 0
     for block_size in block_sizes {
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h
         let start = Date()
