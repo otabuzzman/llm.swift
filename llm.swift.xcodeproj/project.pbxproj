@@ -70,6 +70,7 @@
 		B01BE0182D425109004CBF13 /* softmax_forward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = softmax_forward.swift; sourceTree = "<group>"; };
 		B01BE01B2D426ABC004CBF13 /* crossentropy_forward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = crossentropy_forward.swift; sourceTree = "<group>"; };
 		B01BE01E2D46C40F004CBF13 /* DefaultLibrary.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = DefaultLibrary.metal; sourceTree = "<group>"; };
+		B01BE0222D476A72004CBF13 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultLibrary.swift; sourceTree = "<group>"; };
 		B08B38A02D2C712E007ED5D0 /* LaunchPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchPad.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -120,6 +121,7 @@
 				1883FBFB2BF6746D00F75687 /* train_gpt2.swift */,
 				1883FBF02BF6714200F75687 /* llm.swift */,
 				B01BDFCB2D3056A0004CBF13 /* layer_pass */,
+				B01BE0212D476A72004CBF13 /* Frameworks */,
 				1883FBEF2BF6714200F75687 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -151,6 +153,14 @@
 				1883FC052BFF2D9600F75687 /* utils.swift */,
 			);
 			path = llmc;
+			sourceTree = "<group>";
+		};
+		B01BE0212D476A72004CBF13 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				B01BE0222D476A72004CBF13 /* Metal.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		B08B389D2D2C704D007ED5D0 /* metal */ = {
@@ -188,6 +198,7 @@
 			buildPhases = (
 				1883FBEA2BF6714200F75687 /* Sources */,
 				1883FBEB2BF6714200F75687 /* Frameworks */,
+				B01BE0252D477947004CBF13 /* ShellScript */,
 				1883FC142C43CE2A00F75687 /* ShellScript */,
 			);
 			buildRules = (
@@ -277,17 +288,16 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
-				$BUILD_DIR/$CONFIGURATION/$TARGET_NAME,
+				$METAL_LIBRARY_OUTPUT_DIR/$METAL_LIBRARY_FILE_BASE.metallib,
 			);
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				test_gpt2,
-				train_gpt2,
+				$METAL_LIBRARY_FILE_BASE.metallib,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "test $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME test_gpt2\ntest $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME train_gpt2\nexit 0\n";
+			shellScript = "test $CONFIGURATION = Release && ln -s $METAL_LIBRARY_OUTPUT_DIR/$METAL_LIBRARY_FILE_BASE.metallib $METAL_LIBRARY_FILE_BASE.metallib\nexit 0\n";
 		};
 		B01BDFE22D3D8BD1004CBF13 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -314,6 +324,23 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "test $CONFIGURATION = Release && {\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/encoder_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/layernorm_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/matmul_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/attention_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/residual_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/gelu_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/softmax_forward\n    ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME \\\n        dev/metal/crossentropy_forward\n}\nexit 0\n";
+		};
+		B01BE0252D477947004CBF13 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "test $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME test_gpt2\ntest $CONFIGURATION = Release && ln -s $BUILD_DIR/$CONFIGURATION/$TARGET_NAME train_gpt2\nexit 0\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

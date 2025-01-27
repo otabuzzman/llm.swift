@@ -59,13 +59,13 @@ extension LaunchPad {
             throw LaunchPadError.apiReturnedNil(api: "makeCommandQueue")
         }
         self.queue = queue
-        guard
-            let library = device.makeDefaultLibrary()
-        else { throw LaunchPadError.apiReturnedNil(api: "makeDefaultLibrary") }
-        self.library = library
-//        do {
-//            self.library = try device.makeLibrary(source: defaultLibrary, options: nil)
-//        } catch { throw LaunchPadError.apiException(api: "makeLibrary", error: error)}
+        do {
+            #if os(macOS)
+            self.library = try device.makeDefaultLibrary(bundle: Bundle.main)
+            #else
+            self.library = try device.makeLibrary(source: defaultLibrary, options: nil)
+            #endif
+        } catch { throw LaunchPadError.apiException(api: "makeLibrary", error: error)}
 
         try makeTransientObjects()
     }
