@@ -24,7 +24,7 @@
 import Metal
 
 // known kernel (Metal shader) versions
-private let versions = 1...4
+private let versions = 0...4
 
 // overwrite async CPU version in `train_gpt2.swift´
 // swiftlint:disable:next function_parameter_count
@@ -99,6 +99,8 @@ private func matmul_forward(
     else { throw LlmSwiftError.wrongApiUsage(api: "\(#function) version \(version) unknown") }
 
     switch version {
+    case 0: // CPU layer-pass function for comparison
+        matmul_forward(out, inp, weight, bias, B, T, C, OC)
     case 1:
         try matmul_forward1(out, inp, weight, bias, B, T, C, OC, block_size)
     case 2, 3, 4:
@@ -153,44 +155,47 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
         bias.deallocate()
     }
 
-    // read kernel_num from command line
+    // defaults
     var kernel_num = 1
+    var sqrt_block_sizes = [0, 4, 8, 16, 32]
+
+    // command line arguments
+    var argNoCheck = false
+    var argBlockSize = false
     var biasOrNil: UnsafeMutablePointer<Float>? = bias
-    for arg in argv {
+    for arg in argv[1..<argv.count] {
         switch arg {
+        case "nocheck":
+            argNoCheck = true
+        case "blocksize":
+            argBlockSize = true
         case "nobias":
             biasOrNil = nil
         default:
-            kernel_num = Int(arg) ?? 1
+            let argNum = Int(arg) ?? 0
+            if argBlockSize { block_sizes = [argNum] ; argBlockSize = false ; continue }
+
+            kernel_num = argNum
         }
     }
     print("Using kernel \(kernel_num)")
 
     // first check the correctness of the kernel
-    matmul_forward(out_cpu, inp, weight, biasOrNil, B, T, C, OC)
+    if !argNoCheck {
+        matmul_forward(out_cpu, inp, weight, biasOrNil, B, T, C, OC)
 
-    // time the kernel at different block sizes
-    let sqrt_block_sizes = [0, 4, 8, 16, 32]
-    for sqrt_block_size in sqrt_block_sizes {
-        print("Checking block size \(sqrt_block_size)\(sqrt_block_size == 0 ? " (computed)" : "")")
-        try matmul_forward(kernel_num, out_gpu, inp, weight, biasOrNil, B, T, C, OC, sqrt_block_size)
-        try launchPad?.commit(wait: true)
-        let tol: Float = 1e-5
-        try validate_result(out_gpu, out_cpu, "out", B * T * OC, tol)
+        // time the kernel at different block sizes
+        for block_size in block_sizes {
+            print("Checking block size \(sqrt_block_size)\(sqrt_block_size == 0 ? " (computed)" : "")")
+            try matmul_forward(kernel_num, out_gpu, inp, weight, biasOrNil, B, T, C, OC, sqrt_block_size)
+            try launchPad?.commit(wait: true)
+            let tol: Float = 1e-5
+            try validate_result(out_gpu, out_cpu, "out", B * T * OC, tol)
+        }
+        print("All results match. ")
     }
 
-    print("All results match. Starting benchmarks.\n")
-
-    let repeat_times = 100
-
-    // CPU for comparison
-    let start = Date()
-    matmul_forward(out_cpu, inp, weight, biasOrNil, B, T, C, OC)
-    let end = Date()
-    var elapsed_time = end.timeIntervalSince(start)
-    elapsed_time *= 1e3 // ms
-
-    print("CPU time \(String(format: "%.4f", elapsed_time)) ms")
+    print("Starting benchmarks.\n")
 
     for sqrt_block_size in sqrt_block_sizes {
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h
