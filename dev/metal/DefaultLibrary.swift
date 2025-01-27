@@ -47,7 +47,7 @@ kernel void softmax_forward_kernel1(device float* out [[ buffer(0) ]],
     }
     float sum = 0.0;
     for (int j = 0; j < V; j++) {
-        out_row[j] = exp(inp_row[j] - maxval);
+        out_row[j] = precise::exp(inp_row[j] - maxval);
         sum += out_row[j];
     }
     for (int j = 0; j < V; j++) {
@@ -63,7 +63,7 @@ kernel void softmax_forward_kernel1(device float* out [[ buffer(0) ]],
 // #include <metal_stdlib>
 // using namespace metal;
 
-#define GELU_SCALING_FACTOR sqrt(2.0f / M_PI_F)
+#define GELU_SCALING_FACTOR precise::sqrt(2.0f / M_PI_F)
 kernel void gelu_forward_kernel1(device float* out [[ buffer(0) ]],
                                 device float* inp [[ buffer(1) ]],
                                 constant uint& N [[ buffer(2) ]],
@@ -174,7 +174,7 @@ kernel void attention_query_key_kernel1(device float* preatt  [[ buffer(0) ]],
     for (int i = 0; i < hs; i++) {
         val += query_t[i] * key_t2[i];
     }
-    val *= 1.0 / sqrt((float)hs);
+    val *= 1.0 / precise::sqrt((float)hs);
 
     preatt[idx] = val;
 }
@@ -206,7 +206,7 @@ kernel void attention_softmax_kernel1(device float* att  [[ buffer(0) ]],
     // calculate the exp and keep track of sum
     float expsum = 0.0f;
     for (int t2 = 0; t2 <= t; t2++) {
-        float expv = exp(preatt_bth[t2] - maxval);
+        float expv = precise::exp(preatt_bth[t2] - maxval);
         expsum += expv;
         att_bth[t2] = expv;
     }
