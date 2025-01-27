@@ -1164,7 +1164,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     let acts = model.pointee.acts
     var residual: UnsafeMutablePointer<Float>
 
-        let layers_start = Date()
+    let layers_start = Date()
 //    encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
     try encoder_forward3(acts.encoded, inputs, params.wte, params.wpe, B, T, C)
     for l in 0..<L {

@@ -41,6 +41,8 @@
 		B01BE01A2D425109004CBF13 /* softmax_forward.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01BE0182D425109004CBF13 /* softmax_forward.swift */; };
 		B01BE01C2D426ABC004CBF13 /* crossentropy_forward.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01BE01B2D426ABC004CBF13 /* crossentropy_forward.swift */; };
 		B01BE01D2D426ABC004CBF13 /* crossentropy_forward.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01BE01B2D426ABC004CBF13 /* crossentropy_forward.swift */; };
+		B01BE01F2D46C40F004CBF13 /* DefaultLibrary.metal in Sources */ = {isa = PBXBuildFile; fileRef = B01BE01E2D46C40F004CBF13 /* DefaultLibrary.metal */; };
+		B01BE0202D46C40F004CBF13 /* DefaultLibrary.metal in Sources */ = {isa = PBXBuildFile; fileRef = B01BE01E2D46C40F004CBF13 /* DefaultLibrary.metal */; };
 		B08B389F2D2C704D007ED5D0 /* DefaultLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */; };
 		B08B38A12D2C712E007ED5D0 /* LaunchPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08B38A02D2C712E007ED5D0 /* LaunchPad.swift */; };
 /* End PBXBuildFile section */
@@ -67,6 +69,7 @@
 		B01BE0152D4246F6004CBF13 /* gelu_forward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = gelu_forward.swift; sourceTree = "<group>"; };
 		B01BE0182D425109004CBF13 /* softmax_forward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = softmax_forward.swift; sourceTree = "<group>"; };
 		B01BE01B2D426ABC004CBF13 /* crossentropy_forward.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = crossentropy_forward.swift; sourceTree = "<group>"; };
+		B01BE01E2D46C40F004CBF13 /* DefaultLibrary.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = DefaultLibrary.metal; sourceTree = "<group>"; };
 		B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultLibrary.swift; sourceTree = "<group>"; };
 		B08B38A02D2C712E007ED5D0 /* LaunchPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchPad.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -154,6 +157,7 @@
 			isa = PBXGroup;
 			children = (
 				B08B389C2D2C704D007ED5D0 /* DefaultLibrary.swift */,
+				B01BE01E2D46C40F004CBF13 /* DefaultLibrary.metal */,
 				B01BDF822D2FAED9004CBF13 /* common.swift */,
 				B01BDF842D2FC24C004CBF13 /* encoder_forward.swift */,
 				B01BE0042D3E472B004CBF13 /* layernorm_forward.swift */,
@@ -321,6 +325,7 @@
 				1883FC042BF677E200F75687 /* main.swift in Sources */,
 				B08B38A12D2C712E007ED5D0 /* LaunchPad.swift in Sources */,
 				B08B389F2D2C704D007ED5D0 /* DefaultLibrary.swift in Sources */,
+				B01BE01F2D46C40F004CBF13 /* DefaultLibrary.metal in Sources */,
 				B01BDF832D2FAEDC004CBF13 /* common.swift in Sources */,
 				B01BDF852D2FC257004CBF13 /* encoder_forward.swift in Sources */,
 				B01BE0062D3E4983004CBF13 /* layernorm_forward.swift in Sources */,
@@ -345,6 +350,7 @@
 			files = (
 				B01BDFDD2D3D8BD1004CBF13 /* LaunchPad.swift in Sources */,
 				B01BDFD82D3D8BD1004CBF13 /* DefaultLibrary.swift in Sources */,
+				B01BE0202D46C40F004CBF13 /* DefaultLibrary.metal in Sources */,
 				B01BDFDC2D3D8BD1004CBF13 /* common.swift in Sources */,
 				B01BDFD52D3D8BD1004CBF13 /* encoder_forward.swift in Sources */,
 				B01BE0052D3E472B004CBF13 /* layernorm_forward.swift in Sources */,
@@ -539,6 +545,9 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=1";
+				INFOPLIST_KEY_MetalCaptureEnabled = YES;
+				MTL_COMPILER_FLAGS = "";
+				MTL_MATH_MODE = FAST;
 				OTHER_CFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.otabuzzman.llm-swift";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -562,6 +571,9 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_OPTIMIZATION_LEVEL = fast;
 				GCC_PREPROCESSOR_DEFINITIONS = "";
+				INFOPLIST_KEY_MetalCaptureEnabled = NO;
+				MTL_COMPILER_FLAGS = "";
+				MTL_MATH_MODE = FAST;
 				OTHER_CFLAGS = "";
 				OTHER_SWIFT_FLAGS = "-Xcc -ffast-math";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.otabuzzman.llm-swift";

@@ -59,9 +59,13 @@ extension LaunchPad {
             throw LaunchPadError.apiReturnedNil(api: "makeCommandQueue")
         }
         self.queue = queue
-        do {
-            self.library = try device.makeLibrary(source: defaultLibrary, options: nil)
-        } catch { throw LaunchPadError.apiException(api: "makeLibrary", error: error)}
+        guard
+            let library = device.makeDefaultLibrary()
+        else { throw LaunchPadError.apiReturnedNil(api: "makeDefaultLibrary") }
+        self.library = library
+//        do {
+//            self.library = try device.makeLibrary(source: defaultLibrary, options: nil)
+//        } catch { throw LaunchPadError.apiException(api: "makeLibrary", error: error)}
 
         try makeTransientObjects()
     }
