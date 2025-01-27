@@ -79,7 +79,7 @@ private func layernorm_forward(
 
     switch version {
     case 0: // CPU layer-pass function for comparison
-        ayernorm_forward(out, mean, rstd, inp, weight, bias, B, T, C)
+        layernorm_forward(out, mean, rstd, inp, weight, bias, B, T, C)
     case 1:
         try layernorm_forward1(out, mean, rstd, inp, weight, bias, B, T, C, block_size)
     case 2, 3, 4, 5, 6:
@@ -150,7 +150,7 @@ func layernorm_forward(_ argc: Int, _ argv: [String]) throws {
 
     // read kernel_num from command line
     var kernel_num = 1
-    let block_sizes = [0, 64, 128, 256, 512, 1024]
+    var block_sizes = [0, 64, 128, 256, 512, 1024]
 
     // command line arguments
     var argNoCheck = false
