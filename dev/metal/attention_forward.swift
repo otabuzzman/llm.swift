@@ -275,7 +275,7 @@ func attention_forward(_ argc: Int, _ argv: [String]) throws {
 
     // first check the correctness of the kernel
     if !argNoCheck {
-        attention_forward(out_gpu, preatt_gpu, att_gpu, inp, B, T, C, NH)
+        attention_forward(out_cpu, preatt_cpu, att_cpu, inp, B, T, C, NH)
 
         // time the kernel at different block sizes
         for block_size in block_sizes {
