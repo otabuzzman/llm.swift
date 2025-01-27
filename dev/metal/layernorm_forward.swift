@@ -31,7 +31,7 @@
 import Metal
 
 // known kernel (Metal shader) versions
-private let versions = 1...6
+private let versions = 0...6
 
 // shader specific launch stub
 // swiftlint:disable:next function_parameter_count
@@ -78,6 +78,8 @@ private func layernorm_forward(
     else { throw LlmSwiftError.wrongApiUsage(api: "\(#function) version \(version) unknown") }
 
     switch version {
+    case 0: // CPU layer-pass function for comparison
+        ayernorm_forward(out, mean, rstd, inp, weight, bias, B, T, C)
     case 1:
         try layernorm_forward1(out, mean, rstd, inp, weight, bias, B, T, C, block_size)
     case 2, 3, 4, 5, 6:
@@ -148,42 +150,47 @@ func layernorm_forward(_ argc: Int, _ argv: [String]) throws {
 
     // read kernel_num from command line
     var kernel_num = 1
-    if argv.count > 1 {
-        kernel_num = Int(argv[1]) ?? 1
+    let block_sizes = [0, 64, 128, 256, 512, 1024]
+
+    // command line arguments
+    var argNoCheck = false
+    var argBlockSize = false
+    for arg in argv[1..<argv.count] {
+        switch arg {
+        case "nocheck":
+            argNoCheck = true
+        case "blocksize":
+            argBlockSize = true
+        default:
+            let argNum = Int(arg) ?? 0
+            if argBlockSize { block_sizes = [argNum] ; argBlockSize = false ; continue }
+
+            kernel_num = argNum
+        }
     }
     print("Using kernel \(kernel_num)")
 
     // first check the correctness of the kernel
-    layernorm_forward(out_cpu, mean_cpu, rstd_cpu, inp, weight, bias, B, T, C)
+    if !argNoCheck {
+        layernorm_forward(out_cpu, mean_cpu, rstd_cpu, inp, weight, bias, B, T, C)
 
-    // time the kernel at different block sizes
-    let block_sizes = [0, 64, 128, 256, 512, 1024]
-    for block_size in block_sizes {
-        print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
-        try layernorm_forward(kernel_num, out_gpu, mean_gpu, rstd_gpu, inp, weight, bias, B, T, C, block_size)
-        try launchPad?.commit(wait: true)
-        let tol: Float = 1e-5
-        try validate_result(out_gpu, out_cpu, "out", B * T * C, tol)
-        try validate_result(mean_gpu, mean_cpu, "mean", B * T, tol)
-        try validate_result(rstd_gpu, rstd_cpu, "rstd", B * T, tol)
+        // time the kernel at different block sizes
+        for block_size in block_sizes {
+            print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
+            try layernorm_forward(kernel_num, out_gpu, mean_gpu, rstd_gpu, inp, weight, bias, B, T, C, block_size)
+            try launchPad?.commit(wait: true)
+            let tol: Float = 1e-5
+            try validate_result(out_gpu, out_cpu, "out", B * T * C, tol)
+            try validate_result(mean_gpu, mean_cpu, "mean", B * T, tol)
+            try validate_result(rstd_gpu, rstd_cpu, "rstd", B * T, tol)
+        }
+        print("All results match. ")
     }
 
-    print("All results match. Starting benchmarks.\n")
+    print("Starting benchmarks.\n")
 
     let repeat_times = 2000
-
-    // CPU for comparison
-    let start = Date()
-    for _ in 0..<repeat_times {
-        layernorm_forward(out_cpu, mean_cpu, rstd_cpu, inp, weight, bias, B, T, C)
-    }
-    let end = Date()
-    var elapsed_time = end.timeIntervalSince(start)
-    elapsed_time /= Double(repeat_times)
-    elapsed_time *= 1e3 // ms
-
-    print("CPU time \(String(format: "%.4f", elapsed_time)) ms")
-
+    var elapsed_time: Double = 0
     for block_size in block_sizes {
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h
         let start = Date()
