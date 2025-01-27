@@ -45,6 +45,9 @@ struct LaunchPad {
     // transient objects
     private var command: MTLCommandBuffer?
     private var encoder: MTLComputeCommandEncoder?
+
+    private let captureM = MTLCaptureManager.shared()
+    private let captureD = MTLCaptureDescriptor()
 }
 
 extension LaunchPad {
@@ -66,6 +69,11 @@ extension LaunchPad {
             self.library = try device.makeLibrary(source: defaultLibrary, options: nil)
             #endif
         } catch { throw LaunchPadError.apiException(api: "makeLibrary", error: error)}
+
+        captureD.captureObject = device
+        captureD.destination = .developerTools
+
+        try captureM.startCapture(with: captureD)
 
         try makeTransientObjects()
     }
@@ -169,6 +177,7 @@ extension LaunchPad {
         command?.commit()
         if wait { command?.waitUntilCompleted() }
 
+        captureM.stopCapture()
         try makeTransientObjects()
     }
 }
