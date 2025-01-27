@@ -40,7 +40,7 @@ private let versions = 0...8
 // swiftlint:disable:next function_parameter_count
 func softmax_forward(
     _ probs: UnsafeMutablePointer<Float>,
-    _ logits: UnsafeMutablePointer<Float>,
+    _ logits: UnsafePointer<Float>,
     _ B: Int, _ T: Int, _ V: Int, _ Vp: Int) {
     // output: probs are (B,T,Vp) of the probabilities (sums to 1.0 in each b,t position)
     // input: logits is (B,T,Vp) of the unnormalized log probabilities
