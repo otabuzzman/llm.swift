@@ -95,9 +95,10 @@ func matmul_forward2(
     _ block_size: Int = 0) throws {
     // ...
 
+    guard let bias = bias else { return }
     let context = KernelContext(threadsPerGrid: B * T * OC, threadsPerGroup: block_size)
 
-    params = [
+    let params: [KernelParam] = [
         UnsafeMutableRawPointer(out),
         UnsafeMutableRawPointer(mutating: bias),
         Int32(B * T), Int32(OC)]
