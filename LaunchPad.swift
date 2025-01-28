@@ -43,8 +43,8 @@ struct LaunchPad {
     private var buffer = [MTLBuffer?]()
 
     // transient objects
-    private var command: MTLCommandBuffer?
-    private var encoder: MTLComputeCommandEncoder?
+    private var command = [MTLCommandBuffer]()
+    private var encoder: MTLComputeCommandEncoder? // of command.last
 
     // capture GPU workload
     private var manager: MTLCaptureManager?
@@ -76,7 +76,7 @@ extension LaunchPad {
         guard let command = queue.makeCommandBuffer() else {
             throw LaunchPadError.apiReturnedNil(api: "makeCommandBuffer")
         }
-        self.command = command
+        self.command.append(command)
         guard let encoder = command.makeComputeCommandEncoder() else {
             throw LaunchPadError.apiReturnedNil(api: "makeComputeCommandEncoder")
         }
@@ -166,11 +166,16 @@ extension LaunchPad {
         encoder?.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
     }
 
-    mutating func commit(wait: Bool = false) throws {
+    mutating func commit(wait: Bool = false) {
+        guard let latest = command.last { return }
         encoder?.endEncoding()
 
-        command?.commit()
-        if wait { command?.waitUntilCompleted() }
+        for buffer in command { buffer.commit() }
+        command.removeAll(keepingCapacity: true)
+
+        _ = appendCommandBuffer()
+
+        if wait { latest.waitUntilCompleted() }
     }
 
     mutating func startCapture(_ gpuTraceFile: URL? = nil) -> Bool {
