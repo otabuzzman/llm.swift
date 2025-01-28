@@ -12,7 +12,7 @@
 /// version 1 is naive port from CPU code to kernel: parallelizes over B,T, loops over C
 /// ./matmul_forward 1
 ///
-/// version 2 calls cuBLAS, very fast
+/// version 2 calls MPSMatrixMultiplication, very fast
 /// ./matmul_forward 2
 ///
 /// version 3 calls cuBLASLt, should be even faster
@@ -84,6 +84,30 @@ func matmul_forward1(
         params: params)
 }
 
+// shader specific launch stub
+// swiftlint:disable:next function_parameter_count
+func matmul_forward2(
+    _ out: UnsafeMutablePointer<Float>,
+    _ inp: UnsafePointer<Float>,
+    _ weight: UnsafePointer<Float>,
+    _ bias: UnsafePointer<Float>?,
+    _ B: Int, _ T: Int, _ C: Int, _ OC: Int,
+    _ block_size: Int = 0) throws {
+    // ...
+
+    let context = KernelContext(threadsPerGrid: B * T * OC, threadsPerGroup: block_size)
+
+    params = [
+        UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: bias),
+        Int32(B * T), Int32(OC)]
+
+    try launchPad?.dispatchKernel(
+        name: "add_bias_kernel1",
+        context: context,
+        params: params)
+}
+
 // version dispatcher
 // swiftlint:disable:next function_parameter_count
 private func matmul_forward(
@@ -103,7 +127,9 @@ private func matmul_forward(
         matmul_forward(out, inp, weight, bias, B, T, C, OC)
     case 1:
         try matmul_forward1(out, inp, weight, bias, B, T, C, OC, block_size)
-    case 2, 3, 4:
+    case 2:
+        try matmul_forward2(out, inp, weight, bias, B, T, C, OC, block_size)
+    case 3, 4:
         fatalError("layer-pass function \(#function) version \(version) not implemented")
     default:
         break
