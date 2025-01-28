@@ -72,7 +72,8 @@ extension LaunchPad {
     }
 
     mutating func appendCommandBuffer() throws -> (MTLCommandBuffer, MTLComputeCommandEncoder) {
-        if let encoder = encoder { encoder.endEncoding() }
+        if let latest = command.last, latest.status == .notEnqueued { encoder?.endEncoding() }
+//        if let encoder = encoder { encoder.endEncoding() } // reset to nil in self.commit()
         guard let command = queue.makeCommandBuffer() else {
             throw LaunchPadError.apiReturnedNil(api: "makeCommandBuffer")
         }
@@ -169,6 +170,7 @@ extension LaunchPad {
     mutating func commit(wait: Bool = false) throws {
         guard let latest = command.last else { return }
         encoder?.endEncoding()
+//        encoder = nil // for next appendCommandBuffer()
 
         for buffer in command { buffer.commit() }
         command.removeAll(keepingCapacity: true)

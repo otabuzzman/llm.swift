@@ -1171,7 +1171,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     _ = launchPad?.startCapture()
     _ = try launchPad?.appendCommandBuffer()
 
-        let t0 = Date()
+    let t0 = Date()
 //    encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
     try encoder_forward3(acts.encoded, inputs, params.wte, params.wpe, B, T, C)
     for l in 0..<L {
