@@ -113,11 +113,15 @@ func matmul_forward2(
     offset = weight - weightBuffer.contents()
     let weightMatrix = MPSMatrix(buffer: weightBuffer, offset: offset, descriptor: weightMatrixDescriptor)
 
-    let matmul = MPSMatrixMultiplication(device: lauchPad?.device, transposeLeft: false, transposeRight: true, resultRows: BT, resultColumns: OC, interiorColumns: C, alpha: 1.0, beta: 0.0)
+    var kernel = MPSMatrixMultiplication(device: lauchPad?.device, transposeLeft: false, transposeRight: true, resultRows: BT, resultColumns: OC, interiorColumns: C, alpha: 1.0, beta: 0.0)
+    kernel.batchSize = 1
+    kernel.batchStart = 0
 
     let (command, _) = try lauchPad?.appendCommandBuffer()
-    matmul.encode(commandBuffer: command, leftMatrix: inpMatrix, rightMatrix: weightMatrix, resultMatrix: outMatrix)
+    kernel.encode(commandBuffer: command, leftMatrix: inpMatrix, rightMatrix: weightMatrix, resultMatrix: outMatrix)
     try launchPad?.commit(wait)
+
+    _ = try lauchPad?.appendCommandBuffer()
 
     guard let bias = bias else { return }
     let context = KernelContext(threadsPerGrid: BT * OC, threadsPerGroup: block_size)
