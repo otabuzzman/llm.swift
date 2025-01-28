@@ -1164,11 +1164,14 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     let acts = model.pointee.acts
     var residual: UnsafeMutablePointer<Float>
 
-    let t0 = Date()
-    // var gpuTraceFile = FileManager.default.temporaryDirectory
-    // gpuTraceFile = gpuTraceFile.appendingPathComponent("default.gputrace")
-    // launchPad?.startCapture(gpuTraceFile)
-    launchPad?.startCapture()
+//    var gpuTraceFile = FileManager.default.homeDirectoryForCurrentUser
+//    let time = String(format: "%012d", Int(Date().timeIntervalSince1970))
+//    gpuTraceFile = gpuTraceFile.appendingPathComponent("default-\(time).gputrace")
+//    _ = launchPad?.startCapture(gpuTraceFile)
+    _ = launchPad?.startCapture()
+    _ = try launchPad?.appendCommandBuffer()
+
+        let t0 = Date()
 //    encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
     try encoder_forward3(acts.encoded, inputs, params.wte, params.wpe, B, T, C)
     for l in 0..<L {
@@ -1254,6 +1257,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     }
     let t1 = Date()
     print("forward layers took \(t1.timeIntervalSince(t0))")
+
     launchPad?.closeCapture()
 }
 

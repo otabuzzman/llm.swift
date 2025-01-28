@@ -47,7 +47,7 @@ struct LaunchPad {
     private var encoder: MTLComputeCommandEncoder?
 
     // capture GPU workload
-    private let manager: MTLCaptureManager?
+    private var manager: MTLCaptureManager?
 }
 
 extension LaunchPad {
@@ -69,16 +69,10 @@ extension LaunchPad {
             self.library = try device.makeLibrary(source: defaultLibrary, options: nil)
             #endif
         } catch { throw LaunchPadError.apiException(api: "makeLibrary", error: error)}
-
-        control.captureObject = device
-        control.destination = .developerTools
-
-        try manager.startCapture(with: control)
-
-        try makeTransientObjects()
     }
 
-    private mutating func makeTransientObjects() throws {
+    mutating func appendCommandBuffer() throws -> (MTLCommandBuffer, MTLComputeCommandEncoder) {
+        if let encoder = encoder { encoder.endEncoding() }
         guard let command = queue.makeCommandBuffer() else {
             throw LaunchPadError.apiReturnedNil(api: "makeCommandBuffer")
         }
@@ -87,6 +81,7 @@ extension LaunchPad {
             throw LaunchPadError.apiReturnedNil(api: "makeComputeCommandEncoder")
         }
         self.encoder = encoder
+        return (command, encoder)
     }
 
     mutating func registerKernel(name: String, _ preserve: Bool = true) throws {
@@ -176,12 +171,10 @@ extension LaunchPad {
 
         command?.commit()
         if wait { command?.waitUntilCompleted() }
-
-        try makeTransientObjects()
     }
 
-    func startCapture(_ gpuTraceFile: URL? = nil) -> Bool {
-        var control = MTLCaptureDescriptor()
+    mutating func startCapture(_ gpuTraceFile: URL? = nil) -> Bool {
+        let control = MTLCaptureDescriptor()
         control.captureObject = device
 
         if let gpuTraceFile = gpuTraceFile {
@@ -192,9 +185,9 @@ extension LaunchPad {
             control.destination = .developerTools
         }
 
-        if manager == nil { manager = MTLCommandBuffer.shared() }
+        if manager == nil { manager = MTLCaptureManager.shared() }
 
-        return try? manager.startCapture(with: control) == nil
+        return (try? manager?.startCapture(with: control)) == nil
     }
 
     func closeCapture() {
