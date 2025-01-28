@@ -34,7 +34,7 @@ struct LaunchPadDescriptor {}
 struct LaunchPad {
     private var descriptor = LaunchPadDescriptor()
 
-    private let device: MTLDevice
+    public let device: MTLDevice
     private let queue: MTLCommandQueue
 
     private let library: MTLLibrary
@@ -114,13 +114,13 @@ extension LaunchPad {
         if let (index, _) = try? lookupBuffer(for: address) { buffer[index] = nil }
     }
 
-    private func lookupBuffer(for address: UnsafeMutableRawPointer) throws -> (Int, UnsafeMutableRawPointer) {
+    func lookupBuffer(for address: UnsafeMutableRawPointer) throws -> (Int, MTLBuffer) {
         for index in 0..<buffer.count {
             if let buffer = self.buffer[index] {
                 let bufferBaseAddress = buffer.contents()
                 let bufferLastAddress = bufferBaseAddress + buffer.length
                 if (bufferBaseAddress..<bufferLastAddress).contains(address) {
-                    return (index, bufferBaseAddress)
+                    return (index, buffer)
                 }
             }
         }
@@ -138,8 +138,8 @@ extension LaunchPad {
             switch param {
             case is UnsafeMutableRawPointer:
                 let address = (param as? UnsafeMutableRawPointer)!
-                let (bufferIndex, bufferAddress) = try lookupBuffer(for: address)
-                let offset = address - bufferAddress
+                let (bufferIndex, bufferObject) = try lookupBuffer(for: address)
+                let offset = address - bufferObject.contents()
                 encoder?.setBuffer(buffer[bufferIndex], offset: offset, index: index)
                 index += 1
             case is Float:

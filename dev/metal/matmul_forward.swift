@@ -93,10 +93,34 @@ func matmul_forward2(
     _ bias: UnsafePointer<Float>?,
     _ B: Int, _ T: Int, _ C: Int, _ OC: Int,
     _ block_size: Int = 0) throws {
-    // ...
+    let BT = B * T
+    let outSize = BT * OC * MemoryLayout<Float>.size
+    let inpSize = BT * C * MemoryLayout<Float>.size
+    let weightSize = OC * C * MemoryLayout<Float>.size
+
+    let outBuffer = launchPad?.lookupBuffer(for: out)
+    let inpBuffer = launchPad?.lookupBuffer(for: inp)
+    let weightBuffer = launchPad?.lookupBuffer(for: weight)
+
+    let outMatrixDescriptor = MPSMatrixDescriptor(rows: BT, columns: OC, rowBytes: OC * MemoryLayout<Float>.size, dataType: .float32)
+    let inpMatrixDescriptor = MPSMatrixDescriptor(rows: BT, columns: C, rowBytes: C * MemoryLayout<Float>.size, dataType: .float32)
+    let weightMatrixDescriptor = MPSMatrixDescriptor(rows: OC, columns: C, rowBytes: C * MemoryLayout<Float>.size, dataType: .float32)
+
+    var offset = out - outBuffer.contents()
+    let outMatrix = MPSMatrix(buffer: outBuffer, offset: offset, descriptor: outMatrixDescriptor)
+    offset = inp - inpBuffer.contents()
+    let inpMatrix = MPSMatrix(buffer: inpBuffer, offset: offset, descriptor: inpMatrixDescriptor)
+    offset = weight - weightBuffer.contents()
+    let weightMatrix = MPSMatrix(buffer: weightBuffer, offset: offset, descriptor: weightMatrixDescriptor)
+
+    let matmul = MPSMatrixMultiplication(device: lauchPad?.device, transposeLeft: false, transposeRight: true, resultRows: BT, resultColumns: OC, interiorColumns: C, alpha: 1.0, beta: 0.0)
+
+    let (command, _) = try lauchPad?.appendCommandBuffer()
+    matmul.encode(commandBuffer: command, leftMatrix: inpMatrix, rightMatrix: weightMatrix, resultMatrix: outMatrix)
+    try launchPad?.commit(wait)
 
     guard let bias = bias else { return }
-    let context = KernelContext(threadsPerGrid: B * T * OC, threadsPerGroup: block_size)
+    let context = KernelContext(threadsPerGrid: BT * OC, threadsPerGroup: block_size)
 
     let params: [KernelParam] = [
         UnsafeMutableRawPointer(out),
