@@ -166,14 +166,14 @@ extension LaunchPad {
         encoder?.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
     }
 
-    mutating func commit(wait: Bool = false) {
-        guard let latest = command.last { return }
+    mutating func commit(wait: Bool = false) throws {
+        guard let latest = command.last else { return }
         encoder?.endEncoding()
 
         for buffer in command { buffer.commit() }
         command.removeAll(keepingCapacity: true)
 
-        _ = appendCommandBuffer()
+        _ = try appendCommandBuffer()
 
         if wait { latest.waitUntilCompleted() }
     }
