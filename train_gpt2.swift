@@ -1164,7 +1164,11 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     let acts = model.pointee.acts
     var residual: UnsafeMutablePointer<Float>
 
-    let layers_start = Date()
+    let t0 = Date()
+    // var gpuTraceFile = FileManager.default.temporaryDirectory
+    // gpuTraceFile = gpuTraceFile.appendingPathComponent("default.gputrace")
+    // launchPad?.startCapture(gpuTraceFile)
+    launchPad?.startCapture()
 //    encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
     try encoder_forward3(acts.encoded, inputs, params.wte, params.wpe, B, T, C)
     for l in 0..<L {
@@ -1248,7 +1252,9 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         // if we don't have targets, we don't have a loss
         model.pointee.mean_loss = -1
     }
-    print("forward layers took \(Date().timeIntervalSince(layers_start))")
+    let t1 = Date()
+    print("forward layers took \(t1.timeIntervalSince(t0))")
+    launchPad?.closeCapture()
 }
 
 func gpt2_zero_grad(_ model: UnsafeMutablePointer<GPT2>) {

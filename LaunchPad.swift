@@ -46,8 +46,8 @@ struct LaunchPad {
     private var command: MTLCommandBuffer?
     private var encoder: MTLComputeCommandEncoder?
 
-    private let captureM = MTLCaptureManager.shared()
-    private let captureD = MTLCaptureDescriptor()
+    // capture GPU workload
+    private let manager: MTLCaptureManager?
 }
 
 extension LaunchPad {
@@ -70,10 +70,10 @@ extension LaunchPad {
             #endif
         } catch { throw LaunchPadError.apiException(api: "makeLibrary", error: error)}
 
-        captureD.captureObject = device
-        captureD.destination = .developerTools
+        control.captureObject = device
+        control.destination = .developerTools
 
-        try captureM.startCapture(with: captureD)
+        try manager.startCapture(with: control)
 
         try makeTransientObjects()
     }
@@ -177,8 +177,29 @@ extension LaunchPad {
         command?.commit()
         if wait { command?.waitUntilCompleted() }
 
-        captureM.stopCapture()
         try makeTransientObjects()
+    }
+
+    func startCapture(_ gpuTraceFile: URL? = nil) -> Bool {
+        var control = MTLCaptureDescriptor()
+        control.captureObject = device
+
+        if let gpuTraceFile = gpuTraceFile {
+            if FileManager.default.fileExists(atPath: gpuTraceFile.path) { return false }
+            control.destination = .gpuTraceDocument
+            control.outputURL = gpuTraceFile
+        } else {
+            control.destination = .developerTools
+        }
+
+        if manager == nil { manager = MTLCommandBuffer.shared() }
+
+        return try? manager.startCapture(with: control) == nil
+    }
+
+    func closeCapture() {
+        guard let manager = manager, manager.isCapturing else { return }
+        manager.stopCapture()
     }
 }
 
