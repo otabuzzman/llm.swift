@@ -5,6 +5,10 @@ import Foundation
 let argv = CommandLine.arguments
 let argc = argv.count
 
+let release = argv[0].range(of: "layer_pass$", options: [.regularExpression]) == nil
+
+let layerPassNameIndex = release ? 0 : 1
+
 let layers: [String: (Int, [String]) throws -> Void] = [
     "encoder_forward": encoder_forward,
     "layernorm_forward": layernorm_forward,
@@ -17,8 +21,8 @@ let layers: [String: (Int, [String]) throws -> Void] = [
 ]
 
 guard
-    let layerPassName = URL(string: argv[0])?.lastPathComponent
-else { fatalError("\(argv[0]): invalid") }
+    let layerPassName = URL(string: argv[layerPassNameIndex])?.lastPathComponent
+else { fatalError("\(argv[layerPassNameIndex]): invalid") }
 guard
     let layerPassFunc = layers[layerPassName]
 else { fatalError("\(layerPassName): unknown") }
@@ -26,7 +30,7 @@ else { fatalError("\(layerPassName): unknown") }
 do {
     if launchPad == nil { launchPad = try LaunchPad() }
 
-    try layerPassFunc(argc, argv)
+    try layerPassFunc(argc, release ? argv : Array(argv[1..<argc]))
 } catch let error as LlmSwiftError {
     fatalError("\(error.localizedDescription)")
 } catch let error as LaunchPadError {

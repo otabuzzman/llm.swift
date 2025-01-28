@@ -71,13 +71,16 @@ extension LaunchPad {
         } catch { throw LaunchPadError.apiException(api: "makeLibrary", error: error)}
     }
 
-    mutating func appendCommandBuffer() throws -> (MTLCommandBuffer, MTLComputeCommandEncoder) {
+    mutating func appendCommandBuffer(createEncoder: Bool = true) throws -> (MTLCommandBuffer, MTLComputeCommandEncoder?) {
         if let latest = command.last, latest.status == .notEnqueued { encoder?.endEncoding() }
 //        if let encoder = encoder { encoder.endEncoding() } // reset to nil in self.commit()
         guard let command = queue.makeCommandBuffer() else {
             throw LaunchPadError.apiReturnedNil(api: "makeCommandBuffer")
         }
         self.command.append(command)
+
+        if !createEncoder { encoder = nil ; return (command, nil) }
+
         guard let encoder = command.makeComputeCommandEncoder() else {
             throw LaunchPadError.apiReturnedNil(api: "makeComputeCommandEncoder")
         }
@@ -170,12 +173,10 @@ extension LaunchPad {
     mutating func commit(wait: Bool = false) throws {
         guard let latest = command.last else { return }
         encoder?.endEncoding()
-//        encoder = nil // for next appendCommandBuffer()
+//        encoder = nil // checked in appendCommandBuffer()
 
         for buffer in command { buffer.commit() }
         command.removeAll(keepingCapacity: true)
-
-        _ = try appendCommandBuffer()
 
         if wait { latest.waitUntilCompleted() }
     }

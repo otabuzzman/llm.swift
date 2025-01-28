@@ -1168,7 +1168,9 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
 //    let time = String(format: "%012d", Int(Date().timeIntervalSince1970))
 //    gpuTraceFile = gpuTraceFile.appendingPathComponent("default-\(time).gputrace")
 //    _ = launchPad?.startCapture(gpuTraceFile)
-    _ = launchPad?.startCapture()
+    // must start capture before command buffer creation
+    // https://forums.developer.apple.com/forums/thread/713142 (3rd bullet in Apple's answer)
+//    _ = launchPad?.startCapture()
     _ = try launchPad?.appendCommandBuffer()
 
     let t0 = Date()
@@ -1237,7 +1239,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
 //    await matmul_forward(acts.logits, acts.lnf, params.wte, nil, B, T, C, Vp)
 //    await softmax_forward(acts.probs, acts.logits, B, T, V, Vp)
     try layernorm_forward1(acts.lnf, acts.lnf_mean, acts.lnf_rstd, residual, params.lnfw, params.lnfb, B, T, C)
-    try matmul_forward1(acts.logits, acts.lnf, params.wte, nil, B, T, C, Vp)
+    try matmul_forward2(acts.logits, acts.lnf, params.wte, nil, B, T, C, Vp)
     try softmax_forward1(acts.probs, acts.logits, B, T, V, Vp)
 
     // also forward the cross-entropy loss function if we have the targets
@@ -1258,7 +1260,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     let t1 = Date()
     print("forward layers took \(t1.timeIntervalSince(t0))")
 
-    launchPad?.closeCapture()
+//    launchPad?.closeCapture()
 }
 
 func gpt2_zero_grad(_ model: UnsafeMutablePointer<GPT2>) {

@@ -22,6 +22,7 @@
 /// ./matmul_forward 4
 
 import Metal
+import MetalPerformanceShaders
 
 // known kernel (Metal shader) versions
 private let versions = 0...4
@@ -94,40 +95,49 @@ func matmul_forward2(
     _ B: Int, _ T: Int, _ C: Int, _ OC: Int,
     _ block_size: Int = 0) throws {
     let BT = B * T
-    let outSize = BT * OC * MemoryLayout<Float>.size
-    let inpSize = BT * C * MemoryLayout<Float>.size
-    let weightSize = OC * C * MemoryLayout<Float>.size
+    let param_out = UnsafeMutableRawPointer(out)
+    let param_inp = UnsafeMutableRawPointer(mutating: inp)
+    let param_weight = UnsafeMutableRawPointer(mutating: weight)
 
-    let outBuffer = launchPad?.lookupBuffer(for: out)
-    let inpBuffer = launchPad?.lookupBuffer(for: inp)
-    let weightBuffer = launchPad?.lookupBuffer(for: weight)
+    let (_, outBuffer) = try launchPad!.lookupBuffer(for: param_out)
+    let (_, inpBuffer) = try launchPad!.lookupBuffer(for: param_inp)
+    let (_, weightBuffer) = try launchPad!.lookupBuffer(for: param_weight)
 
-    let outMatrixDescriptor = MPSMatrixDescriptor(rows: BT, columns: OC, rowBytes: OC * MemoryLayout<Float>.size, dataType: .float32)
-    let inpMatrixDescriptor = MPSMatrixDescriptor(rows: BT, columns: C, rowBytes: C * MemoryLayout<Float>.size, dataType: .float32)
-    let weightMatrixDescriptor = MPSMatrixDescriptor(rows: OC, columns: C, rowBytes: C * MemoryLayout<Float>.size, dataType: .float32)
+    let outMatrixDescriptor = MPSMatrixDescriptor(
+        rows: BT, columns: OC, rowBytes: OC * MemoryLayout<Float>.size, dataType: .float32)
+    let inpMatrixDescriptor = MPSMatrixDescriptor(
+        rows: BT, columns: C, rowBytes: C * MemoryLayout<Float>.size, dataType: .float32)
+    let weightMatrixDescriptor = MPSMatrixDescriptor(
+        rows: OC, columns: C, rowBytes: C * MemoryLayout<Float>.size, dataType: .float32)
 
-    var offset = out - outBuffer.contents()
-    let outMatrix = MPSMatrix(buffer: outBuffer, offset: offset, descriptor: outMatrixDescriptor)
-    offset = inp - inpBuffer.contents()
-    let inpMatrix = MPSMatrix(buffer: inpBuffer, offset: offset, descriptor: inpMatrixDescriptor)
-    offset = weight - weightBuffer.contents()
-    let weightMatrix = MPSMatrix(buffer: weightBuffer, offset: offset, descriptor: weightMatrixDescriptor)
+    var offset = param_out - outBuffer.contents()
+    let outMatrix = MPSMatrix(
+        buffer: outBuffer, offset: offset, descriptor: outMatrixDescriptor)
+    offset = param_inp - inpBuffer.contents()
+    let inpMatrix = MPSMatrix(
+        buffer: inpBuffer, offset: offset, descriptor: inpMatrixDescriptor)
+    offset = param_weight - weightBuffer.contents()
+    let weightMatrix = MPSMatrix(
+        buffer: weightBuffer, offset: offset, descriptor: weightMatrixDescriptor)
 
-    var kernel = MPSMatrixMultiplication(device: lauchPad?.device, transposeLeft: false, transposeRight: true, resultRows: BT, resultColumns: OC, interiorColumns: C, alpha: 1.0, beta: 0.0)
+    let kernel = MPSMatrixMultiplication(
+        device: launchPad!.device,
+        transposeLeft: false, transposeRight: true,
+        resultRows: BT, resultColumns: OC, interiorColumns: C,
+        alpha: 1.0, beta: 0.0)
     kernel.batchSize = 1
     kernel.batchStart = 0
 
-    let (command, _) = try lauchPad?.appendCommandBuffer()
+    let (command, _) = try launchPad!.appendCommandBuffer(createEncoder: false)
     kernel.encode(commandBuffer: command, leftMatrix: inpMatrix, rightMatrix: weightMatrix, resultMatrix: outMatrix)
-    try launchPad?.commit(wait)
 
-    _ = try lauchPad?.appendCommandBuffer()
+    _ = try launchPad!.appendCommandBuffer()
 
     guard let bias = bias else { return }
     let context = KernelContext(threadsPerGrid: BT * OC, threadsPerGroup: block_size)
 
     let params: [KernelParam] = [
-        UnsafeMutableRawPointer(out),
+        param_out,
         UnsafeMutableRawPointer(mutating: bias),
         Int32(B * T), Int32(OC)]
 
@@ -262,6 +272,7 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
             // TODO: if necessary and applicable
 
             try matmul_forward(kernel_num, out_gpu, inp, weight, biasOrNil, B, T, C, OC, sqrt_block_size)
+            try launchPad?.commit(wait: true)
         }
         let end = Date()
         elapsed_time = end.timeIntervalSince(start)
