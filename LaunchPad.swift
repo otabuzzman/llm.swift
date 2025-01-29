@@ -19,9 +19,15 @@ extension LaunchPadError: LocalizedError {
     }
 }
 
+enum ThreadgroupMemoryUnit {
+    case threadsPerGroup(times: Int)
+    case simdGroupsPerGroup(times: Int)
+}
+
 struct KernelContext {
     let threadsPerGrid: Int // CUDA grid size
     let threadsPerGroup: Int // CUDA block size
+    let threadgroupMemoryUnits: ThreadgroupMemoryUnit?
 }
 
 protocol KernelParam {}
@@ -169,6 +175,18 @@ extension LaunchPad {
             let simdGroupsPerGroup = kernel.maxTotalThreadsPerThreadgroup / threadsPerSimdGroup
             threadsPerGroup = MTLSize(simdGroupsPerGroup * threadsPerSimdGroup)
         }
+
+        if let threadgroupMemoryUnits = context.threadgroupMemoryUnits {
+            var threadgroupMemorySize: Int
+            switch threadgroupMemoryUnits {
+            case .threadsPerGroup(let times):
+                threadgroupMemorySize = threadsPerGroup.width * times
+            case .simdGroupsPerGroup(let times):
+                threadgroupMemorySize = kernel.threadExecutionWidth * times
+            }
+            encoder?.setThreadgroupMemoryLength(threadgroupMemorySize, index: 0)
+        }
+
         encoder?.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
     }
 

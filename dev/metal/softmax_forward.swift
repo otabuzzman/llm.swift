@@ -30,6 +30,9 @@
 ///
 /// version 7 is softmax optimized for very large C.
 /// ./softmax_forward 7
+///
+/// version 8 calculates sumval and maxval in one loop (http://arxiv.org/abs/1805.02867)
+/// ./softmax_forward 8
 
 import Metal
 
@@ -56,6 +59,46 @@ func softmax_forward1(
         params: params)
 }
 
+// shader specific launch stub
+// swiftlint:disable:next function_parameter_count
+func softmax_forward7(
+    _ out: UnsafeMutablePointer<Float>,
+    _ inp: UnsafePointer<Float>,
+    _ B: Int, _ T: Int, _ V: Int, _ Vp: Int,
+    _ block_size: Int = 0) throws {
+    let context = KernelContext(threadsPerGrid: B * T, threadsPerGroup: block_size, threadGroupMemorySize: .simdGroupsPerThread(2 * MemoryLayout<Float>.size))
+
+    let params: [KernelParam] = [
+        UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: inp),
+        Int32(B * T), Int32(V), Int32(Vp)]
+
+    try launchPad?.dispatchKernel(
+        name: "softmax_forward_kernel7",
+        context: context,
+        params: params)
+}
+
+// shader specific launch stub
+// swiftlint:disable:next function_parameter_count
+func softmax_forward8(
+    _ out: UnsafeMutablePointer<Float>,
+    _ inp: UnsafePointer<Float>,
+    _ B: Int, _ T: Int, _ V: Int, _ Vp: Int,
+    _ block_size: Int = 0) throws {
+    let context = KernelContext(threadsPerGrid: B * T, threadsPerGroup: block_size)
+
+    let params: [KernelParam] = [
+        UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: inp),
+        Int32(B * T), Int32(V), Int32(Vp)]
+
+    try launchPad?.dispatchKernel(
+        name: "softmax_forward_kernel8",
+        context: context,
+        params: params)
+}
+
 // version dispatcher
 // swiftlint:disable:next function_parameter_count
 private func softmax_forward(
@@ -71,7 +114,11 @@ private func softmax_forward(
     switch version {
     case 1:
         try softmax_forward1(out, inp, B, T, V, Vp, block_size)
-    case 2, 3, 4, 5, 6, 7, 8:
+    case 7:
+        try softmax_forward7(out, inp, B, T, V, Vp, block_size)
+    case 8:
+        try softmax_forward8(out, inp, B, T, V, Vp, block_size)
+    case 2, 3, 4, 5, 6:
         fatalError("layer-pass function \(#function) version \(version) not implemented")
     default:
         break
