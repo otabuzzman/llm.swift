@@ -128,10 +128,10 @@ func matmul_forward2(
     kernel.batchSize = 1
     kernel.batchStart = 0
 
-    let (command, _) = try launchPad!.appendCommandBuffer(createEncoder: false)
+    let (command, _) = try launchPad!.makeCommandBuffer(createEncoder: false)
     kernel.encode(commandBuffer: command, leftMatrix: inpMatrix, rightMatrix: weightMatrix, resultMatrix: outMatrix)
 
-    _ = try launchPad!.appendCommandBuffer()
+    try launchPad!.makeCommandBuffer()
 
     guard let bias = bias else { return }
     let context = KernelContext(threadsPerGrid: BT * OC, threadsPerGroup: block_size)
@@ -222,11 +222,13 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
 
     // defaults
     var kernel_num = 1
+    var repeat_times = 100
     var sqrt_block_sizes = [0, 4, 8, 16, 32]
 
     // command line arguments
     var argNoCheck = false
     var argBlockSize = false
+    var argRepeatNum = false
     var biasOrNil: UnsafeMutablePointer<Float>? = bias
     for arg in argv[1..<argv.count] {
         switch arg {
@@ -234,11 +236,14 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
             argNoCheck = true
         case "blocksize":
             argBlockSize = true
+        case "repeats":
+            argRepeatNum = true
         case "nobias":
             biasOrNil = nil
         default:
             let argNum = Int(arg) ?? 0
             if argBlockSize { sqrt_block_sizes = [argNum] ; argBlockSize = false ; continue }
+            if argRepeatNum { repeat_times = argNum ; argRepeatNum = false ; continue }
 
             kernel_num = argNum
         }
@@ -247,7 +252,10 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
 
     // first check the correctness of the kernel
     if !argNoCheck {
+        let start = Date()
         matmul_forward(out_cpu, inp, weight, biasOrNil, B, T, C, OC)
+        let end = Date()
+        print("CPU version took \(end.timeIntervalSince(start) * 1e3) ms\n")
 
         // time the kernel at different block sizes
         for sqrt_block_size in sqrt_block_sizes {
@@ -261,8 +269,11 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
     }
 
     print("Starting benchmarks.\n")
+    Task {
+        try? await Task.sleep(for: .seconds(15))
+        print("still busy. consider less repeats (\(repeat_times))?")
+    }
 
-    let repeat_times = 100
     var elapsed_time: Double = 0
     for sqrt_block_size in sqrt_block_sizes {
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h

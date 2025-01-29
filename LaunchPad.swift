@@ -71,9 +71,9 @@ extension LaunchPad {
         } catch { throw LaunchPadError.apiException(api: "makeLibrary", error: error)}
     }
 
-    mutating func appendCommandBuffer(createEncoder: Bool = true) throws -> (MTLCommandBuffer, MTLComputeCommandEncoder?) {
-        if let latest = command.last, latest.status == .notEnqueued { encoder?.endEncoding() }
-//        if let encoder = encoder { encoder.endEncoding() } // reset to nil in self.commit()
+    @discardableResult
+    mutating func makeCommandBuffer(createEncoder: Bool = true) throws -> (MTLCommandBuffer, MTLComputeCommandEncoder?) {
+        if let encoder = encoder { encoder.endEncoding() } // reset to nil in self.commit()
         guard let command = queue.makeCommandBuffer() else {
             throw LaunchPadError.apiReturnedNil(api: "makeCommandBuffer")
         }
@@ -172,21 +172,22 @@ extension LaunchPad {
 
     mutating func commit(wait: Bool = false) throws {
         guard let latest = command.last else { return }
+
         encoder?.endEncoding()
-//        encoder = nil // checked in appendCommandBuffer()
+        encoder = nil // checked in makeCommandBuffer()
 
         for buffer in command { buffer.commit() }
         command.removeAll(keepingCapacity: true)
+        try makeCommandBuffer()
 
         if wait { latest.waitUntilCompleted() }
     }
 
-    mutating func startCapture(_ gpuTraceFile: URL? = nil) -> Bool {
+    mutating func startCapture(_ gpuTraceFile: URL? = nil) throws {
         let control = MTLCaptureDescriptor()
         control.captureObject = device
 
         if let gpuTraceFile = gpuTraceFile {
-            if FileManager.default.fileExists(atPath: gpuTraceFile.path) { return false }
             control.destination = .gpuTraceDocument
             control.outputURL = gpuTraceFile
         } else {
@@ -195,7 +196,7 @@ extension LaunchPad {
 
         if manager == nil { manager = MTLCaptureManager.shared() }
 
-        return (try? manager?.startCapture(with: control)) == nil
+        try manager?.startCapture(with: control)
     }
 
     func closeCapture() {

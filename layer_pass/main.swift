@@ -7,7 +7,7 @@ let argc = argv.count
 
 let release = argv[0].range(of: "layer_pass$", options: [.regularExpression]) == nil
 
-let layerPassNameIndex = release ? 0 : 1
+let layerPassNameArgvIndex = release ? 0 : 1
 
 let layers: [String: (Int, [String]) throws -> Void] = [
     "encoder_forward": encoder_forward,
@@ -21,14 +21,15 @@ let layers: [String: (Int, [String]) throws -> Void] = [
 ]
 
 guard
-    let layerPassName = URL(string: argv[layerPassNameIndex])?.lastPathComponent
-else { fatalError("\(argv[layerPassNameIndex]): invalid") }
+    let layerPassName = URL(string: argv[layerPassNameArgvIndex])?.lastPathComponent
+else { fatalError("\(argv[layerPassNameArgvIndex]): invalid") }
 guard
     let layerPassFunc = layers[layerPassName]
 else { fatalError("\(layerPassName): unknown") }
 
 do {
     if launchPad == nil { launchPad = try LaunchPad() }
+    try launchPad?.makeCommandBuffer()
 
     try layerPassFunc(argc, release ? argv : Array(argv[1..<argc]))
 } catch let error as LlmSwiftError {

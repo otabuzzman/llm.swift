@@ -1164,16 +1164,20 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     let acts = model.pointee.acts
     var residual: UnsafeMutablePointer<Float>
 
+    // GPU workload capturing must start before command buffer creation according to Apple's
+    // answer in https://forums.developer.apple.com/forums/thread/713142 (3rd bullet point).
+
+    // dump trace to file when finished
 //    var gpuTraceFile = FileManager.default.homeDirectoryForCurrentUser
 //    let time = String(format: "%012d", Int(Date().timeIntervalSince1970))
 //    gpuTraceFile = gpuTraceFile.appendingPathComponent("default-\(time).gputrace")
-//    _ = launchPad?.startCapture(gpuTraceFile)
-    // must start capture before command buffer creation
-    // https://forums.developer.apple.com/forums/thread/713142 (3rd bullet in Apple's answer)
-//    _ = launchPad?.startCapture()
-    _ = try launchPad?.appendCommandBuffer()
+//    launchPad?.startCapture(gpuTraceFile)
 
-    let t0 = Date()
+    // open trace in Xcode when finished
+//    launchPad?.startCapture()
+    try launchPad?.makeCommandBuffer()
+
+    let start = Date()
 //    encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
     try encoder_forward3(acts.encoded, inputs, params.wte, params.wpe, B, T, C)
     for l in 0..<L {
@@ -1257,8 +1261,8 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         // if we don't have targets, we don't have a loss
         model.pointee.mean_loss = -1
     }
-    let t1 = Date()
-    print("forward layers took \(t1.timeIntervalSince(t0))")
+    let end = Date()
+    print("forward layers took \(end.timeIntervalSince(start))")
 
 //    launchPad?.closeCapture()
 }
