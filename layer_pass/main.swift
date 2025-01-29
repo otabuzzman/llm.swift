@@ -9,7 +9,7 @@ let release = argv[0].range(of: "layer_pass$", options: [.regularExpression]) ==
 
 let layerPassNameArgvIndex = release ? 0 : 1
 
-let layers: [String: (Int, [String]) throws -> Void] = [
+let layers: [String: (Int, [String]) async throws -> Void] = [
     "encoder_forward": encoder_forward,
     "layernorm_forward": layernorm_forward,
     "matmul_forward": matmul_forward,
@@ -31,7 +31,7 @@ do {
     if launchPad == nil { launchPad = try LaunchPad() }
     try launchPad?.makeCommandBuffer()
 
-    try layerPassFunc(argc, release ? argv : Array(argv[1..<argc]))
+    try await layerPassFunc(argc, release ? argv : Array(argv[1..<argc]))
 } catch let error as LlmSwiftError {
     fatalError("\(error.localizedDescription)")
 } catch let error as LaunchPadError {

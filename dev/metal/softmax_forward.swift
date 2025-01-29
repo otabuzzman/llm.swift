@@ -36,46 +36,6 @@ import Metal
 // known kernel (Metal shader) versions
 private let versions = 1...8
 
-// overwrite async CPU version in `train_gpt2.swift´
-// swiftlint:disable:next function_parameter_count
-func softmax_forward(
-    _ probs: UnsafeMutablePointer<Float>,
-    _ logits: UnsafePointer<Float>,
-    _ B: Int, _ T: Int, _ V: Int, _ Vp: Int) {
-    // output: probs are (B,T,Vp) of the probabilities (sums to 1.0 in each b,t position)
-    // input: logits is (B,T,Vp) of the unnormalized log probabilities
-    // Vp is the padded vocab size (for efficiency), V is the "real" vocab size
-    // example: Vp is 50304 and V is 50257
-    // #pragma omp parallel for collapse(2)
-    for b in 0..<B {
-        for t in 0..<T {
-            // probs <- softmax(logits)
-            let logits_bt = logits + b * T * Vp + t * Vp
-            let probs_bt = probs + b * T * Vp + t * Vp
-
-            // maxval is only calculated and subtracted for numerical stability
-            var maxval: Float = -10000 // TODO something better // swiftlint:disable:this todo
-            for i in 0..<V where logits_bt[i] > maxval {
-                maxval = logits_bt[i]
-            }
-            var sum: Float = 0
-            for i in 0..<V {
-                probs_bt[i] = expf(logits_bt[i] - maxval)
-                sum += probs_bt[i]
-            }
-            // note we only loop to V, leaving the padded dimensions
-            for i in 0..<V {
-                probs_bt[i] /= sum
-            }
-            // for extra super safety we may wish to include this too,
-            // forcing the probabilities here to be zero, but it shouldn't matter
-            for i in V..<Vp {
-                probs_bt[i] = 0
-            }
-        }
-    }
-}
-
 // shader specific launch stub
 // swiftlint:disable:next function_parameter_count
 func softmax_forward1(
@@ -120,7 +80,7 @@ private func softmax_forward(
 
 // standalone runner
 // swiftlint:disable:next function_body_length
-func softmax_forward(_ argc: Int, _ argv: [String]) throws {
+func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
     let B = 8
     let T = 1024
     let V = 50257
@@ -177,9 +137,9 @@ func softmax_forward(_ argc: Int, _ argv: [String]) throws {
     // first check the correctness of the kernel
     if !argNoCheck {
         let start = Date()
-        softmax_forward(out_cpu, inp, B, T, V, V)
+        await softmax_forward(out_cpu, inp, B, T, V, V)
         let end = Date()
-        print("CPU version took \(end.timeIntervalSince(start) * 1e3) ms\n")
+        print("CPU version took \(String(format: "%.2f", end.timeIntervalSince(start) * 1e3)) ms\n")
 
         // time the kernel at different block sizes
         for block_size in block_sizes {

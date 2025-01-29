@@ -47,91 +47,6 @@ private let excludeVersions = 7...9
 // CUDA & cuDNN setup
 private var first_run_validation = true
 
-// overwrite async CPU version in `train_gpt2.swift´
-// swiftlint:disable:next function_parameter_count function_body_length
-func attention_forward(
-    _ out: UnsafeMutablePointer<Float>,
-    _ preatt: UnsafeMutablePointer<Float>,
-    _ att: UnsafeMutablePointer<Float>,
-    _ inp: UnsafePointer<Float>,
-    _ B: Int, _ T: Int, _ C: Int, _ NH: Int) {
-    // input is (B, T, 3C) holding the query, key, value (Q, K, V) vectors
-    // preatt, att are (B, NH, T, T). NH = number of heads, T = sequence length
-    // that holds the pre-attention and post-attention scores (used in backward)
-    // output is (B, T, C)
-    // attention is the only layer that mixes information across time
-    // every other operation is applied at every (b,t) position independently
-    // (and of course, no layer mixes information across batch)
-    let C3 = C * 3
-    let hs = C / NH // head size
-    let scale = 1 / sqrtf(Float(hs))
-
-    // #pragma omp parallel for collapse(3)
-    for b in 0..<B {
-        for t in 0..<T {
-            for h in 0..<NH {
-                let query_t = inp + b * T * C3 + t * C3 + h * hs
-                let preatt_bth = preatt + b * NH * T * T + h * T * T + t * T
-                let att_bth = att + b * NH * T * T + h * T * T + t * T
-
-                // pass 1: calculate query dot key and maxval
-                var maxval: Float = -10000 // TODO something better // swiftlint:disable:this todo
-                for t2 in 0...t {
-                    let key_t2 = inp + b * T * C3 + t2 * C3 + h * hs + C // +C because it's key
-
-                    // (query_t) dot (key_t2)
-                    var val: Float = 0
-                    for i in 0..<hs {
-                        val += query_t[i] * key_t2[i]
-                    }
-                    val *= scale
-                    if val > maxval {
-                        maxval = val
-                    }
-
-                    preatt_bth[t2] = val
-                }
-                // pad with -INFINITY outside of autoregressive region for debugging comparisons
-                for t2 in t+1..<T {
-                    preatt_bth[t2] = Float.infinity
-                }
-
-                // pass 2: calculate the exp and keep track of sum
-                // maxval is being calculated and subtracted only for numerical stability
-                var expsum: Float = 0
-                for t2 in 0...t {
-                    let expv = expf(preatt_bth[t2] - maxval)
-                    expsum += expv
-                    att_bth[t2] = expv
-                }
-                let expsum_inv = expsum == 0 ? 0 : 1 / expsum
-
-                // pass 3: normalize to get the softmax
-                for t2 in 0..<T {
-                    if t2 <= t {
-                        att_bth[t2] *= expsum_inv
-                    } else {
-                        // causal attention mask. not strictly necessary to set to zero here
-                        // only doing this explicitly for debugging and checking to PyTorch
-                        att_bth[t2] = 0
-                    }
-                }
-
-                // pass 4: accumulate weighted values into the output of attention
-                let out_bth = out + b * T * C + t * C + h * hs
-                for i in 0..<hs { out_bth[i] = 0 }
-                for t2 in 0...t {
-                    let value_t2 = inp + b * T * C3 + t2 * C3 + h * hs + C * 2 // +C*2 because it's value
-                    let att_btht2 = att_bth[t2]
-                    for i in 0..<hs {
-                        out_bth[i] += att_btht2 * value_t2[i]
-                    }
-                }
-            }
-        }
-    }
-}
-
 // shader specific launch stub
 // swiftlint:disable:next function_parameter_count
 func attention_forward1(
@@ -203,7 +118,7 @@ private func attention_forward(
 
 // standalone runner
 // swiftlint:disable:next function_body_length
-func attention_forward(_ argc: Int, _ argv: [String]) throws {
+func attention_forward(_ argc: Int, _ argv: [String]) async throws {
     let B = 8
     let T = 1024
     let C = 768
@@ -279,9 +194,9 @@ func attention_forward(_ argc: Int, _ argv: [String]) throws {
     // first check the correctness of the kernel
     if !argNoCheck {
         let start = Date()
-        attention_forward(out_cpu, preatt_cpu, att_cpu, inp, B, T, C, NH)
+        await attention_forward(out_cpu, preatt_cpu, att_cpu, inp, B, T, C, NH)
         let end = Date()
-        print("CPU version took \(end.timeIntervalSince(start) * 1e3) ms\n")
+        print("CPU version took \(String(format: "%.2f", end.timeIntervalSince(start) * 1e3)) ms\n")
 
         // time the kernel at different block sizes
         for block_size in block_sizes {

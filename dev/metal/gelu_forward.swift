@@ -141,7 +141,7 @@ func gelu_forward(_ argc: Int, _ argv: [String]) throws {
         let start = Date()
         gelu_forward(out_cpu, inp, B * T * C)
         let end = Date()
-        print("CPU version took \(end.timeIntervalSince(start) * 1e3) ms\n")
+        print("CPU version took \(String(format: "%.2f", end.timeIntervalSince(start) * 1e3)) ms\n")
 
         // time the kernel at different block sizes
         for block_size in block_sizes {

@@ -27,29 +27,6 @@ import MetalPerformanceShaders
 // known kernel (Metal shader) versions
 private let versions = 1...4
 
-// overwrite async CPU version in `train_gpt2.swift´
-// swiftlint:disable:next function_parameter_count
-func matmul_forward(
-    _ out: UnsafeMutablePointer<Float>,
-    _ inp: UnsafePointer<Float>,
-    _ weight: UnsafePointer<Float>,
-    _ bias: UnsafePointer<Float>?,
-    _ B: Int, _ T: Int, _ C: Int, _ OC: Int) {
-    // the most naive implementation of matrix multiplication
-    // this serves as an algorithmic reference, and as a fallback for
-    // unfriendly input shapes inside matmul_forward(), below.
-    // #pragma omp parallel for collapse(2)
-    for bt in 0..<B * T {
-        for o in 0..<OC {
-            var val = bias?[o] ?? 0
-            for i in 0..<C {
-                val += inp[bt * C + i] * weight[o * C + i]
-            }
-            out[bt * OC + o] = val
-        }
-    }
-}
-
 // shader specific launch stub
 // swiftlint:disable:next function_parameter_count
 func matmul_forward1(
@@ -175,7 +152,7 @@ private func matmul_forward(
 
 // standalone runner
 // swiftlint:disable:next function_body_length
-func matmul_forward(_ argc: Int, _ argv: [String]) throws {
+func matmul_forward(_ argc: Int, _ argv: [String]) async throws {
     let B = 32
     let T = 1024
     let C = 768
@@ -251,9 +228,9 @@ func matmul_forward(_ argc: Int, _ argv: [String]) throws {
     // first check the correctness of the kernel
     if !argNoCheck {
         let start = Date()
-        matmul_forward(out_cpu, inp, weight, biasOrNil, B, T, C, OC)
+        await matmul_forward_naive(out_cpu, inp, weight, biasOrNil, B, T, C, OC)
         let end = Date()
-        print("CPU version took \(end.timeIntervalSince(start) * 1e3) ms\n")
+        print("CPU version took \(String(format: "%.2f", end.timeIntervalSince(start) * 1e3)) ms\n")
 
         // time the kernel at different block sizes
         for sqrt_block_size in sqrt_block_sizes {
