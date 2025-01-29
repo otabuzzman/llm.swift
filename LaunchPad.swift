@@ -58,7 +58,9 @@ extension LaunchPad {
             throw LaunchPadError.apiReturnedNil(api: "MTLCreateSystemDefaultDevice")
         }
         self.device = device
-        guard let queue = device.makeCommandQueue() else {
+        // to few command buffers here let makeCommandBuffer() freeze
+        // https://stackoverflow.com/q/41206620 (warrenm's comment on Q)
+        guard let queue = device.makeCommandQueue(maxCommandBufferCount: 128) else {
             throw LaunchPadError.apiReturnedNil(api: "makeCommandQueue")
         }
         self.queue = queue
