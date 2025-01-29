@@ -148,7 +148,7 @@ func layernorm_forward(_ argc: Int, _ argv: [String]) throws {
 
     // read kernel_num from command line
     var kernel_num = 1
-    var repeat_times = 1000
+    var repeat_times = 2000
     var block_sizes = [0, 64, 128, 256, 512, 1024]
 
     // command line arguments
@@ -199,7 +199,6 @@ func layernorm_forward(_ argc: Int, _ argv: [String]) throws {
         print("still busy. consider less repeats (\(repeat_times))?")
     }
 
-    let repeat_times = 2000
     var elapsed_time: Double = 0
     for block_size in block_sizes {
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h

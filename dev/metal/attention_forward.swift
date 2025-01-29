@@ -40,7 +40,7 @@
 import Metal
 
 // known kernel (Metal shader) versions
-private let versions = 0...10
+private let versions = 1...10
 private let excludeVersions = 7...9
 
 // TODO: check if applicable for macOS
@@ -192,8 +192,6 @@ private func attention_forward(
     else { throw LlmSwiftError.wrongApiUsage(api: "\(#function) version \(version) unknown") }
 
     switch version {
-    case 0: // CPU layer-pass function for comparison
-        attention_forward(out, preatt, att, inp, B, T, C, NH)
     case 1:
         try attention_forward1(out, preatt, att, inp, B, T, C, NH, block_size)
     case 2, 3, 4, 5, 6, 10:
@@ -253,20 +251,25 @@ func attention_forward(_ argc: Int, _ argv: [String]) throws {
 
     // defaults
     var kernel_num = 1
+    var repeat_times = 100
     var block_sizes = [0, 32, 64, 128, 256, 512]
 
     // command line arguments
     var argNoCheck = false
     var argBlockSize = false
+    var argRepeatNum = false
     for arg in argv[1..<argv.count] {
         switch arg {
         case "nocheck":
             argNoCheck = true
         case "blocksize":
             argBlockSize = true
+        case "repeats":
+            argRepeatNum = true
         default:
             let argNum = Int(arg) ?? 0
             if argBlockSize { block_sizes = [argNum] ; argBlockSize = false ; continue }
+            if argRepeatNum { repeat_times = argNum ; argRepeatNum = false ; continue }
 
             kernel_num = argNum
         }
@@ -275,7 +278,10 @@ func attention_forward(_ argc: Int, _ argv: [String]) throws {
 
     // first check the correctness of the kernel
     if !argNoCheck {
+        let start = Date()
         attention_forward(out_cpu, preatt_cpu, att_cpu, inp, B, T, C, NH)
+        let end = Date()
+        print("CPU version took \(end.timeIntervalSince(start) * 1e3) ms\n")
 
         // time the kernel at different block sizes
         for block_size in block_sizes {
@@ -295,10 +301,13 @@ func attention_forward(_ argc: Int, _ argv: [String]) throws {
     }
 
     print("Starting benchmarks.\n")
+    Task {
+        try? await Task.sleep(for: .seconds(15))
+        print("still busy. consider less repeats (\(repeat_times))?")
+    }
 
     first_run_validation = false
 
-    let repeat_times = 100
     var elapsed_time: Double = 0
     for block_size in block_sizes {
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h
@@ -308,6 +317,7 @@ func attention_forward(_ argc: Int, _ argv: [String]) throws {
             // TODO: if necessary and applicable
 
             try attention_forward(kernel_num, out_gpu, preatt_gpu, att_gpu, inp, B, T, C, NH, block_size)
+            try launchPad?.commit(wait: true)
         }
         let end = Date()
         elapsed_time = end.timeIntervalSince(start)
