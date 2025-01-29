@@ -25,7 +25,7 @@ import Metal
 import MetalPerformanceShaders
 
 // known kernel (Metal shader) versions
-private let versions = 0...4
+private let versions = 1...4
 
 // overwrite async CPU version in `train_gpt2.swift´
 // swiftlint:disable:next function_parameter_count
@@ -162,8 +162,6 @@ private func matmul_forward(
     else { throw LlmSwiftError.wrongApiUsage(api: "\(#function) version \(version) unknown") }
 
     switch version {
-    case 0: // CPU layer-pass function for comparison
-        matmul_forward(out, inp, weight, bias, B, T, C, OC)
     case 1:
         try matmul_forward1(out, inp, weight, bias, B, T, C, OC, block_size)
     case 2:

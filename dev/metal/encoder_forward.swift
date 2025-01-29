@@ -21,7 +21,7 @@
 import Metal
 
 // known kernel (Metal shader) versions
-private let versions = 0...3
+private let versions = 1...3
 
 // shader specific launch stub
 // swiftlint:disable:next function_parameter_count
@@ -110,8 +110,6 @@ private func encoder_forward(
     else { throw LlmSwiftError.wrongApiUsage(api: "\(#function) version \(version) unknown") }
 
     switch version {
-    case 0: // CPU layer-pass function for comparison
-        encoder_forward(out, inp, wte, wpe, B, T, C)
     case 1:
         try encoder_forward1(out, inp, wte, wpe, B, T, C, block_size)
     case 2:
@@ -171,20 +169,25 @@ func encoder_forward(_ argc: Int, _ argv: [String]) throws {
 
     // defaults
     var kernel_num = 2
+    var repeat_times = 1000
     var block_sizes = [0, 64, 128, 256, 512, 1024]
 
     // command line arguments
     var argNoCheck = false
     var argBlockSize = false
+    var argRepeatNum = false
     for arg in argv[1..<argv.count] {
         switch arg {
         case "nocheck":
             argNoCheck = true
         case "blocksize":
             argBlockSize = true
+        case "repeats":
+            argRepeatNum = true
         default:
             let argNum = Int(arg) ?? 0
             if argBlockSize { block_sizes = [argNum] ; argBlockSize = false ; continue }
+            if argRepeatNum { repeat_times = argNum ; argRepeatNum = false ; continue }
 
             kernel_num = argNum
         }
@@ -193,7 +196,10 @@ func encoder_forward(_ argc: Int, _ argv: [String]) throws {
 
     // first check the correctness of the kernel
     if !argNoCheck {
+        let start = Date()
         encoder_forward(out_cpu, inp, wte, wpe, B, T, C)
+        let end = Date()
+        print("CPU version took \(end.timeIntervalSince(start) * 1e3) ms\n")
 
         // time the kernel at different block sizes
         for block_size in block_sizes {
@@ -207,8 +213,11 @@ func encoder_forward(_ argc: Int, _ argv: [String]) throws {
     }
 
     print("Starting benchmarks.\n")
+    Task {
+        try? await Task.sleep(for: .seconds(15))
+        print("still busy. consider less repeats (\(repeat_times))?")
+    }
 
-    let repeat_times = 1000
     var elapsed_time: Double = 0
     for block_size in block_sizes {
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h
@@ -218,6 +227,7 @@ func encoder_forward(_ argc: Int, _ argv: [String]) throws {
             // TODO: if necessary and applicable
 
             try encoder_forward(kernel_num, out_gpu, inp, wte, wpe, B, T, C, block_size)
+            try launchPad?.commit(wait: true)
         }
         let end = Date()
         elapsed_time = end.timeIntervalSince(start)
