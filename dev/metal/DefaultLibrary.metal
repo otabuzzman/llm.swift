@@ -8,9 +8,9 @@ using namespace metal;
 kernel void crossentropy_forward_kernel1(device float* losses [[ buffer(0) ]],
                                 device float* probs [[ buffer(1) ]],
                                 device int* targets [[ buffer(2) ]],
-                                constant uint& B [[ buffer(3) ]],
-                                constant uint& T [[ buffer(4) ]],
-                                constant uint& V [[ buffer(5) ]],
+                                constant int& B [[ buffer(3) ]],
+                                constant int& T [[ buffer(4) ]],
+                                constant int& V [[ buffer(5) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
     // if (idx >= B * T) { return; }
@@ -28,9 +28,9 @@ kernel void crossentropy_forward_kernel1(device float* losses [[ buffer(0) ]],
 
 kernel void softmax_forward_kernel1(device float* out [[ buffer(0) ]],
                                 device float* inp [[ buffer(1) ]],
-                                constant uint& BT [[ buffer(2) ]],
-                                constant uint& V  [[ buffer(3) ]],
-                                constant uint& Vp [[ buffer(4) ]],
+                                constant int& BT [[ buffer(2) ]],
+                                constant int& V  [[ buffer(3) ]],
+                                constant int& Vp [[ buffer(4) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
     // if (idx >= BT) { return; }
@@ -65,7 +65,7 @@ kernel void softmax_forward_kernel1(device float* out [[ buffer(0) ]],
 #define GELU_SCALING_FACTOR precise::sqrt(2.0f / M_PI_F)
 kernel void gelu_forward_kernel1(device float* out [[ buffer(0) ]],
                                 device float* inp [[ buffer(1) ]],
-                                constant uint& N [[ buffer(2) ]],
+                                constant int& N [[ buffer(2) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
     // if (idx >= N) { return; }
@@ -78,7 +78,7 @@ kernel void gelu_forward_kernel1(device float* out [[ buffer(0) ]],
 
 kernel void gelu_forward_kernel2(device float* out [[ buffer(0) ]],
                                 device float* inp [[ buffer(1) ]],
-                                constant uint& N [[ buffer(2) ]],
+                                constant int& N [[ buffer(2) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     int idx_packed_float4 = idx * 4; // packed_float4::size == 4
     // uncomment if nonuniform threadgroups not available
@@ -110,7 +110,7 @@ kernel void gelu_forward_kernel2(device float* out [[ buffer(0) ]],
 kernel void residual_forward_kernel1(device float* out  [[ buffer(0) ]],
                                 device float* inp1 [[ buffer(1) ]],
                                 device float* inp2 [[ buffer(2) ]],
-                                constant uint& N [[ buffer(3) ]],
+                                constant int& N [[ buffer(3) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
     // if (idx >= N) { return; }
@@ -121,7 +121,7 @@ kernel void residual_forward_kernel1(device float* out  [[ buffer(0) ]],
 kernel void residual_forward_kernel2(device float* out  [[ buffer(0) ]],
                                 device float* inp1 [[ buffer(1) ]],
                                 device float* inp2 [[ buffer(2) ]],
-                                constant uint& N [[ buffer(3) ]],
+                                constant int& N [[ buffer(3) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     int idx_packed_float4 = idx * 4; // packed_float4::size == 4
     // uncomment if nonuniform threadgroups not available
@@ -145,10 +145,10 @@ kernel void residual_forward_kernel2(device float* out  [[ buffer(0) ]],
 
 kernel void attention_query_key_kernel1(device float* preatt  [[ buffer(0) ]],
                                 device float* inp [[ buffer(1) ]],
-                                constant uint& B  [[ buffer(2) ]],
-                                constant uint& T  [[ buffer(3) ]],
-                                constant uint& C  [[ buffer(4) ]],
-                                constant uint& NH [[ buffer(5) ]],
+                                constant int& B  [[ buffer(2) ]],
+                                constant int& T  [[ buffer(3) ]],
+                                constant int& C  [[ buffer(4) ]],
+                                constant int& NH [[ buffer(5) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
     // if (idx >= B * NH * T * T) { return; }
@@ -180,9 +180,9 @@ kernel void attention_query_key_kernel1(device float* preatt  [[ buffer(0) ]],
 
 kernel void attention_softmax_kernel1(device float* att  [[ buffer(0) ]],
                                 device float* preatt [[ buffer(1) ]],
-                                constant uint& B  [[ buffer(2) ]],
-                                constant uint& T  [[ buffer(3) ]],
-                                constant uint& NH [[ buffer(4) ]],
+                                constant int& B  [[ buffer(2) ]],
+                                constant int& T  [[ buffer(3) ]],
+                                constant int& NH [[ buffer(4) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
     // if (idx >= B * T * NH) { return; }
@@ -226,10 +226,10 @@ kernel void attention_softmax_kernel1(device float* att  [[ buffer(0) ]],
 kernel void attention_value_kernel1(device float* out [[ buffer(0) ]],
                                 device float* att [[ buffer(1) ]],
                                 device float* inp [[ buffer(2) ]],
-                                constant uint& B  [[ buffer(3) ]],
-                                constant uint& T  [[ buffer(4) ]],
-                                constant uint& C  [[ buffer(5) ]],
-                                constant uint& NH [[ buffer(6) ]],
+                                constant int& B  [[ buffer(3) ]],
+                                constant int& T  [[ buffer(4) ]],
+                                constant int& C  [[ buffer(5) ]],
+                                constant int& NH [[ buffer(6) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
     // if (idx >= B * T * NH) { return; }
@@ -261,9 +261,9 @@ kernel void attention_value_kernel1(device float* out [[ buffer(0) ]],
 kernel void matmul_forward_kernel1(device float* out [[ buffer(0) ]],
                                 device float* inp  [[ buffer(1) ]],
                                 device float* weight [[ buffer(2) ]],
-                                constant uint& BT [[ buffer(3) ]],
-                                constant uint& C  [[ buffer(4) ]],
-                                constant uint& OC [[ buffer(5) ]],
+                                constant int& BT [[ buffer(3) ]],
+                                constant int& C  [[ buffer(4) ]],
+                                constant int& OC [[ buffer(5) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
     // if (idx >= BT * OC) { return; }
@@ -279,8 +279,8 @@ kernel void matmul_forward_kernel1(device float* out [[ buffer(0) ]],
 
 kernel void add_bias_kernel1(device float* out [[ buffer(0) ]],
                                 device float* bias  [[ buffer(1) ]],
-                                constant uint& BT [[ buffer(2) ]],
-                                constant uint& OC [[ buffer(3) ]],
+                                constant int& BT [[ buffer(2) ]],
+                                constant int& OC [[ buffer(3) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
     // if (idx >= BT * OC) { return; }
@@ -298,8 +298,8 @@ kernel void layernorm_forward_kernel1(device float* out [[ buffer(0) ]],
                                 device float* inp  [[ buffer(3) ]],
                                 device float* weight [[ buffer(4) ]],
                                 device float* bias [[ buffer(5) ]],
-                                constant uint& BT [[ buffer(6) ]],
-                                constant uint& C  [[ buffer(7) ]],
+                                constant int& BT [[ buffer(6) ]],
+                                constant int& C  [[ buffer(7) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
     // if (idx >= BT) { return; }
@@ -343,9 +343,9 @@ kernel void encoder_forward_kernel1(device float* out [[ buffer(0) ]],
                                 device int* inp [[ buffer(1) ]],
                                 device float* wte [[ buffer(2) ]],
                                 device float* wpe [[ buffer(3) ]],
-                                constant uint& B [[ buffer(4) ]],
-                                constant uint& T [[ buffer(5) ]],
-                                constant uint& C [[ buffer(6) ]],
+                                constant int& B [[ buffer(4) ]],
+                                constant int& T [[ buffer(5) ]],
+                                constant int& C [[ buffer(6) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
     // if (idx >= B * T) { return; }
@@ -365,9 +365,9 @@ kernel void encoder_forward_kernel2(device float* out [[ buffer(0) ]],
                                 device int* inp [[ buffer(1) ]],
                                 device float* wte [[ buffer(2) ]],
                                 device float* wpe [[ buffer(3) ]],
-                                constant uint& B [[ buffer(4) ]],
-                                constant uint& T [[ buffer(5) ]],
-                                constant uint& C [[ buffer(6) ]],
+                                constant int& B [[ buffer(4) ]],
+                                constant int& T [[ buffer(5) ]],
+                                constant int& C [[ buffer(6) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     // uncomment if nonuniform threadgroups not available
     // if (idx >= B * T * C) { return; }
@@ -388,9 +388,9 @@ kernel void encoder_forward_kernel3(device float* out [[ buffer(0) ]],
                                 device int* inp [[ buffer(1) ]],
                                 device float* wte [[ buffer(2) ]],
                                 device float* wpe [[ buffer(3) ]],
-                                constant uint& B [[ buffer(4) ]],
-                                constant uint& T [[ buffer(5) ]],
-                                constant uint& C [[ buffer(6) ]],
+                                constant int& B [[ buffer(4) ]],
+                                constant int& T [[ buffer(5) ]],
+                                constant int& C [[ buffer(6) ]],
                                 uint idx [[ thread_position_in_grid ]]) {
     int idx_packed_float4 = idx * 4; // packed_float4::size == 4
     // uncomment if nonuniform threadgroups not available
