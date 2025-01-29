@@ -18,7 +18,7 @@
 import Metal
 
 // known kernel (Metal shader) versions
-private let versions = 0...2
+private let versions = 1...2
 
 // shader specific launch stub
 func gelu_forward1(
@@ -70,8 +70,6 @@ private func gelu_forward(
     else { throw LlmSwiftError.wrongApiUsage(api: "\(#function) version \(version) unknown") }
 
     switch version {
-    case 0: // CPU layer-pass function for comparison
-        gelu_forward(out, inp, N)
     case 1:
         try gelu_forward1(out, inp, N, block_size)
     case 2:
@@ -113,20 +111,25 @@ func gelu_forward(_ argc: Int, _ argv: [String]) throws {
 
     // defaults
     var kernel_num = 2
+    var repeat_times = 1000
     var block_sizes = [0, 32, 64, 128, 256, 512, 1024]
 
     // command line arguments
     var argNoCheck = false
     var argBlockSize = false
+    var argRepeatNum = false
     for arg in argv[1..<argv.count] {
         switch arg {
         case "nocheck":
             argNoCheck = true
         case "blocksize":
             argBlockSize = true
+        case "repeats":
+            argRepeatNum = true
         default:
             let argNum = Int(arg) ?? 0
             if argBlockSize { block_sizes = [argNum] ; argBlockSize = false ; continue }
+            if argRepeatNum { repeat_times = argNum ; argRepeatNum = false ; continue }
 
             kernel_num = argNum
         }
@@ -135,7 +138,10 @@ func gelu_forward(_ argc: Int, _ argv: [String]) throws {
 
     // first check the correctness of the kernel
     if !argNoCheck {
+        let start = Date()
         gelu_forward(out_cpu, inp, B * T * C)
+        let end = Date()
+        print("CPU version took \(end.timeIntervalSince(start) * 1e3) ms\n")
 
         // time the kernel at different block sizes
         for block_size in block_sizes {
@@ -144,17 +150,20 @@ func gelu_forward(_ argc: Int, _ argv: [String]) throws {
             try launchPad?.commit(wait: true)
             // #if !defined(ENABLE_BF16) && !defined(ENABLE_FP16)
             let tol: Float = 1e-5
-			// #else
-			// let tol: Float16 = 1e-2
-			// #endif
-			try validate_result(out_gpu, out_cpu, "out", B * T * C, tol)
+            // #else
+            // let tol: Float16 = 1e-2
+            // #endif
+            try validate_result(out_gpu, out_cpu, "out", B * T * C, tol)
         }
         print("All results match. ")
     }
 
     print("Starting benchmarks.\n")
+    Task {
+        try? await Task.sleep(for: .seconds(15))
+        print("still busy. consider less repeats (\(repeat_times))?")
+    }
 
-    let repeat_times = 1000
     var elapsed_time: Double = 0
     for block_size in block_sizes {
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h
@@ -164,6 +173,7 @@ func gelu_forward(_ argc: Int, _ argv: [String]) throws {
             // TODO: if necessary and applicable
 
             try gelu_forward(kernel_num, out_gpu, inp, B * T * C, block_size)
+            try launchPad?.commit(wait: true)
         }
         let end = Date()
         elapsed_time = end.timeIntervalSince(start)
