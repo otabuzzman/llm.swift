@@ -1228,14 +1228,14 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
 //        await matmul_forward(l_fcproj, l_fch_gelu, l_fcprojw, l_fcprojb, B, T, 4 * C, C)
 //        residual_forward(l_residual3, l_residual2, l_fcproj, B * T * C)
         try layernorm_forward1(l_ln1, l_ln1_mean, l_ln1_rstd, residual, l_ln1w, l_ln1b, B, T, C)
-        try matmul_forward1(l_qkv, l_ln1, l_qkvw, l_qkvb, B, T, C, 3 * C)
+        try matmul_forward2(l_qkv, l_ln1, l_qkvw, l_qkvb, B, T, C, 3 * C)
         try attention_forward1(l_atty, l_preatt, l_att, l_qkv, B, T, C, NH)
-        try matmul_forward1(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C)
+        try matmul_forward2(l_attproj, l_atty, l_attprojw, l_attprojb, B, T, C, C)
         try residual_forward2(l_residual2, residual, l_attproj, B * T * C)
         try layernorm_forward1(l_ln2, l_ln2_mean, l_ln2_rstd, l_residual2, l_ln2w, l_ln2b, B, T, C)
-        try matmul_forward1(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4 * C)
+        try matmul_forward2(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4 * C)
         try gelu_forward1(l_fch_gelu, l_fch, B * T * 4 * C)
-        try matmul_forward1(l_fcproj, l_fch_gelu, l_fcprojw, l_fcprojb, B, T, 4 * C, C)
+        try matmul_forward2(l_fcproj, l_fch_gelu, l_fcprojw, l_fcprojb, B, T, 4 * C, C)
         try residual_forward2(l_residual3, l_residual2, l_fcproj, B * T * C)
     }
     residual = acts.residual3 + (L - 1) * B * T * C // last residual is in residual3
@@ -1262,7 +1262,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         model.pointee.mean_loss = -1
     }
     let end = Date()
-    print("forward layers took \(end.timeIntervalSince(start))")
+    print("forward layers took \(String(format: "%.2f", end.timeIntervalSince(start) * 1e3)) ms")
 
 //    launchPad?.closeCapture()
 }
