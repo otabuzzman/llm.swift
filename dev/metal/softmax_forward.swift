@@ -79,7 +79,7 @@ func softmax_forward4(
         Int32(B * T), Int32(V), Int32(Vp)]
 
     try launchPad?.dispatchKernel(
-        name: "softmax_forward_kernel7",
+        name: "softmax_forward_kernel4",
         context: context,
         params: params)
 }
@@ -116,6 +116,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
     let V = 50257
 
     try launchPad?.registerKernel(name: "softmax_forward_kernel1")
+    try launchPad?.registerKernel(name: "softmax_forward_kernel4")
 
     // create memory of random numbers
     let out_cpu = UnsafeMutablePointer<Float>.allocate(capacity: B * T * V)
