@@ -53,11 +53,11 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "matmul_forward"
+            argument = "softmax_forward"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "2"
+            argument = "7"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument

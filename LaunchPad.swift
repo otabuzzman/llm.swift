@@ -1,3 +1,6 @@
+// swiftlint:disable:next blanket_disable_command
+// swiftlint:disable identifier_name
+
 import Metal
 
 enum LaunchPadError: Error {
@@ -19,15 +22,21 @@ extension LaunchPadError: LocalizedError {
     }
 }
 
-enum ThreadgroupMemoryUnit {
-    case threadsPerGroup(times: Int)
-    case simdGroupsPerGroup(times: Int)
+struct ThreadgroupMemoryDescriptor {
+    enum Scope {
+        case threadgroup
+        case simdgroup
+    }
+
+    let scope: Scope
+    let units: Int
+    let type: Any.Type
 }
 
 struct KernelContext {
     let threadsPerGrid: Int // CUDA grid size
     let threadsPerGroup: Int // CUDA block size
-    let threadgroupMemoryUnits: ThreadgroupMemoryUnit?
+    private(set) var threadgroupMemory: ThreadgroupMemoryDescriptor?
 }
 
 protocol KernelParam {}
@@ -144,7 +153,7 @@ extension LaunchPad {
         else { throw LaunchPadError.miscellaneous(info: "\(#function): kernel \(name) not registered") }
         encoder?.setComputePipelineState(kernel)
 
-        var index = 0
+        var index = 0 // MSL function argument location index
         for param in params {
             switch param {
             case is UnsafeMutableRawPointer:
@@ -166,28 +175,30 @@ extension LaunchPad {
             }
         }
 
-        let threadsPerGrid = MTLSize(context.threadsPerGrid)
-        var threadsPerGroup: MTLSize
+        // using 1D grid and threadgroups. variable names from MSL specification if applicable.
+        let threads_per_grid = MTLSize(context.threadsPerGrid)
+        var threads_per_threadgroup: MTLSize
         if context.threadsPerGroup > 0 {
-            threadsPerGroup = MTLSize(context.threadsPerGroup)
+            threads_per_threadgroup = MTLSize(context.threadsPerGroup)
         } else {
-            let threadsPerSimdGroup = kernel.threadExecutionWidth // CUDA warp size
-            let simdGroupsPerGroup = kernel.maxTotalThreadsPerThreadgroup / threadsPerSimdGroup
-            threadsPerGroup = MTLSize(simdGroupsPerGroup * threadsPerSimdGroup)
+            let threads_per_simdgroup = kernel.threadExecutionWidth // CUDA warp size
+            let simdgroups_per_threadgroup = kernel.maxTotalThreadsPerThreadgroup / threads_per_simdgroup
+            threads_per_threadgroup = MTLSize(simdgroups_per_threadgroup * threads_per_simdgroup)
         }
 
-        if let threadgroupMemoryUnits = context.threadgroupMemoryUnits {
-            var threadgroupMemorySize: Int
-            switch threadgroupMemoryUnits {
-            case .threadsPerGroup(let times):
-                threadgroupMemorySize = threadsPerGroup.width * times
-            case .simdGroupsPerGroup(let times):
-                threadgroupMemorySize = kernel.threadExecutionWidth * times
+        index = 0 // MSL threadgroup memory function argument location index
+        if let threadgroupMemory = context.threadgroupMemory {
+            var threadgroupMemoryLength = MemoryLayout.size(ofValue: threadgroupMemory.type)
+            switch threadgroupMemory.scope {
+            case .threadgroup:
+                threadgroupMemoryLength *= threads_per_threadgroup.width * threadgroupMemory.units
+            case .simdgroup:
+                threadgroupMemoryLength *= kernel.threadExecutionWidth * threadgroupMemory.units
             }
-            encoder?.setThreadgroupMemoryLength(threadgroupMemorySize, index: 0)
+            encoder?.setThreadgroupMemoryLength(threadgroupMemoryLength, index: index)
         }
 
-        encoder?.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
+        encoder?.dispatchThreads(threads_per_grid, threadsPerThreadgroup: threads_per_threadgroup)
     }
 
     mutating func commit(wait: Bool = false) throws {

@@ -66,7 +66,12 @@ func softmax_forward7(
     _ inp: UnsafePointer<Float>,
     _ B: Int, _ T: Int, _ V: Int, _ Vp: Int,
     _ block_size: Int = 0) throws {
-    let context = KernelContext(threadsPerGrid: B * T, threadsPerGroup: block_size, threadGroupMemorySize: .simdGroupsPerThread(2 * MemoryLayout<Float>.size))
+    let context = KernelContext(
+        threadsPerGrid: B * T,
+        threadsPerGroup: block_size,
+        threadgroupMemory: ThreadgroupMemoryDescriptor(
+            scope: .threadgroup,
+            units: 1, type: Float.self))
 
     let params: [KernelParam] = [
         UnsafeMutableRawPointer(out),

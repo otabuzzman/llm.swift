@@ -6,8 +6,8 @@ let argv = CommandLine.arguments
 let argc = argv.count
 
 let release = argv[0].range(of: "layer_pass$", options: [.regularExpression]) == nil
-
-let layerPassNameArgvIndex = release ? 0 : 1
+let argvFirst = release ? 0 : 1
+let argvRange = release ? 0..<argc : 1..<argc
 
 let layers: [String: (Int, [String]) async throws -> Void] = [
     "encoder_forward": encoder_forward,
@@ -21,8 +21,8 @@ let layers: [String: (Int, [String]) async throws -> Void] = [
 ]
 
 guard
-    let layerPassName = URL(string: argv[layerPassNameArgvIndex])?.lastPathComponent
-else { fatalError("\(argv[layerPassNameArgvIndex]): invalid") }
+    let layerPassName = URL(string: argv[argvFirst])?.lastPathComponent
+else { fatalError("\(argv[argvFirst]): invalid") }
 guard
     let layerPassFunc = layers[layerPassName]
 else { fatalError("\(layerPassName): unknown") }
@@ -31,7 +31,7 @@ do {
     if launchPad == nil { launchPad = try LaunchPad() }
     try launchPad?.makeCommandBuffer()
 
-    try await layerPassFunc(argc, release ? argv : Array(argv[1..<argc]))
+    try await layerPassFunc(argc, Array(argv[argvRange]))
 } catch let error as LlmSwiftError {
     fatalError("\(error.localizedDescription)")
 } catch let error as LaunchPadError {
