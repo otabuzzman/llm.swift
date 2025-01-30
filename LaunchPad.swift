@@ -153,7 +153,7 @@ extension LaunchPad {
         else { throw LaunchPadError.miscellaneous(info: "\(#function): kernel \(name) not registered") }
         encoder?.setComputePipelineState(kernel)
 
-        var index = 0 // MSL function argument location index
+        var index = 0 // argument location index, for MSL kernel functions
         for param in params {
             switch param {
             case is UnsafeMutableRawPointer:
@@ -186,7 +186,7 @@ extension LaunchPad {
             threads_per_threadgroup = MTLSize(simdgroups_per_threadgroup * threads_per_simdgroup)
         }
 
-        index = 0 // MSL threadgroup memory function argument location index
+        index = 0 // argument location index, for MSL threadgroup arguments
         if let threadgroupMemory = context.threadgroupMemory {
             var threadgroupMemoryLength = MemoryLayout.size(ofValue: threadgroupMemory.type)
             switch threadgroupMemory.scope {
