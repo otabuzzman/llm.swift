@@ -27,6 +27,92 @@ kernel void crossentropy_forward_kernel1(device float* losses [[ buffer(0) ]],
 // #include <metal_stdlib>
 // using namespace metal;
 
+kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
+                                device float* inp [[ buffer(1) ]],
+                                constant int& BT [[ buffer(2) ]],
+                                constant int& C [[ buffer(3) ]],
+                                uint idx [[ thread_position_in_grid ]]) {
+                                uint tgid [[ threadgroup_position_in_grid ]],
+                                uint tid [[ thread_position_in_threadgroup ]],
+                                uint tgSize [[ threads_per_threadgroup ]],
+                                uint laneId [[ thread_index_in_simdgroup ]],
+                                uint warpId [[ simdgroup_index_in_threadgroup ]],
+                                uint sgInTg [[ simdgroups_per_threadgroup ]],
+                                threadgroup float* shared [[ threadgroup(0) ]]) {
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= BT) { return; }
+
+    // shared[] must be allocated to have sgInTg elements
+    // those will be used for max and sum values
+    device float* max_or_sum_storage = shared;
+
+    // one row of inp, i.e. inp[tgid, :] of shape (C,)
+    const device float* x = inp + tgid * C;
+
+    // first, thread coarsening by directly accessing global memory in series
+    float maxval = -INFINITY;
+    for (int i = tid; i < C; i += tgSize) {
+        maxval = fmax(maxval, x[i]);
+    }
+    // now within-warp reductions for maxval
+    maxval = simd_max(maxval);
+
+    // the 0th thread of each warp writes the maxval of that warp to shared memory
+    if (laneId == 0) max_or_sum_storage[warpId] = maxval;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    // now the 0th thread of the block reduces the max values in shared memory, i.e. across warps
+    if (tid == 0) {
+        float val = max_or_sum_storage[tid];
+        for (int i = 1; i < sgInTg; i++) {
+            val = fmax(val, max_or_sum_storage[i]);
+        }
+        // store the final max in the first position
+        max_or_sum_storage[0] = val;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    // broadcast the max to all threads
+    float offset = max_or_sum_storage[0];
+
+    // compute expf and write the result to global memory
+    for (int i = tid; i < C; i += tgSize) {
+        out[tgid * C + i] = exp(x[i] - offset);
+    }
+
+    // okay now we calculated exp(x - max(x))
+    // step 2: sum all the values and divide by the sum
+
+    // thread coarsening for sum
+    x = out + tgid * C;
+    float sumval = 0.0f;
+    for (int i = tid; i < C; i += tgSize) {
+        sumval += x[i];
+    }
+    // within-warp reduction for sumval
+    sumval = simd_sum(sumval);
+
+    // write sumval to shared memory
+    if (laneId == 0) max_or_sum_storage[warpId] = sumval;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    // inter-thread reduction of sum
+    if (tid == 0) {
+        float val = max_or_sum_storage[tid];
+        for (int i = 1; i < sgInTg; ++i) {
+            val += max_or_sum_storage[i];
+        }
+        max_or_sum_storage[0] = val;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    // broadcast the sum to all threads
+    float sum = max_or_sum_storage[0];
+
+    // divide the whole row by the sum
+    for (int i = tid; i < C; i += tgSize) {
+        out[tgid * C + i] = x[i] / sum;
+    }
+}
+
 kernel void softmax_forward_kernel1(device float* out [[ buffer(0) ]],
                                 device float* inp [[ buffer(1) ]],
                                 constant int& BT [[ buffer(2) ]],

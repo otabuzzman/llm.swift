@@ -61,7 +61,7 @@ func softmax_forward1(
 
 // shader specific launch stub
 // swiftlint:disable:next function_parameter_count
-func softmax_forward7(
+func softmax_forward4(
     _ out: UnsafeMutablePointer<Float>,
     _ inp: UnsafePointer<Float>,
     _ B: Int, _ T: Int, _ V: Int, _ Vp: Int,
@@ -70,8 +70,8 @@ func softmax_forward7(
         threadsPerGrid: B * T,
         threadsPerGroup: block_size,
         threadgroupMemory: ThreadgroupMemoryDescriptor(
-            scope: .threadgroup,
-            units: 1, type: Float.self))
+            scope: .simdgroup,
+            units: 0, type: Float.self))
 
     let params: [KernelParam] = [
         UnsafeMutableRawPointer(out),
@@ -80,26 +80,6 @@ func softmax_forward7(
 
     try launchPad?.dispatchKernel(
         name: "softmax_forward_kernel7",
-        context: context,
-        params: params)
-}
-
-// shader specific launch stub
-// swiftlint:disable:next function_parameter_count
-func softmax_forward8(
-    _ out: UnsafeMutablePointer<Float>,
-    _ inp: UnsafePointer<Float>,
-    _ B: Int, _ T: Int, _ V: Int, _ Vp: Int,
-    _ block_size: Int = 0) throws {
-    let context = KernelContext(threadsPerGrid: B * T, threadsPerGroup: block_size)
-
-    let params: [KernelParam] = [
-        UnsafeMutableRawPointer(out),
-        UnsafeMutableRawPointer(mutating: inp),
-        Int32(B * T), Int32(V), Int32(Vp)]
-
-    try launchPad?.dispatchKernel(
-        name: "softmax_forward_kernel8",
         context: context,
         params: params)
 }
@@ -119,11 +99,9 @@ private func softmax_forward(
     switch version {
     case 1:
         try softmax_forward1(out, inp, B, T, V, Vp, block_size)
-    case 7:
-        try softmax_forward7(out, inp, B, T, V, Vp, block_size)
-    case 8:
-        try softmax_forward8(out, inp, B, T, V, Vp, block_size)
-    case 2, 3, 4, 5, 6:
+    case 4:
+        try softmax_forward4(out, inp, B, T, V, Vp, block_size)
+    case 2, 3, 5, 6, 7, 8:
         fatalError("layer-pass function \(#function) version \(version) not implemented")
     default:
         break

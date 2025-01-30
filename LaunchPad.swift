@@ -177,12 +177,12 @@ extension LaunchPad {
 
         // using 1D grid and threadgroups. variable names from MSL specification if applicable.
         let threads_per_grid = MTLSize(context.threadsPerGrid)
+        let threads_per_simdgroup = kernel.threadExecutionWidth // CUDA warp size
+        let simdgroups_per_threadgroup = kernel.maxTotalThreadsPerThreadgroup / threads_per_simdgroup
         var threads_per_threadgroup: MTLSize
         if context.threadsPerGroup > 0 {
             threads_per_threadgroup = MTLSize(context.threadsPerGroup)
         } else {
-            let threads_per_simdgroup = kernel.threadExecutionWidth // CUDA warp size
-            let simdgroups_per_threadgroup = kernel.maxTotalThreadsPerThreadgroup / threads_per_simdgroup
             threads_per_threadgroup = MTLSize(simdgroups_per_threadgroup * threads_per_simdgroup)
         }
 
@@ -193,7 +193,9 @@ extension LaunchPad {
             case .threadgroup:
                 threadgroupMemoryLength *= threads_per_threadgroup.width * threadgroupMemory.units
             case .simdgroup:
-                threadgroupMemoryLength *= kernel.threadExecutionWidth * threadgroupMemory.units
+                var units = simdgroups_per_threadgroup
+                if units > 0 { units = threadgroupMemory.units }
+                threadgroupMemoryLength *= kernel.threadExecutionWidth * units
             }
             encoder?.setThreadgroupMemoryLength(threadgroupMemoryLength, index: index)
         }
