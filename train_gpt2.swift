@@ -423,6 +423,10 @@ func attention_forward(
 
                 preatt_bth[t2] = val
             }
+            // pad with -INFINITY outside of autoregressive region for debugging comparisons
+            for t2 in t+1..<T {
+                preatt_bth[t2] = Float.infinity
+            }
 
             // pass 2: calculate the exp and keep track of sum
             // maxval is being calculated and subtracted only for numerical stability
