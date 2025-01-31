@@ -39,6 +39,9 @@ import Metal
 // known kernel (Metal shader) versions
 private let versions = 1...8
 
+// kernel version at index requires block_size > 0 (including version 0)
+private let blocksize_required = [false, false, false, false, true, false, false, false, false]
+
 // shader specific launch stub
 // swiftlint:disable:next function_parameter_count
 func softmax_forward1(
@@ -67,7 +70,7 @@ func softmax_forward4(
     _ B: Int, _ T: Int, _ V: Int, _ Vp: Int,
     _ block_size: Int = 0) throws {
     let context = KernelContext(
-        threadsPerGrid: B * T,
+        threadsPerGrid: B * T * block_size,
         threadsPerGroup: block_size,
         threadgroupMemory: ThreadgroupMemoryDescriptor(
             scope: .simdgroup,
@@ -156,7 +159,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
         case "repeats":
             argRepeatNum = true
         default:
-            let argNum = Int(arg) ?? 0
+            let argNum = Int(arg) ?? 1 // default kernel1
             if argBlockSize { block_sizes = [argNum] ; argBlockSize = false ; continue }
             if argRepeatNum { repeat_times = argNum ; argRepeatNum = false ; continue }
 
@@ -172,8 +175,11 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
         let end = Date()
         print("CPU version took \(String(format: "%.2f", end.timeIntervalSince(start) * 1e3)) ms\n")
 
+        guard kernel_num > 0 else { return } // note: kernel version 0 (CPU) && nocheck = nop
+
         // time the kernel at different block sizes
         for block_size in block_sizes {
+            if blocksize_required[kernel_num] && blocksize == 0 { continue }
             print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
             try softmax_forward(kernel_num, out_gpu, inp, B, T, V, V, block_size)
             try launchPad?.commit(wait: true)

@@ -30,14 +30,15 @@ kernel void crossentropy_forward_kernel1(device float* losses [[ buffer(0) ]],
 kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
                                 device float* inp [[ buffer(1) ]],
                                 constant int& BT [[ buffer(2) ]],
-                                constant int& C [[ buffer(3) ]],
-                                uint idx [[ thread_position_in_grid ]]) {
-                                uint tgid [[ threadgroup_position_in_grid ]],
-                                uint tid [[ thread_position_in_threadgroup ]],
-                                uint tgSize [[ threads_per_threadgroup ]],
-                                uint laneId [[ thread_index_in_simdgroup ]],
-                                uint warpId [[ simdgroup_index_in_threadgroup ]],
-                                uint sgInTg [[ simdgroups_per_threadgroup ]],
+                                constant int& V [[ buffer(3) ]],
+                                constant int& Vp [[ buffer(4) ]],
+                                uint idx [[ thread_position_in_grid ]]) { // CUDA blockIdx * blockDim + threadIdx
+                                uint tgid [[ threadgroup_position_in_grid ]], // CUDA blockIdx
+                                uint tid [[ thread_position_in_threadgroup ]], // CUDA threadIdx
+                                uint tgSize [[ threads_per_threadgroup ]], // CUDA blockDim
+                                uint laneId [[ thread_index_in_simdgroup ]], // CUDA threadIdx % 32
+                                uint warpId [[ simdgroup_index_in_threadgroup ]], // CUDA threadIdx / 32
+                                uint sgInTg [[ simdgroups_per_threadgroup ]], // CUDA blockDim / 32
                                 threadgroup float* shared [[ threadgroup(0) ]]) {
     // uncomment if nonuniform threadgroups not available
     // if (idx >= BT) { return; }
@@ -46,12 +47,12 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
     // those will be used for max and sum values
     device float* max_or_sum_storage = shared;
 
-    // one row of inp, i.e. inp[tgid, :] of shape (C,)
-    const device float* x = inp + tgid * C;
+    // one row of inp, i.e. inp[tgid, :] of shape (V,)
+    const device float* x = inp + tgid * V;
 
     // first, thread coarsening by directly accessing global memory in series
     float maxval = -INFINITY;
-    for (int i = tid; i < C; i += tgSize) {
+    for (int i = tid; i < V; i += tgSize) {
         maxval = fmax(maxval, x[i]);
     }
     // now within-warp reductions for maxval
@@ -75,17 +76,17 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
     float offset = max_or_sum_storage[0];
 
     // compute expf and write the result to global memory
-    for (int i = tid; i < C; i += tgSize) {
-        out[tgid * C + i] = exp(x[i] - offset);
+    for (int i = tid; i < V; i += tgSize) {
+        out[tgid * V + i] = exp(x[i] - offset);
     }
 
     // okay now we calculated exp(x - max(x))
     // step 2: sum all the values and divide by the sum
 
     // thread coarsening for sum
-    x = out + tgid * C;
+    x = out + tgid * V;
     float sumval = 0.0f;
-    for (int i = tid; i < C; i += tgSize) {
+    for (int i = tid; i < V; i += tgSize) {
         sumval += x[i];
     }
     // within-warp reduction for sumval
@@ -108,8 +109,8 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
     float sum = max_or_sum_storage[0];
 
     // divide the whole row by the sum
-    for (int i = tid; i < C; i += tgSize) {
-        out[tgid * C + i] = x[i] / sum;
+    for (int i = tid; i < V; i += tgSize) {
+        out[tgid * V + i] = x[i] / sum;
     }
 }
 
