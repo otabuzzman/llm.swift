@@ -171,21 +171,19 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
     }
 }
 
-// simdgroup-level max reduction (MSL: simd_max)
-inline float simdReduceMax(float val, int threads_per_simdgroup) {
-    for (int offset = threads_per_simdgroup / 2; offset > 0; offset /= 2) {
-        val = fmax(val, simd_shuffle_down(val, offset));
+// C++ template for missing MSL #pragma unroll https://stackoverflow.com/a/28232338
+template <unsigned N>
+struct pragma_unroll {
+    template <typename F> static void call(F const thread& f) {
+        f();
+        pragma_unroll<N-1>::call(f);
     }
-    return val;
-}
+};
 
-// simdgroup-level sum reduction (MSL: simd_sum)
-inline float simdReduceSum(float val, int threads_per_simdgroup) {
-    for (int offset = threads_per_simdgroup / 2; offset > 0; offset /= 2) {
-        val += fmax(val, simd_shuffle_down(val, offset));
-    }
-    return val;
-}
+template <>
+struct pragma_unroll<0u> {
+    template <typename F> static void call(F const thread&) {}
+};
 
 // --- gelu_forward.metal
 // #include <metal_stdlib>

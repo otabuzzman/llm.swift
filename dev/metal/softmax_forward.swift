@@ -129,7 +129,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
     try launchPad?.registerBuffer(address: out_gpu, length: out_gpu_length)
 
     let inp = UnsafeMutablePointer<Float>.allocate(capacity: B * T * V)
-    for i in 0..<B * T * V { inp[i] = Float.random(in: -1.0...1.0) }
+//    for i in 0..<B * T * V { inp[i] = Float.random(in: -1.0...1.0) }
     let inp_length = B * T * V * MemoryLayout<Float>.size
     try launchPad?.registerBuffer(address: inp, length: inp_length)
 
@@ -144,7 +144,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
     // defaults
     var kernel_num = 1
     var repeat_times = 100
-    var block_sizes = [0, 32, 64, 128, 256, 512, 1024]
+    var block_sizes = [0, 64, 64, 128, 256, 512, 1024]
 
     // command line arguments
     var argNoCheck = false
