@@ -197,6 +197,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
 
     var elapsed_time: Double = 0
     for block_size in block_sizes {
+        if blocksize_required[kernel_num] && block_size == 0 { continue }
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h
         let start = Date()
         for _ in 0..<repeat_times {
