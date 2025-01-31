@@ -179,7 +179,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
 
         // time the kernel at different block sizes
         for block_size in block_sizes {
-            if blocksize_required[kernel_num] && blocksize == 0 { continue }
+            if blocksize_required[kernel_num] && block_size == 0 { continue }
             print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
             try softmax_forward(kernel_num, out_gpu, inp, B, T, V, V, block_size)
             try launchPad?.commit(wait: true)

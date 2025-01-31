@@ -32,7 +32,7 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
                                 constant int& BT [[ buffer(2) ]],
                                 constant int& V [[ buffer(3) ]],
                                 constant int& Vp [[ buffer(4) ]],
-                                uint idx [[ thread_position_in_grid ]]) { // CUDA blockIdx * blockDim + threadIdx
+                                uint idx [[ thread_position_in_grid ]], // CUDA blockIdx * blockDim + threadIdx
                                 uint tgid [[ threadgroup_position_in_grid ]], // CUDA blockIdx
                                 uint tid [[ thread_position_in_threadgroup ]], // CUDA threadIdx
                                 uint tgSize [[ threads_per_threadgroup ]], // CUDA blockDim
@@ -45,7 +45,7 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
 
     // shared[] must be allocated to have sgInTg elements
     // those will be used for max and sum values
-    device float* max_or_sum_storage = shared;
+    threadgroup float* max_or_sum_storage = shared;
 
     // one row of inp, i.e. inp[tgid, :] of shape (V,)
     const device float* x = inp + tgid * V;
@@ -65,7 +65,7 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
     // now the 0th thread of the block reduces the max values in shared memory, i.e. across warps
     if (tid == 0) {
         float val = max_or_sum_storage[tid];
-        for (int i = 1; i < sgInTg; i++) {
+        for (uint i = 1; i < sgInTg; i++) {
             val = fmax(val, max_or_sum_storage[i]);
         }
         // store the final max in the first position
@@ -99,7 +99,7 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
     // inter-thread reduction of sum
     if (tid == 0) {
         float val = max_or_sum_storage[tid];
-        for (int i = 1; i < sgInTg; ++i) {
+        for (uint i = 1; i < sgInTg; ++i) {
             val += max_or_sum_storage[i];
         }
         max_or_sum_storage[0] = val;
