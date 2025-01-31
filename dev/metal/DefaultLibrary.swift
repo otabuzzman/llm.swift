@@ -85,7 +85,8 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
                                 uint tid [[ thread_position_in_threadgroup ]], // CUDA threadIdx
                                 uint tgSize [[ threads_per_threadgroup ]], // CUDA blockDim
                                 uint laneId [[ thread_index_in_simdgroup ]], // CUDA threadIdx % 32
-                                uint sgSize [[ threads_per_simdgroup ]], // CUDA warp size
+                                // for simdReduceMax and simdReduceSum
+                                // uint sgSize [[ threads_per_simdgroup ]], // CUDA warp size
                                 uint warpId [[ simdgroup_index_in_threadgroup ]], // CUDA threadIdx / 32
                                 uint sgInTg [[ simdgroups_per_threadgroup ]], // CUDA blockDim / 32
                                 threadgroup float* shared [[ threadgroup(0) ]]) {
@@ -184,6 +185,134 @@ template <>
 struct pragma_unroll<0u> {
     template <typename F> static void call(F const thread&) {}
 };
+
+kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
+                                device float* inp [[ buffer(1) ]],
+                                constant int& BT [[ buffer(2) ]],
+                                constant int& V [[ buffer(3) ]],
+                                // for max thread ID check if nonuniform threadgroups not available
+                                // uint idx [[ thread_position_in_grid ]], // CUDA blockIdx * blockDim + threadIdx
+                                uint tgid [[ threadgroup_position_in_grid ]], // CUDA blockIdx
+                                uint tid [[ thread_position_in_threadgroup ]], // CUDA threadIdx
+                                uint tgSize [[ threads_per_threadgroup ]], // CUDA blockDim
+                                uint laneId [[ thread_index_in_simdgroup ]], // CUDA threadIdx % 32
+                                // for simdReduceMax and simdReduceSum
+                                // uint sgSize [[ threads_per_simdgroup ]], // CUDA warp size
+                                uint warpId [[ simdgroup_index_in_threadgroup ]], // CUDA threadIdx / 32
+                                uint sgInTg [[ simdgroups_per_threadgroup ]], // CUDA blockDim / 32
+                                threadgroup float* shared [[ threadgroup(0) ]]) {
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= BT * tgSize) { return; }
+
+    // out is (BT, V) just like inp. Each row of inp will get softmaxed.
+    // same as kernel4, but optimised for very large Cs with advanced unrolling
+
+    // The trick is to read into a register array (all indices known at compile time)
+    // and always read UNROLL_FACTOR values to maximise memory level parallelism
+    // even if we would be out of bounds, we set the index to min(V-1, tgid)
+    // so we just do some unnecessary reads (obviously bad for small V)
+    // the writes are in a separate loop with a conditional check for out of bounds
+    // making it separate is necessary to convince the compiler to do the right thing
+
+    const int UNROLL_FACTOR = 8;
+
+    // shared[] must be allocated to have 2 * sgInTg elements
+    // first half for max values, the second half for sum values
+    threadgroup float* maxvals = shared;
+    threadgroup float* sumvals = &shared[sgInTg];
+
+    if (tid >= V) {
+        maxvals[warpId] = -INFINITY;
+        sumvals[warpId] = 0.0f;
+        return;
+    }
+
+    const device float* x = inp + tgid * V; // input
+    device float* y = out + tgid * V; // output
+
+    // first, thread coarsening by directly accessing global memory in series
+    float maxval = -INFINITY;
+    for (int i = tid; i < V; i += tgSize * UNROLL_FACTOR) {
+        // #pragma unroll
+        for (int u = 0; u < UNROLL_FACTOR; u++) {
+            maxval = fmax(maxval, x[min(V - 1, i + u*tgSize)]);
+        }
+    }
+
+    // now within-warp reductions for maxval
+    maxval = simd_max(maxval);
+    // the 0th thread of each warp writes the maxval of that warp to shared memory
+    if (laneId == 0) maxvals[warpId] = maxval;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    // now the 0th thread reduces the maxvals in shared memory, i.e. across warps
+    if (tid == 0) {
+        float val = maxvals[tid];
+        // #pragma unroll
+        for (int i = 1; i < sgInTg; i++) {
+            val = fmax(val, maxvals[i]);
+        }
+        // store the final max in the first position
+        maxvals[0] = val;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    // broadcast the max to all threads
+    float offset = maxvals[0];
+
+    // compute expf and write the result to global memory
+    // + thread coarsening for sum
+    float sumval = 0.0f;
+    for (int i = tid; i < V; i += tgSize * UNROLL_FACTOR) {
+        float reg_array[UNROLL_FACTOR];
+        // #pragma unroll
+        for (int u = 0; u < UNROLL_FACTOR; u++) {
+            reg_array[u] = x[min(V - 1, i + u * tgSize)];
+        }
+        // #pragma unroll
+        for (int u = 0; u < UNROLL_FACTOR; u++) {
+            if (i + u * tgSize < V) {
+                float output = exp(reg_array[u] - offset);
+                y[min(V - 1, i + u * tgSize)] = output; // compiler likes redundant min()?!
+                sumval += output; // combined into the same loop unlike kernel3
+            }
+        }
+    }
+
+    // okay now we calculated exp(x - max(x))
+    // step 2: sum all the values and divide by the sum
+
+    // within-warp reduction for sumval
+    sumval = simd_sum(sumval);
+    // write sumval to shared memory
+    if (laneId == 0) sumvals[warpId] = sumval;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    // inter-thread reduction of sum
+    if (tid == 0) {
+        float val = sumvals[tid];
+        // #pragma unroll
+        for (int i = 1; i < sgInTg; ++i) {
+            val += sumvals[i];
+        }
+        sumvals[0] = val;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    // broadcast the sum to all threads
+    float sum = sumvals[0];
+
+    // divide the whole row by the sum
+    for (int i = tid; i < V; i += tgSize * UNROLL_FACTOR) {
+        float reg_array[UNROLL_FACTOR];
+        // #pragma unroll
+        for (int u = 0; u < UNROLL_FACTOR; u++) {
+            reg_array[u] = y[min(V - 1, i + u * tgSize)];
+        }
+        // #pragma unroll
+        for (int u = 0; u < UNROLL_FACTOR; u++) {
+            if (i + u * tgSize < V) {
+                y[i + u * tgSize] = reg_array[u] / sum;
+            }
+        }
+    }
+}
 
 // --- gelu_forward.metal
 // #include <metal_stdlib>

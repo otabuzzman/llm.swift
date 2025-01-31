@@ -84,6 +84,31 @@ func softmax_forward4(
         params: params)
 }
 
+// shader specific launch stub
+// swiftlint:disable:next function_parameter_count
+func softmax_forward7(
+    _ out: UnsafeMutablePointer<Float>,
+    _ inp: UnsafePointer<Float>,
+    _ B: Int, _ T: Int, _ V: Int, _ Vp: Int,
+    _ block_size: Int = 0) throws {
+    let context = KernelContext(
+        threadsPerGrid: B * T * block_size,
+        threadsPerGroup: block_size,
+        threadgroupMemory: ThreadgroupMemoryDescriptor(
+            scope: .simdstake,
+            units: 2, type: Float.self))
+
+    let params: [KernelParam] = [
+        UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: inp),
+        Int32(B * T), Int32(V)]
+
+    try launchPad?.dispatchKernel(
+        name: "softmax_forward_kernel7",
+        context: context,
+        params: params)
+}
+
 // version dispatcher
 // swiftlint:disable:next function_parameter_count
 private func softmax_forward(
@@ -101,7 +126,9 @@ private func softmax_forward(
         try softmax_forward1(out, inp, B, T, V, Vp, block_size)
     case 4:
         try softmax_forward4(out, inp, B, T, V, Vp, block_size)
-    case 2, 3, 5, 6, 7, 8:
+    case 7:
+        try softmax_forward7(out, inp, B, T, V, Vp, block_size)
+    case 2, 3, 5, 6, 8:
         fatalError("layer-pass function \(#function) version \(version) not implemented")
     default:
         break
@@ -117,6 +144,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
 
     try launchPad?.registerKernel(name: "softmax_forward_kernel1")
     try launchPad?.registerKernel(name: "softmax_forward_kernel4")
+    try launchPad?.registerKernel(name: "softmax_forward_kernel7")
 
     // create memory of random numbers
     let out_cpu = UnsafeMutablePointer<Float>.allocate(capacity: B * T * V)
@@ -149,7 +177,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
         [64, 128, 256, 512, 1024],
         [0, 32, 64, 128, 256, 512, 1024],
         [0, 32, 64, 128, 256, 512, 1024],
-        [0, 32, 64, 128, 256, 512, 1024],
+        [64, 128, 256, 512, 1024],
         [0, 32, 64, 128, 256, 512, 1024]
     ]
 
