@@ -189,7 +189,7 @@ struct pragma_unroll<0u> {
 kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
                                 device float* inp [[ buffer(1) ]],
                                 constant int& BT [[ buffer(2) ]],
-                                constant int& V [[ buffer(3) ]],
+                                constant uint& V [[ buffer(3) ]],
                                 // for max thread ID check if nonuniform threadgroups not available
                                 // uint idx [[ thread_position_in_grid ]], // CUDA blockIdx * blockDim + threadIdx
                                 uint tgid [[ threadgroup_position_in_grid ]], // CUDA blockIdx
@@ -232,10 +232,10 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
 
     // first, thread coarsening by directly accessing global memory in series
     float maxval = -INFINITY;
-    for (int i = tid; i < V; i += tgSize * UNROLL_FACTOR) {
+    for (uint i = tid; i < V; i += tgSize * UNROLL_FACTOR) {
         // #pragma unroll
         for (int u = 0; u < UNROLL_FACTOR; u++) {
-            maxval = fmax(maxval, x[min(V - 1, i + u*tgSize)]);
+            maxval = fmax(maxval, x[min(V - 1, i + u * tgSize)]);
         }
     }
 
@@ -248,7 +248,7 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
     if (tid == 0) {
         float val = maxvals[tid];
         // #pragma unroll
-        for (int i = 1; i < sgInTg; i++) {
+        for (uint i = 1; i < sgInTg; i++) {
             val = fmax(val, maxvals[i]);
         }
         // store the final max in the first position
@@ -261,7 +261,7 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
     // compute expf and write the result to global memory
     // + thread coarsening for sum
     float sumval = 0.0f;
-    for (int i = tid; i < V; i += tgSize * UNROLL_FACTOR) {
+    for (uint i = tid; i < V; i += tgSize * UNROLL_FACTOR) {
         float reg_array[UNROLL_FACTOR];
         // #pragma unroll
         for (int u = 0; u < UNROLL_FACTOR; u++) {
@@ -289,7 +289,7 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
     if (tid == 0) {
         float val = sumvals[tid];
         // #pragma unroll
-        for (int i = 1; i < sgInTg; ++i) {
+        for (uint i = 1; i < sgInTg; ++i) {
             val += sumvals[i];
         }
         sumvals[0] = val;
@@ -299,7 +299,7 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
     float sum = sumvals[0];
 
     // divide the whole row by the sum
-    for (int i = tid; i < V; i += tgSize * UNROLL_FACTOR) {
+    for (uint i = tid; i < V; i += tgSize * UNROLL_FACTOR) {
         float reg_array[UNROLL_FACTOR];
         // #pragma unroll
         for (int u = 0; u < UNROLL_FACTOR; u++) {
