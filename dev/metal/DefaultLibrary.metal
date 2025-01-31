@@ -46,8 +46,8 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
                                 device float* inp [[ buffer(1) ]],
                                 constant int& BT [[ buffer(2) ]],
                                 constant int& V [[ buffer(3) ]],
-                                constant int& Vp [[ buffer(4) ]],
-//                                uint idx [[ thread_position_in_grid ]], // CUDA blockIdx * blockDim + threadIdx
+                                // for max thread ID check if nonuniform threadgroups not available
+                                // uint idx [[ thread_position_in_grid ]], // CUDA blockIdx * blockDim + threadIdx
                                 uint tgid [[ threadgroup_position_in_grid ]], // CUDA blockIdx
                                 uint tid [[ thread_position_in_threadgroup ]], // CUDA threadIdx
                                 uint tgSize [[ threads_per_threadgroup ]], // CUDA blockDim
@@ -57,7 +57,15 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
                                 uint sgInTg [[ simdgroups_per_threadgroup ]], // CUDA blockDim / 32
                                 threadgroup float* shared [[ threadgroup(0) ]]) {
     // uncomment if nonuniform threadgroups not available
-    // if (idx >= BT) { return; }
+    // if (idx >= BT * tgSize) { return; }
+
+    // out is (BT, V) just like inp. Each row of inp will get softmaxed.
+    // same as kernel3, but can handle any block size (multiple of 32)
+    // each row of V elements is handled by block_size threads
+    // furthermore, each block_size threads get executed in warps of 32 threads
+
+    // special reduction operations simd_max/simd_sum are used for intra-warp reductions
+    // shared memory is used for inter-warp reduction
 
     // shared[] must be allocated to have sgInTg elements
     // those will be used for max and sum values
