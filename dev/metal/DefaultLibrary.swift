@@ -27,6 +27,38 @@ kernel void crossentropy_forward_kernel1(device float* losses [[ buffer(0) ]],
 // #include <metal_stdlib>
 // using namespace metal;
 
+kernel void softmax_forward_kernel1(device float* out [[ buffer(0) ]],
+                                device float* inp [[ buffer(1) ]],
+                                constant int& BT [[ buffer(2) ]],
+                                constant int& V  [[ buffer(3) ]],
+                                constant int& Vp [[ buffer(4) ]],
+                                uint idx [[ thread_position_in_grid ]]) {
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= BT) { return; }
+
+    const device float* inp_row = inp + idx * Vp;
+    device float* out_row = out + idx * Vp;
+
+    float maxval = -INFINITY;
+    for (int j = 0; j < V; j++) {
+        if (inp_row[j] > maxval) {
+            maxval = inp_row[j];
+        }
+    }
+    float sum = 0.0;
+    for (int j = 0; j < V; j++) {
+        out_row[j] = precise::exp(inp_row[j] - maxval);
+        sum += out_row[j];
+    }
+    for (int j = 0; j < V; j++) {
+        out_row[j] /= sum;
+    }
+    // set probabilities for filled tokens to zero (as in CPU layer function)
+    for (int j = V; j < Vp; j++) {
+        out_row[j] = 0.0;
+    }
+}
+
 // simdgroup-level max reduction (MSL: simd_max)
 inline float simdReduceMax(float val, int threads_per_simdgroup) {
     for (int offset = threads_per_simdgroup / 2; offset > 0; offset /= 2) {
@@ -139,36 +171,20 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
     }
 }
 
-kernel void softmax_forward_kernel1(device float* out [[ buffer(0) ]],
-                                device float* inp [[ buffer(1) ]],
-                                constant int& BT [[ buffer(2) ]],
-                                constant int& V  [[ buffer(3) ]],
-                                constant int& Vp [[ buffer(4) ]],
-                                uint idx [[ thread_position_in_grid ]]) {
-    // uncomment if nonuniform threadgroups not available
-    // if (idx >= BT) { return; }
+// simdgroup-level max reduction (MSL: simd_max)
+inline float simdReduceMax(float val, int threads_per_simdgroup) {
+    for (int offset = threads_per_simdgroup / 2; offset > 0; offset /= 2) {
+        val = fmax(val, simd_shuffle_down(val, offset));
+    }
+    return val;
+}
 
-    const device float* inp_row = inp + idx * Vp;
-    device float* out_row = out + idx * Vp;
-
-    float maxval = -INFINITY;
-    for (int j = 0; j < V; j++) {
-        if (inp_row[j] > maxval) {
-            maxval = inp_row[j];
-        }
+// simdgroup-level sum reduction (MSL: simd_sum)
+inline float simdReduceSum(float val, int threads_per_simdgroup) {
+    for (int offset = threads_per_simdgroup / 2; offset > 0; offset /= 2) {
+        val += fmax(val, simd_shuffle_down(val, offset));
     }
-    float sum = 0.0;
-    for (int j = 0; j < V; j++) {
-        out_row[j] = precise::exp(inp_row[j] - maxval);
-        sum += out_row[j];
-    }
-    for (int j = 0; j < V; j++) {
-        out_row[j] /= sum;
-    }
-    // set probabilities for filled tokens to zero (as in CPU layer function)
-    for (int j = V; j < Vp; j++) {
-        out_row[j] = 0.0;
-    }
+    return val;
 }
 
 // --- gelu_forward.metal
