@@ -73,13 +73,13 @@ func softmax_forward4(
         threadsPerGrid: B * T * block_size,
         threadsPerGroup: block_size,
         threadgroupMemory: ThreadgroupMemoryDescriptor(
-            scope: .simdgroup,
-            units: 0, type: Float.self))
+            scope: .simdstake,
+            units: 1, type: Float.self))
 
     let params: [KernelParam] = [
         UnsafeMutableRawPointer(out),
         UnsafeMutableRawPointer(mutating: inp),
-        Int32(B * T), Int32(V), Int32(Vp)]
+        Int32(B * T), Int32(V)]
 
     try launchPad?.dispatchKernel(
         name: "softmax_forward_kernel4",

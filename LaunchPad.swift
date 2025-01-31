@@ -24,8 +24,9 @@ extension LaunchPadError: LocalizedError {
 
 struct ThreadgroupMemoryDescriptor {
     enum Scope {
-        case threadgroup
-        case simdgroup
+        case threadgroup // `threads_per_threadgroup´ * self.units * MemoryLayout.size(ofValue: self.type)
+        case simdgroup // `threads_per_simdgroup´ * ...
+        case simdstake // `simdgroups_per_threadgroup´ * ...
     }
 
     let scope: Scope
@@ -164,32 +165,8 @@ extension LaunchPad {
                 index += 1
             case is Float:
                 var scalar = (param as? Float)!
-                encoder?.setBytes(&scalar, length: MemoryLayout<Float>.stride, index: index)
-                index += 1
-            case is Int32:
-                var scalar = (param as? Int32)!
-                encoder?.setBytes(&scalar, length: MemoryLayout<Int32>.stride, index: index)
-                index += 1
-            default:
-                break
-            }
-        }
 
-        // switch to MSL specification names
-        let threads_per_grid = MTLSize(context.threadsPerGrid)
-        var threads_per_threadgroup: MTLSize // CUDA blockDim
-        let threads_per_simdgroup = kernel.threadExecutionWidth // CUDA warp size
-        var simdgroups_per_threadgroup: Int // CUDA blockDim / 32
-
-        // using 1D grid and threadgroups
-        if context.threadsPerGroup > 0 {
-            simdgroups_per_threadgroup = context.threadsPerGroup / threads_per_simdgroup
-            threads_per_threadgroup = MTLSize(context.threadsPerGroup)
-        } else {
-            simdgroups_per_threadgroup = kernel.maxTotalThreadsPerThreadgroup / threads_per_simdgroup
-            threads_per_threadgroup = MTLSize(simdgroups_per_threadgroup * threads_per_simdgroup)
-        }
-        assert(threads_per_threadgroup.width % threads_per_simdgroup == 0)
+        assert(threads_per_threadgroup.width % threads_per_simdgroup == 0) // debug-only
 
         index = 0 // argument location index, for MSL threadgroup arguments
         if let threadgroupMemory = context.threadgroupMemory {
@@ -198,9 +175,9 @@ extension LaunchPad {
             case .threadgroup:
                 threadgroupMemoryLength *= threads_per_threadgroup.width * threadgroupMemory.units
             case .simdgroup:
-                var units = simdgroups_per_threadgroup
-                if threadgroupMemory.units > 0 { units = threadgroupMemory.units }
-                threadgroupMemoryLength *= kernel.threadExecutionWidth * units
+                threadgroupMemoryLength *= kernel.threadExecutionWidth * threadgroupMemory.units
+            case .simdstake:
+                threadgroupMemoryLength *= simdgroups_per_threadgroup * threadgroupMemory.units
             }
             encoder?.setThreadgroupMemoryLength(threadgroupMemoryLength, index: index)
         }
