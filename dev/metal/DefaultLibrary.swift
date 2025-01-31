@@ -27,7 +27,7 @@ kernel void crossentropy_forward_kernel1(device float* losses [[ buffer(0) ]],
 // #include <metal_stdlib>
 // using namespace metal;
 
-// simdgroup-level max reduction
+// simdgroup-level max reduction (MSL: simd_max)
 inline float simdReduceMax(float val, int threads_per_simdgroup) {
     for (int offset = threads_per_simdgroup / 2; offset > 0; offset /= 2) {
         val = fmax(val, simd_shuffle_down(val, offset));
@@ -35,7 +35,7 @@ inline float simdReduceMax(float val, int threads_per_simdgroup) {
     return val;
 }
 
-// simdgroup-level sum reduction
+// simdgroup-level sum reduction (MSL: simd_sum)
 inline float simdReduceSum(float val, int threads_per_simdgroup) {
     for (int offset = threads_per_simdgroup / 2; offset > 0; offset /= 2) {
         val += fmax(val, simd_shuffle_down(val, offset));
@@ -48,7 +48,7 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
                                 constant int& BT [[ buffer(2) ]],
                                 constant int& V [[ buffer(3) ]],
                                 constant int& Vp [[ buffer(4) ]],
-                                uint idx [[ thread_position_in_grid ]], // CUDA blockIdx * blockDim + threadIdx
+//                                uint idx [[ thread_position_in_grid ]], // CUDA blockIdx * blockDim + threadIdx
                                 uint tgid [[ threadgroup_position_in_grid ]], // CUDA blockIdx
                                 uint tid [[ thread_position_in_threadgroup ]], // CUDA threadIdx
                                 uint tgSize [[ threads_per_threadgroup ]], // CUDA blockDim
@@ -73,7 +73,7 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
         maxval = fmax(maxval, x[i]);
     }
     // now within-warp reductions for maxval
-    maxval = simdReduceMax(maxval, sgSize);
+    maxval = simd_max(maxval); // instead of own simdReduceMax()
 
     // the 0th thread of each warp writes the maxval of that warp to shared memory
     if (laneId == 0) max_or_sum_storage[warpId] = maxval;
@@ -107,7 +107,7 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
         sumval += x[i];
     }
     // within-warp reduction for sumval
-    sumval = simdReduceSum(sumval, sgSize);
+    sumval = simd_sum(sumval); // instead of own simdReduceSum()
 
     // write sumval to shared memory
     if (laneId == 0) max_or_sum_storage[warpId] = sumval;
