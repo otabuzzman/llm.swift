@@ -39,9 +39,6 @@ import Metal
 // known kernel (Metal shader) versions
 private let versions = 1...8
 
-// kernel version at index requires block_size > 0 (including version 0)
-private let blocksize_required = [false, false, false, false, true, false, false, false, false]
-
 // shader specific launch stub
 // swiftlint:disable:next function_parameter_count
 func softmax_forward1(
@@ -129,7 +126,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
     try launchPad?.registerBuffer(address: out_gpu, length: out_gpu_length)
 
     let inp = UnsafeMutablePointer<Float>.allocate(capacity: B * T * V)
-    for i in 0..<B * T * V { inp[i] = Float.random(in: -1.0...1.0) }
+//    for i in 0..<B * T * V { inp[i] = Float.random(in: -1.0...1.0) }
     let inp_length = B * T * V * MemoryLayout<Float>.size
     try launchPad?.registerBuffer(address: inp, length: inp_length)
 
@@ -144,7 +141,17 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
     // defaults
     var kernel_num = 1
     var repeat_times = 100
-    var block_sizes = [0, 64, 64, 128, 256, 512, 1024]
+    var block_sizes = [
+        [], // no needed for CPU version
+        [0, 32, 64, 128, 256, 512, 1024],
+        [0, 32, 64, 128, 256, 512, 1024],
+        [0, 32, 64, 128, 256, 512, 1024],
+        [64, 128, 256, 512, 1024],
+        [0, 32, 64, 128, 256, 512, 1024],
+        [0, 32, 64, 128, 256, 512, 1024],
+        [0, 32, 64, 128, 256, 512, 1024],
+        [0, 32, 64, 128, 256, 512, 1024]
+    ]
 
     // command line arguments
     var argNoCheck = false
@@ -159,8 +166,8 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
         case "repeats":
             argRepeatNum = true
         default:
-            let argNum = Int(arg) ?? 1 // default kernel1
-            if argBlockSize { block_sizes = [argNum] ; argBlockSize = false ; continue }
+            let argNum = Int(arg) ?? 0
+            if argBlockSize { block_sizes[kernel_num] = [argNum] ; argBlockSize = false ; continue }
             if argRepeatNum { repeat_times = argNum ; argRepeatNum = false ; continue }
 
             kernel_num = argNum
@@ -178,8 +185,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
         guard kernel_num > 0 else { return } // note: kernel version 0 (CPU) && nocheck = nop
 
         // time the kernel at different block sizes
-        for block_size in block_sizes {
-            if blocksize_required[kernel_num] && block_size == 0 { continue }
+        for block_size in block_sizes[kernel_num] {
             print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
             try softmax_forward(kernel_num, out_gpu, inp, B, T, V, V, block_size)
             try launchPad?.commit(wait: true)
@@ -196,8 +202,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
     }
 
     var elapsed_time: Double = 0
-    for block_size in block_sizes {
-        if blocksize_required[kernel_num] && block_size == 0 { continue }
+    for block_size in block_sizes[kernel_num] {
         // omitted generic `benchmark_kernel´ in dev/cuda/common.h
         let start = Date()
         for _ in 0..<repeat_times {
