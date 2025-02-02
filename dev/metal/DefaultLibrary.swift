@@ -111,7 +111,7 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
     // first, thread coarsening by directly accessing global memory in series
     float maxval = -INFINITY;
     for (int i = tid; i < V; i += tgSize) {
-        maxval = fmax(maxval, x[i]);
+        maxval = precise::fmax(maxval, x[i]);
     }
     // now within-warp reductions for maxval
     maxval = simd_max(maxval); // instead of own simdReduceMax()
@@ -124,7 +124,7 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
     if (tid == 0) {
         float val = max_or_sum_storage[tid];
         for (uint i = 1; i < sgInTg; i++) {
-            val = fmax(val, max_or_sum_storage[i]);
+            val = precise::fmax(val, max_or_sum_storage[i]);
         }
         // store the final max in the first position
         max_or_sum_storage[0] = val;
@@ -135,7 +135,7 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
 
     // compute expf and write the result to global memory
     for (int i = tid; i < V; i += tgSize) {
-        out[tgid * V + i] = exp(x[i] - offset);
+        out[tgid * V + i] = precise::exp(x[i] - offset);
     }
 
     // okay now we calculated exp(x - max(x))
@@ -172,19 +172,86 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
     }
 }
 
-// C++ template for missing MSL #pragma unroll https://stackoverflow.com/a/28232338
+// missing std::remove_reference in MSL, ChatGPT implementation
+template <typename T>
+struct std_remove_reference {
+    using type = T;
+};
+
+template <typename T>
+struct std_remove_reference<thread T&> {
+    using type = T;
+};
+
+template <typename T>
+struct std_remove_reference<thread T&&> {
+    using type = T;
+};
+
+// missing std::forward in MSL, ChatGPT implementation
+template <typename T>
+constexpr thread T&& std_forward(thread typename std_remove_reference<T>::type& t) {
+    return static_cast<thread T&&>(t);
+}
+
+template <typename T>
+constexpr thread T&& std_forward(thread typename std_remove_reference<T>::type&& t) {
+    return static_cast<thread T&&>(t);
+}
+
+// C++ template for missing #pragma unroll in MSL https://stackoverflow.com/a/28232338
 template <unsigned N>
 struct pragma_unroll {
-    template <typename F> static void call(F const thread& f) {
-        f();
-        pragma_unroll<N-1>::call(f);
+    template <typename F, typename... Args>
+    static void call(thread F&& f, thread Args&&... args) {
+        f(std_forward<Args>(args)...);
+        return pragma_unroll<N - 1>::call(std_forward<F>(f), std_forward<Args>(args)...);
     }
 };
 
 template <>
 struct pragma_unroll<0u> {
-    template <typename F> static void call(F const thread&) {}
+    template <typename F, typename... Args>
+    static void call(thread F&&, thread Args&&...) {}
 };
+
+// proxy functions for pragma_unroll template
+inline void loop0(thread uint& i, thread uint* u, constant uint& V, thread uint& tgSize, const device float* x, thread float* maxval) {
+    *maxval = precise::fmax(*maxval, x[min(V - 1, i + *u++ * tgSize)]);
+}
+
+inline void loop1(thread uint* i, thread float* val, threadgroup float* maxvals) {
+    *val += precise::fmax(*val, maxvals[*i++]);
+}
+
+inline void loop2(thread uint& i, thread uint* u, constant uint& V, thread uint& tgSize, const device float* x, thread float* reg_array) {
+    float output = x[min(V - 1, i + *u * tgSize)];
+    reg_array[*u++] = output;
+}
+
+inline void loop3(thread uint& i, thread uint* u, constant uint& V, thread uint& tgSize, device float* y, thread float* reg_array, thread float& offset, thread float* sumval) {
+    if (i + *u * tgSize < V) {
+        float output = precise::exp(reg_array[*u] - offset);
+        y[min(V - 1, i + *u++ * tgSize)] = output; // compiler likes redundant min()?!
+        *sumval += output; // combined into the same loop unlike kernel3
+    }
+}
+
+inline void loop4(thread uint* i, thread float* val, threadgroup float* sumvals) {
+    *val += sumvals[*i++];
+}
+
+inline void loop5(thread uint& i, thread uint* u, constant uint& V, thread uint& tgSize, device float* y, thread float* reg_array) {
+    float output = y[min(V - 1, i + *u * tgSize)];
+    reg_array[*u++] = output;
+}
+
+inline void loop6(thread uint& i, thread uint* u, constant uint& V, thread uint& tgSize, device float* y, thread float* reg_array, thread float& sum) {
+    if (i + *u * tgSize < V) {
+        float output = reg_array[*u] / sum;
+        y[i + *u++ * tgSize] = output;
+    }
+}
 
 kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
                                 device float* inp [[ buffer(1) ]],
@@ -234,9 +301,11 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
     float maxval = -INFINITY;
     for (uint i = tid; i < V; i += tgSize * UNROLL_FACTOR) {
         // #pragma unroll
-        for (int u = 0; u < UNROLL_FACTOR; u++) {
-            maxval = fmax(maxval, x[min(V - 1, i + u * tgSize)]);
-        }
+        uint u = 0; // must not pass by reference but pointer
+        pragma_unroll<UNROLL_FACTOR>::call(loop0, i, &u, V, tgSize, x, &maxval);
+//        for (int u = 0; u < UNROLL_FACTOR; u++) {
+//            maxval = precise::fmax(maxval, x[min(V - 1, i + u * tgSize)]);
+//        }
     }
 
     // now within-warp reductions for maxval
@@ -248,8 +317,11 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
     if (tid == 0) {
         float val = maxvals[tid];
         // #pragma unroll
+        // cannot pragma_unroll<sgInTg>: unknown sgInTg used as constant
+        // uint i = 1; // must not pass by reference but pointer
+        // pragma_unroll<sgInTg>::call(loop1, &i, &val, maxvals);
         for (uint i = 1; i < sgInTg; i++) {
-            val = fmax(val, maxvals[i]);
+            val = precise::fmax(val, maxvals[i]);
         }
         // store the final max in the first position
         maxvals[0] = val;
@@ -264,17 +336,21 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
     for (uint i = tid; i < V; i += tgSize * UNROLL_FACTOR) {
         float reg_array[UNROLL_FACTOR];
         // #pragma unroll
-        for (int u = 0; u < UNROLL_FACTOR; u++) {
-            reg_array[u] = x[min(V - 1, i + u * tgSize)];
-        }
+        uint u = 0; // must not pass by reference but pointer
+        pragma_unroll<UNROLL_FACTOR>::call(loop2, i, &u, V, tgSize, x, reg_array);
+//        for (int u = 0; u < UNROLL_FACTOR; u++) {
+//            reg_array[u] = x[min(V - 1, i + u * tgSize)];
+//        }
         // #pragma unroll
-        for (int u = 0; u < UNROLL_FACTOR; u++) {
-            if (i + u * tgSize < V) {
-                float output = exp(reg_array[u] - offset);
-                y[min(V - 1, i + u * tgSize)] = output; // compiler likes redundant min()?!
-                sumval += output; // combined into the same loop unlike kernel3
-            }
-        }
+        u = 0; // must not pass by reference but pointer
+        pragma_unroll<UNROLL_FACTOR>::call(loop3, i, &u, V, tgSize, y, reg_array, offset, &sumval);
+//        for (int u = 0; u < UNROLL_FACTOR; u++) {
+//            if (i + u * tgSize < V) {
+//                float output = precise::exp(reg_array[u] - offset);
+//                y[min(V - 1, i + u * tgSize)] = output; // compiler likes redundant min()?!
+//                sumval += output; // combined into the same loop unlike kernel3
+//            }
+//        }
     }
 
     // okay now we calculated exp(x - max(x))
@@ -289,6 +365,9 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
     if (tid == 0) {
         float val = sumvals[tid];
         // #pragma unroll
+        // cannot pragma_unroll<sgInTg>: unknown sgInTg used as constant
+        // uint i = 1; // must not pass by reference but pointer
+        // pragma_unroll<sgInTg>::call(loop4, &i, &val, sumvals);
         for (uint i = 1; i < sgInTg; ++i) {
             val += sumvals[i];
         }
@@ -302,15 +381,19 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
     for (uint i = tid; i < V; i += tgSize * UNROLL_FACTOR) {
         float reg_array[UNROLL_FACTOR];
         // #pragma unroll
-        for (int u = 0; u < UNROLL_FACTOR; u++) {
-            reg_array[u] = y[min(V - 1, i + u * tgSize)];
-        }
+        uint u = 0; // must not pass by reference but pointer
+        pragma_unroll<UNROLL_FACTOR>::call(loop5, i, &u, V, tgSize, y, reg_array);
+//        for (int u = 0; u < UNROLL_FACTOR; u++) {
+//            reg_array[u] = y[min(V - 1, i + u * tgSize)];
+//        }
         // #pragma unroll
-        for (int u = 0; u < UNROLL_FACTOR; u++) {
-            if (i + u * tgSize < V) {
-                y[i + u * tgSize] = reg_array[u] / sum;
-            }
-        }
+        u = 0; // must not pass by reference but pointer
+        pragma_unroll<UNROLL_FACTOR>::call(loop6, i, &u, V, tgSize, y, reg_array, sum);
+//        for (int u = 0; u < UNROLL_FACTOR; u++) {
+//            if (i + u * tgSize < V) {
+//                y[i + u * tgSize] = reg_array[u] / sum;
+//            }
+//        }
     }
 }
 
