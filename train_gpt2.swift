@@ -1154,6 +1154,8 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         "gelu_forward_kernel1",
         "gelu_forward_kernel2",
         "softmax_forward_kernel1",
+        "softmax_forward_kernel4",
+        "softmax_forward_kernel7",
         "crossentropy_forward_kernel1"
     ]
     for kernel in kernels {
@@ -1248,7 +1250,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
 //    await softmax_forward(acts.probs, acts.logits, B, T, V, Vp)
     try layernorm_forward1(acts.lnf, acts.lnf_mean, acts.lnf_rstd, residual, params.lnfw, params.lnfb, B, T, C)
     try matmul_forward2(acts.logits, acts.lnf, params.wte, nil, B, T, C, Vp)
-    try softmax_forward1(acts.probs, acts.logits, B, T, V, Vp)
+    try softmax_forward7(acts.probs, acts.logits, B, T, V, Vp)
 
     // also forward the cross-entropy loss function if we have the targets
     if let targets = targets {
