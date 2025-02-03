@@ -109,6 +109,26 @@ func softmax_forward7(
         params: params)
 }
 
+// shader specific launch stub
+// swiftlint:disable:next function_parameter_count
+func softmax_forward8(
+    _ out: UnsafeMutablePointer<Float>,
+    _ inp: UnsafePointer<Float>,
+    _ B: Int, _ T: Int, _ V: Int, _ Vp: Int,
+    _ block_size: Int = 64) throws {
+    let context = KernelContext(threadsPerGrid: B * T * 32, threadsPerGroup: block_size)
+
+    let params: [KernelParam] = [
+        UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: inp),
+        Int32(B * T), Int32(V), Int32(Vp)]
+
+    try launchPad?.dispatchKernel(
+        name: "softmax_forward_kernel8",
+        context: context,
+        params: params)
+}
+
 // version dispatcher
 // swiftlint:disable:next function_parameter_count
 private func softmax_forward(
@@ -128,7 +148,9 @@ private func softmax_forward(
         try softmax_forward4(out, inp, B, T, V, Vp, block_size)
     case 7:
         try softmax_forward7(out, inp, B, T, V, Vp, block_size)
-    case 2, 3, 5, 6, 8:
+    case 8:
+        try softmax_forward8(out, inp, B, T, V, Vp, block_size)
+    case 2, 3, 5, 6:
         fatalError("layer-pass function \(#function) version \(version) not implemented")
     default:
         break
@@ -145,6 +167,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
     try launchPad?.registerKernel(name: "softmax_forward_kernel1")
     try launchPad?.registerKernel(name: "softmax_forward_kernel4")
     try launchPad?.registerKernel(name: "softmax_forward_kernel7")
+    try launchPad?.registerKernel(name: "softmax_forward_kernel8")
 
     // create memory of random numbers
     let out_cpu = UnsafeMutablePointer<Float>.allocate(capacity: B * T * V)

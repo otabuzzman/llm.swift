@@ -1156,6 +1156,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         "softmax_forward_kernel1",
         "softmax_forward_kernel4",
         "softmax_forward_kernel7",
+        "softmax_forward_kernel8",
         "crossentropy_forward_kernel1"
     ]
     for kernel in kernels {

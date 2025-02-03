@@ -400,6 +400,78 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
     }
 }
 
+kernel void softmax_forward_kernel8(device float* out [[ buffer(0) ]],
+                                device float* inp [[ buffer(1) ]],
+                                constant int& BT [[ buffer(2) ]],
+                                constant uint& V [[ buffer(3) ]],
+                                constant uint& Vp [[ buffer(4) ]],
+                                // for max thread ID check if nonuniform threadgroups not available
+                                // uint idx [[ thread_position_in_grid ]], // CUDA blockIdx * blockDim + threadIdx
+                                uint tgid [[ threadgroup_position_in_grid ]], // CUDA blockIdx
+                                uint tid [[ thread_position_in_threadgroup ]], // CUDA threadIdx
+                                uint laneId [[ thread_index_in_simdgroup ]], // CUDA threadIdx % 32
+                                // for simdReduceMax and simdReduceSum
+                                uint sgSize [[ threads_per_simdgroup ]], // CUDA warp size
+                                uint warpId [[ simdgroup_index_in_threadgroup ]], // CUDA threadIdx / 32
+                                uint sgInTg [[ simdgroups_per_threadgroup ]]) { // CUDA blockDim / 32
+    // uncomment if nonuniform threadgroups not available
+    // if (idx >= BT * 32) { return; }
+
+    // online softmax paper: http://arxiv.org/abs/1805.02867
+    // online softmax reduces loops from 3 to 2
+    // which is done by calculating sumval and maxval in one loop
+
+    if (tid >= V) {
+        return;
+    }
+
+    // one warp one row
+    int row = tgid * sgInTg + warpId;
+
+    if (row >= BT) {
+        return;
+    }
+
+    const device float* x = inp + row * Vp;
+    device float* const y = out + row * Vp;
+
+    // merge calculating maxval and sumval in one loop
+    // which is an arithmetic improvment from online softmax over normal softmax
+    float maxval = -INFINITY, sumval = 0.0f, bigger;
+    for (int i = laneId; i < V; i += sgSize) {
+        // when updating the maxval, dynamically updates the previous sumval by
+        // multiplying e^{previous_maxval - current_maxval}
+        bigger = fmaxf(maxval, x[i]);
+        sumval = sumval * precise::exp(maxval - bigger) + expf(x[i] - bigger);
+        maxval = bigger;
+    }
+
+    // use warp functions instead of cooperative groups for better readibility
+    // calculate the warp wised maxval and sumval
+    float offsetMaxval, offsetSumval;
+    for (int offset = sgSize / 2; offset > 0; offset >>= 1) {
+        simdgroup_barrier(mem_flags::mem_none);
+        offsetMaxval = simd_shuffle_down(maxval, offset);
+        offsetSumval = simd_shuffle_down(sumval, offset);
+        if (offsetMaxval > maxval) {
+            sumval *= expf(maxval - offsetMaxval);
+            maxval = offsetMaxval;
+        } else {
+            offsetSumval *= expf(offsetMaxval - maxval);
+        }
+        sumval += offsetSumval;
+    }
+
+    // sync the warp wised maxval and sumval
+    // which are also the maxval and sumval of one row in V
+    maxval = simd_shuffle(maxval, 0);
+    sumval = simd_shuffle(sumval, 0);
+
+    for (int i = laneId; i < V; i += sgSize) {
+        y[i] = expf(x[i] - maxval) / sumval;
+    }
+}
+
 // --- gelu_forward.metal
 // #include <metal_stdlib>
 // using namespace metal;
