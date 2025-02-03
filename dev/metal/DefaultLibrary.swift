@@ -439,11 +439,11 @@ kernel void softmax_forward_kernel8(device float* out [[ buffer(0) ]],
     // merge calculating maxval and sumval in one loop
     // which is an arithmetic improvment from online softmax over normal softmax
     float maxval = -INFINITY, sumval = 0.0f, bigger;
-    for (int i = laneId; i < V; i += sgSize) {
+    for (uint i = laneId; i < V; i += sgSize) {
         // when updating the maxval, dynamically updates the previous sumval by
         // multiplying e^{previous_maxval - current_maxval}
-        bigger = fmaxf(maxval, x[i]);
-        sumval = sumval * precise::exp(maxval - bigger) + expf(x[i] - bigger);
+        bigger = fmax(maxval, x[i]);
+        sumval = sumval * precise::exp(maxval - bigger) + precise::exp(x[i] - bigger);
         maxval = bigger;
     }
 
@@ -455,10 +455,10 @@ kernel void softmax_forward_kernel8(device float* out [[ buffer(0) ]],
         offsetMaxval = simd_shuffle_down(maxval, offset);
         offsetSumval = simd_shuffle_down(sumval, offset);
         if (offsetMaxval > maxval) {
-            sumval *= expf(maxval - offsetMaxval);
+            sumval *= precise::exp(maxval - offsetMaxval);
             maxval = offsetMaxval;
         } else {
-            offsetSumval *= expf(offsetMaxval - maxval);
+            offsetSumval *= precise::exp(offsetMaxval - maxval);
         }
         sumval += offsetSumval;
     }
@@ -468,8 +468,8 @@ kernel void softmax_forward_kernel8(device float* out [[ buffer(0) ]],
     maxval = simd_shuffle(maxval, 0);
     sumval = simd_shuffle(sumval, 0);
 
-    for (int i = laneId; i < V; i += sgSize) {
-        y[i] = expf(x[i] - maxval) / sumval;
+    for (uint i = laneId; i < V; i += sgSize) {
+        y[i] = precise::exp(x[i] - maxval) / sumval;
     }
 }
 
