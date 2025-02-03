@@ -217,39 +217,39 @@ struct pragma_unroll<0u> {
 
 // proxy functions for pragma_unroll template
 inline void loop0(thread uint& i, thread uint* u, constant uint& V, thread uint& tgSize, const device float* x, thread float* maxval) {
-    *maxval = precise::fmax(*maxval, x[min(V - 1, i + *u++ * tgSize)]);
+    *maxval = precise::fmax(*maxval, x[min(V - 1, i + (*u)++ * tgSize)]);
 }
 
 inline void loop1(thread uint* i, thread float* val, threadgroup float* maxvals) {
-    *val += precise::fmax(*val, maxvals[*i++]);
+    *val += precise::fmax(*val, maxvals[(*i)++]);
 }
 
 inline void loop2(thread uint& i, thread uint* u, constant uint& V, thread uint& tgSize, const device float* x, thread float* reg_array) {
     float output = x[min(V - 1, i + *u * tgSize)];
-    reg_array[*u++] = output;
+    reg_array[(*u)++] = output;
 }
 
 inline void loop3(thread uint& i, thread uint* u, constant uint& V, thread uint& tgSize, device float* y, thread float* reg_array, thread float& offset, thread float* sumval) {
     if (i + *u * tgSize < V) {
         float output = precise::exp(reg_array[*u] - offset);
-        y[min(V - 1, i + *u++ * tgSize)] = output; // compiler likes redundant min()?!
+        y[min(V - 1, i + (*u)++ * tgSize)] = output; // compiler likes redundant min()?!
         *sumval += output; // combined into the same loop unlike kernel3
     }
 }
 
 inline void loop4(thread uint* i, thread float* val, threadgroup float* sumvals) {
-    *val += sumvals[*i++];
+    *val += sumvals[(*i)++];
 }
 
 inline void loop5(thread uint& i, thread uint* u, constant uint& V, thread uint& tgSize, device float* y, thread float* reg_array) {
     float output = y[min(V - 1, i + *u * tgSize)];
-    reg_array[*u++] = output;
+    reg_array[(*u)++] = output;
 }
 
 inline void loop6(thread uint& i, thread uint* u, constant uint& V, thread uint& tgSize, device float* y, thread float* reg_array, thread float& sum) {
     if (i + *u * tgSize < V) {
         float output = reg_array[*u] / sum;
-        y[i + *u++ * tgSize] = output;
+        y[i + (*u)++ * tgSize] = output;
     }
 }
 
@@ -273,7 +273,7 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
     // if (idx >= BT * tgSize) { return; }
 
     // out is (BT, V) just like inp. Each row of inp will get softmaxed.
-    // same as kernel4, but optimised for very large Cs with advanced unrolling
+    // same as kernel4, but optimised for very large Vs with advanced unrolling
 
     // The trick is to read into a register array (all indices known at compile time)
     // and always read UNROLL_FACTOR values to maximise memory level parallelism
@@ -295,8 +295,8 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
         return;
     }
 
-    const device float* x = inp + tgid * V; // input
-    device float* y = out + tgid * V; // output
+    const device float* x = inp + tgid * Vp; // input
+    device float* y = out + tgid * Vp; // output
 
     // first, thread coarsening by directly accessing global memory in series
     float maxval = -INFINITY;

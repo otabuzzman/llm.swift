@@ -707,7 +707,7 @@ struct GPT2Config {
 // the parameters of the model
 let NUM_PARAMETER_TENSORS = 16
 struct ParameterTensors {
-    var wte: UnsafeMutablePointer<Float>! // (V, C)
+    var wte: UnsafeMutablePointer<Float>! // (Vp, C)
     var wpe: UnsafeMutablePointer<Float>! // (maxT, C)
     var ln1w: UnsafeMutablePointer<Float>! // (L, C)
     var ln1b: UnsafeMutablePointer<Float>! // (L, C)
@@ -850,8 +850,8 @@ struct ActivationTensors {
     var lnf: UnsafeMutablePointer<Float>! // (B, T, C)
     var lnf_mean: UnsafeMutablePointer<Float>! // (B, T)
     var lnf_rstd: UnsafeMutablePointer<Float>! // (B, T)
-    var logits: UnsafeMutablePointer<Float>! // (B, T, V)
-    var probs: UnsafeMutablePointer<Float>! // (B, T, V)
+    var logits: UnsafeMutablePointer<Float>! // (B, T, Vp)
+    var probs: UnsafeMutablePointer<Float>! // (B, T, Vp)
     var losses: UnsafeMutablePointer<Float>! // (B, T)
 }
 
