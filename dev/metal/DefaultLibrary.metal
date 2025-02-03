@@ -216,20 +216,20 @@ struct pragma_unroll<0u> {
 };
 
 // proxy functions for pragma_unroll template
-inline void loop0(thread uint& i, thread uint& u, constant uint& V, thread uint& tgSize, const device float* x, thread float& maxval) {
+inline void loop0(thread uint& u, thread uint& i, constant uint& V, thread uint& tgSize, const device float* x, thread float& maxval) {
     maxval = fmax(maxval, x[min(V - 1, i + u++ * tgSize)]);
 }
 
 inline void loop1(thread uint& i, thread float& val, threadgroup float* maxvals) {
-    val += fmax(val, maxvals[i++]);
+    val = fmax(val, maxvals[i++]);
 }
 
-inline void loop2(thread uint& i, thread uint& u, constant uint& V, thread uint& tgSize, const device float* x, thread float* reg_array) {
+inline void loop2(thread uint& u, thread uint& i, constant uint& V, thread uint& tgSize, const device float* x, thread float* reg_array) {
     float output = x[min(V - 1, i + u * tgSize)];
     reg_array[u++] = output;
 }
 
-inline void loop3(thread uint& i, thread uint& u, constant uint& V, thread uint& tgSize, device float* y, thread float* reg_array, thread float& offset, thread float& sumval) {
+inline void loop3(thread uint& u, thread uint& i, constant uint& V, thread uint& tgSize, device float* y, thread float* reg_array, thread float& offset, thread float& sumval) {
     if (i + u * tgSize < V) {
         float output = precise::exp(reg_array[u] - offset);
         y[min(V - 1, i + u++ * tgSize)] = output; // compiler likes redundant min()?!
@@ -241,12 +241,12 @@ inline void loop4(thread uint i, thread float& val, threadgroup float* sumvals) 
     val += sumvals[i++];
 }
 
-inline void loop5(thread uint& i, thread uint& u, constant uint& V, thread uint& tgSize, device float* y, thread float* reg_array) {
+inline void loop5(thread uint& u, thread uint& i, constant uint& V, thread uint& tgSize, device float* y, thread float* reg_array) {
     float output = y[min(V - 1, i + u * tgSize)];
     reg_array[u++] = output;
 }
 
-inline void loop6(thread uint& i, thread uint& u, constant uint& V, thread uint& tgSize, device float* y, thread float* reg_array, thread float& sum) {
+inline void loop6(thread uint& u, thread uint& i, constant uint& V, thread uint& tgSize, device float* y, thread float* reg_array, thread float& sum) {
     if (i + u * tgSize < V) {
         float output = reg_array[u] / sum;
         y[i + u++ * tgSize] = output;
@@ -272,7 +272,7 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
     // uncomment if nonuniform threadgroups not available
     // if (idx >= BT * tgSize) { return; }
 
-    // out is (BT, V) just like inp. Each row of inp will get softmaxed.
+    // out is (BT, Vp) just like inp. Each row of inp will get softmaxed.
     // same as kernel4, but optimised for very large Vs with advanced unrolling
 
     // The trick is to read into a register array (all indices known at compile time)
@@ -303,7 +303,7 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
     for (uint i = tid; i < V; i += tgSize * UNROLL_FACTOR) {
         // #pragma unroll
         uint u = 0;
-        pragma_unroll<UNROLL_FACTOR>::call(loop0, i, u, V, tgSize, x, maxval);
+        pragma_unroll<UNROLL_FACTOR>::call(loop0, u, i, V, tgSize, x, maxval);
 //        for (int u = 0; u < UNROLL_FACTOR; u++) {
 //            maxval = fmax(maxval, x[min(V - 1, i + u * tgSize)]);
 //        }
@@ -318,7 +318,9 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
     if (tid == 0) {
         float val = maxvals[tid];
         // #pragma unroll
-        // cannot pragma_unroll<sgInTg>: unknown sgInTg used as constant
+        // MSL compiler cannot pragma_unroll<sgInTg>: unknown sgInTg used as constant
+        // to make use of anyway set to fixed, e.g. 15/ 31 for block sizes 512/ 1024
+        // and call kernel with respective block size.
         // uint i = 1;
         // pragma_unroll<sgInTg>::call(loop1, i, val, maxvals);
         for (uint i = 1; i < sgInTg; i++) {
@@ -338,13 +340,13 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
         float reg_array[UNROLL_FACTOR];
         // #pragma unroll
         uint u = 0;
-        pragma_unroll<UNROLL_FACTOR>::call(loop2, i, u, V, tgSize, x, reg_array);
+        pragma_unroll<UNROLL_FACTOR>::call(loop2, u, i, V, tgSize, x, reg_array);
 //        for (int u = 0; u < UNROLL_FACTOR; u++) {
 //            reg_array[u] = x[min(V - 1, i + u * tgSize)];
 //        }
         // #pragma unroll
         u = 0;
-        pragma_unroll<UNROLL_FACTOR>::call(loop3, i, u, V, tgSize, y, reg_array, offset, sumval);
+        pragma_unroll<UNROLL_FACTOR>::call(loop3, u, i, V, tgSize, y, reg_array, offset, sumval);
 //        for (int u = 0; u < UNROLL_FACTOR; u++) {
 //            if (i + u * tgSize < V) {
 //                float output = precise::exp(reg_array[u] - offset);
@@ -366,7 +368,7 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
     if (tid == 0) {
         float val = sumvals[tid];
         // #pragma unroll
-        // cannot pragma_unroll<sgInTg>: unknown sgInTg used as constant
+        // MSL compiler cannot pragma_unroll<sgInTg>: unknown sgInTg used as constant
         // uint i = 1;
         // pragma_unroll<sgInTg>::call(loop4, i, val, sumvals);
         for (uint i = 1; i < sgInTg; ++i) {
@@ -383,13 +385,13 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
         float reg_array[UNROLL_FACTOR];
         // #pragma unroll
         uint u = 0;
-        pragma_unroll<UNROLL_FACTOR>::call(loop5, i, u, V, tgSize, y, reg_array);
+        pragma_unroll<UNROLL_FACTOR>::call(loop5, u, i, V, tgSize, y, reg_array);
 //        for (int u = 0; u < UNROLL_FACTOR; u++) {
 //            reg_array[u] = y[min(V - 1, i + u * tgSize)];
 //        }
         // #pragma unroll
         u = 0;
-        pragma_unroll<UNROLL_FACTOR>::call(loop6, i, u, V, tgSize, y, reg_array, sum);
+        pragma_unroll<UNROLL_FACTOR>::call(loop6, u, i, V, tgSize, y, reg_array, sum);
 //        for (int u = 0; u < UNROLL_FACTOR; u++) {
 //            if (i + u * tgSize < V) {
 //                y[i + u * tgSize] = reg_array[u] / sum;
