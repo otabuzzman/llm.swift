@@ -1269,7 +1269,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         model.pointee.mean_loss = -1
     }
     let end = Date()
-    print("forward layers took \(String(format: "%.2f", end.timeIntervalSince(start) * 1e3)) ms")
+    stdlog?("forward layers took \(String(format: "%.2f", end.timeIntervalSince(start) * 1e3)) ms")
 
 //    launchPad?.closeCapture()
 }
