@@ -78,6 +78,7 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
                                 device float* inp [[ buffer(1) ]],
                                 constant int& BT [[ buffer(2) ]],
                                 constant int& V [[ buffer(3) ]],
+                                constant int& Vp [[ buffer(4) ]],
                                 // for max thread ID check if nonuniform threadgroups not available
                                 // uint idx [[ thread_position_in_grid ]], // CUDA blockIdx * blockDim + threadIdx
                                 uint tgid [[ threadgroup_position_in_grid ]], // CUDA blockIdx
@@ -92,7 +93,7 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
     // uncomment if nonuniform threadgroups not available
     // if (idx >= BT * tgSize) { return; }
 
-    // out is (BT, V) just like inp. Each row of inp will get softmaxed.
+    // out is (BT, Vp) just like inp. Each row of inp will get softmaxed.
     // same as kernel3, but can handle any block size (multiple of 32)
     // each row of V elements is handled by block_size threads
     // furthermore, each block_size threads get executed in warps of 32 threads
@@ -104,13 +105,13 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
     // those will be used for max and sum values
     threadgroup float* max_or_sum_storage = shared;
 
-    // one row of inp, i.e. inp[tgid, :] of shape (V,)
-    const device float* x = inp + tgid * V;
+    // one row of inp, i.e. inp[tgid, :] of shape (Vp,)
+    const device float* x = inp + tgid * Vp;
 
     // first, thread coarsening by directly accessing global memory in series
     float maxval = -INFINITY;
     for (int i = tid; i < V; i += tgSize) {
-        maxval = precise::fmax(maxval, x[i]);
+        maxval = fmax(maxval, x[i]);
     }
     // now within-warp reductions for maxval
     maxval = simd_max(maxval); // instead of own simdReduceMax()
@@ -123,7 +124,7 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
     if (tid == 0) {
         float val = max_or_sum_storage[tid];
         for (uint i = 1; i < sgInTg; i++) {
-            val = precise::fmax(val, max_or_sum_storage[i]);
+            val = fmax(val, max_or_sum_storage[i]);
         }
         // store the final max in the first position
         max_or_sum_storage[0] = val;
@@ -134,14 +135,14 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
 
     // compute expf and write the result to global memory
     for (int i = tid; i < V; i += tgSize) {
-        out[tgid * V + i] = precise::exp(x[i] - offset);
+        out[tgid * Vp + i] = precise::exp(x[i] - offset);
     }
 
     // okay now we calculated exp(x - max(x))
     // step 2: sum all the values and divide by the sum
 
     // thread coarsening for sum
-    x = out + tgid * V;
+    x = out + tgid * Vp;
     float sumval = 0.0f;
     for (int i = tid; i < V; i += tgSize) {
         sumval += x[i];
@@ -167,7 +168,7 @@ kernel void softmax_forward_kernel4(device float* out [[ buffer(0) ]],
 
     // divide the whole row by the sum
     for (int i = tid; i < V; i += tgSize) {
-        out[tgid * V + i] = x[i] / sum;
+        out[tgid * Vp + i] = x[i] / sum;
     }
 }
 
@@ -256,6 +257,7 @@ kernel void softmax_forward_kernel7(device float* out [[ buffer(0) ]],
                                 device float* inp [[ buffer(1) ]],
                                 constant int& BT [[ buffer(2) ]],
                                 constant uint& V [[ buffer(3) ]],
+                                constant uint& Vp [[ buffer(4) ]],
                                 // for max thread ID check if nonuniform threadgroups not available
                                 // uint idx [[ thread_position_in_grid ]], // CUDA blockIdx * blockDim + threadIdx
                                 uint tgid [[ threadgroup_position_in_grid ]], // CUDA blockIdx

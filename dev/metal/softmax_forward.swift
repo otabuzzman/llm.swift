@@ -65,7 +65,7 @@ func softmax_forward4(
     _ out: UnsafeMutablePointer<Float>,
     _ inp: UnsafePointer<Float>,
     _ B: Int, _ T: Int, _ V: Int, _ Vp: Int,
-    _ block_size: Int = 0) throws {
+    _ block_size: Int = 64) throws {
     let context = KernelContext(
         threadsPerGrid: B * T * block_size,
         threadsPerGroup: block_size,
@@ -76,7 +76,7 @@ func softmax_forward4(
     let params: [KernelParam] = [
         UnsafeMutableRawPointer(out),
         UnsafeMutableRawPointer(mutating: inp),
-        Int32(B * T), Int32(V)]
+        Int32(B * T), Int32(V), Int32(Vp)]
 
     try launchPad?.dispatchKernel(
         name: "softmax_forward_kernel4",
@@ -90,7 +90,7 @@ func softmax_forward7(
     _ out: UnsafeMutablePointer<Float>,
     _ inp: UnsafePointer<Float>,
     _ B: Int, _ T: Int, _ V: Int, _ Vp: Int,
-    _ block_size: Int = 0) throws {
+    _ block_size: Int = 64) throws {
     let context = KernelContext(
         threadsPerGrid: B * T * block_size,
         threadsPerGroup: block_size,
@@ -101,7 +101,7 @@ func softmax_forward7(
     let params: [KernelParam] = [
         UnsafeMutableRawPointer(out),
         UnsafeMutableRawPointer(mutating: inp),
-        Int32(B * T), Int32(V)]
+        Int32(B * T), Int32(V), Int32(Vp)]
 
     try launchPad?.dispatchKernel(
         name: "softmax_forward_kernel7",
