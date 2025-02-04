@@ -24,11 +24,11 @@ let package = Package(
             ],
             path: ".",
             sources: [
-                llmc,
-                dev/metal,
-                LaunchPad.swift,
-                test_gpt2.swift,
-                train_gpt2.swift,
+                "llmc",
+                "dev/metal",
+                "LaunchPad.swift",
+                "test_gpt2.swift",
+                "train_gpt2.swift",
             ]),
     ]
 )
