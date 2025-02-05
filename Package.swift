@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "llm.swift",
     platforms: [
-        .iOS("17"), .macOS("14")
+        .iOS("18.2"), .macOS("15.2"),
     ],
     products: [
         .library(
