@@ -67,7 +67,7 @@ public struct LaunchPad {
 }
 
 extension LaunchPad {
-    init(descriptor: LaunchPadDescriptor? = nil) throws {
+    public init(descriptor: LaunchPadDescriptor? = nil) throws {
         if let descriptor = descriptor { self.descriptor = descriptor }
 
         guard let device = MTLCreateSystemDefaultDevice() else {
