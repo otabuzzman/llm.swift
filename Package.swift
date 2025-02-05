@@ -23,11 +23,9 @@ let package = Package(
                 "Glob",
             ],
             path: ".",
-            #if os(iOS)
             exclude: [
                 "dev/metal/DefaultLibrary.metal",
             ],
-            #endif
             sources: [
                 "llmc",
                 "dev/metal",
