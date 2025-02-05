@@ -1145,7 +1145,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         "encoder_forward_kernel3",
         "layernorm_forward_kernel1",
 //        "matmul_forward_kernel1",
-//        "add_bias_kernel1",
+        "add_bias_kernel1",
         "attention_query_key_kernel1",
         "attention_softmax_kernel1",
         "attention_value_kernel1",
