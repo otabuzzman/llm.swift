@@ -32,7 +32,7 @@ do {
     try launchPad?.makeCommandBuffer()
 
     try await layerPassFunc(argc, Array(argv[argvRange]))
-} catch let error as LlmSwiftError {
+} catch let error as LlmDotSwiftError {
     fatalError("\(error.localizedDescription)")
 } catch let error as LaunchPadError {
     fatalError("\(error.localizedDescription)")

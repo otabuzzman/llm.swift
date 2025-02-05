@@ -64,12 +64,12 @@ private func dataloader_load_shard(_ loader: UnsafeMutablePointer<DataLoader>, _
     try? loader.pointee.tokens_file?.close()
     do {
         loader.pointee.tokens_file = try FileHandle(forReadingFrom: URL(string: filename)!)
-    } catch { throw LlmSwiftError.apiReturnedNil(api: "FileHandle \(filename)") }
+    } catch { throw LlmDotSwiftError.apiReturnedNil(api: "FileHandle \(filename)") }
     let tokens_file = loader.pointee.tokens_file! // brevity
     // validate the header
     guard
         let header_data = try tokens_file.read(upToCount: HEADER_SIZE * MemoryLayout<Int32>.size)
-    else { throw LlmSwiftError.apiReturnedNil(api: "read \(filename)") }
+    else { throw LlmDotSwiftError.apiReturnedNil(api: "read \(filename)") }
     let header = header_data.withUnsafeBytes { (header_data: UnsafeRawBufferPointer) -> [Int] in
         header_data.bindMemory(to: Int32.self).map { Int($0) }
     }
@@ -150,7 +150,7 @@ func dataloader_init(_ loader: UnsafeMutablePointer<DataLoader>,
     // glob to get the list of files matching the pattern, these are our data shards
     loader.pointee.glob_result = Glob(pattern: filename_pattern)
     if loader.pointee.glob_result.count == 0 {
-        throw LlmSwiftError.wrongApiUsage(api: "dataloader_init \(filename_pattern)")
+        throw LlmDotSwiftError.wrongApiUsage(api: "dataloader_init \(filename_pattern)")
     }
 
     if should_shuffle {
@@ -168,7 +168,7 @@ func dataloader_init(_ loader: UnsafeMutablePointer<DataLoader>,
         let shard_ntok = try dataloader_load_shard(loader, shard_index)
         // we need at least one batch/shard, the way things are written right now.
         // can be relaxed a lot later.
-        if shard_ntok < num_processes * B * T + 1 { throw LlmSwiftError.wrongApiUsage(api: "\(#function)") } // at least one batch per shard needed
+        if shard_ntok < num_processes * B * T + 1 { throw LlmDotSwiftError.wrongApiUsage(api: "\(#function)") } // at least one batch per shard needed
         ntok_total += shard_ntok
     }
     // debugging prints
@@ -190,8 +190,8 @@ func dataloader_init(_ loader: UnsafeMutablePointer<DataLoader>,
 }
 
 func dataloader_load_batch(_ loader: UnsafeMutablePointer<DataLoader>) throws {
-    if loader.pointee.should_shuffle && loader.pointee.intra_shard_indices == nil { throw LlmSwiftError.wrongApiUsage(api: "\(#function)") } // no shards to shuffle
-    if loader.pointee.current_sample_idx >= loader.pointee.shard_num_samples { throw LlmSwiftError.wrongApiUsage(api: "\(#function)") } // sample index out of bounds
+    if loader.pointee.should_shuffle && loader.pointee.intra_shard_indices == nil { throw LlmDotSwiftError.wrongApiUsage(api: "\(#function)") } // no shards to shuffle
+    if loader.pointee.current_sample_idx >= loader.pointee.shard_num_samples { throw LlmDotSwiftError.wrongApiUsage(api: "\(#function)") } // sample index out of bounds
     let idx = loader.pointee.should_shuffle ? Int(loader.pointee.intra_shard_indices![loader.pointee.current_sample_idx]) : loader.pointee.current_sample_idx
     let global_batch_offset_bytes = idx * loader.pointee.total_batch_size_bytes
     let current_offset = loader.pointee.header_bytes + global_batch_offset_bytes + loader.pointee.local_batch_offset_bytes
@@ -202,7 +202,7 @@ func dataloader_load_batch(_ loader: UnsafeMutablePointer<DataLoader>) throws {
     try loader.pointee.tokens_file!.seek(toOffset: UInt64(current_offset))
     guard
         let file_data = try loader.pointee.tokens_file!.read(upToCount: (B * T + 1) * MemoryLayout<UInt16>.size)
-    else { throw LlmSwiftError.apiReturnedNil(api: "read (in \(#function)") }
+    else { throw LlmDotSwiftError.apiReturnedNil(api: "read (in \(#function)") }
     var token_data = file_data
     loader.pointee.buffer = token_data.withUnsafeMutableBytes { $0.bindMemory(to: UInt16.self) }.baseAddress
     // decode the buffer into inputs and targets (cast to int)

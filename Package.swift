@@ -4,21 +4,21 @@
 import PackageDescription
  
 let package = Package(
-    name: "llm.swift",
+    name: "LlmDotSwift",
     platforms: [
         .iOS("18.1"), .macOS("15.2"),
     ],
     products: [
         .library(
-            name: "llm.swift",
-            targets: ["llm.swift"]),
+            name: "LlmDotSwift",
+            targets: ["LlmDotSwift"]),
     ],
     dependencies: [
         .package(url: "https://github.com/Bouke/Glob.git", "1.0.5"..<"2.0.0")
     ],
     targets: [
         .target(
-            name: "llm.swift",
+            name: "LlmDotSwift",
             dependencies: [
                 "Glob",
             ],

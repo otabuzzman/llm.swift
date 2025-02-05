@@ -1,4 +1,4 @@
-#if LLMSWIFT_STANDALONE
+#if LLMDOTSWIFT_STANDALONE
 
 import Foundation
 
@@ -15,7 +15,7 @@ do {
     } else {
         try await train_gpt2(data, { print($0, terminator: "") })
     }
-} catch let error as LlmSwiftError {
+} catch let error as LlmDotSwiftError {
     fatalError("\(error.localizedDescription)")
 } catch let error as LaunchPadError {
     fatalError("\(error.localizedDescription)")
@@ -23,4 +23,4 @@ do {
     fatalError("caught exception: \(error)")
 }
 
-#endif // LLMSWIFT_STANDALONE
+#endif // LLMDOTSWIFT_STANDALONE

@@ -104,7 +104,7 @@ private func attention_forward(
     guard
         versions.contains(version) == true,
         excludeVersions.contains(version) == false
-    else { throw LlmSwiftError.wrongApiUsage(api: "\(#function) version \(version) unknown") }
+    else { throw LlmDotSwiftError.wrongApiUsage(api: "\(#function) version \(version) unknown") }
 
     switch version {
     case 1:

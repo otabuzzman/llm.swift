@@ -107,7 +107,7 @@ private func encoder_forward(
     _ block_size: Int = 0) throws {
     guard
         versions.contains(version) == true
-    else { throw LlmSwiftError.wrongApiUsage(api: "\(#function) version \(version) unknown") }
+    else { throw LlmDotSwiftError.wrongApiUsage(api: "\(#function) version \(version) unknown") }
 
     switch version {
     case 1:

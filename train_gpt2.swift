@@ -5,14 +5,14 @@ import Foundation
 import Accelerate
 import System
 
-public enum LlmSwiftError: Error {
+public enum LlmDotSwiftError: Error {
     case wrongApiUsage(api: String)
     case apiReturnedNil(api: String)
     case outOfBounds
     case noSpace
 }
 
-extension LlmSwiftError: LocalizedError {
+extension LlmDotSwiftError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .wrongApiUsage(let api):
@@ -1020,7 +1020,7 @@ func gpt2_build_from_checkpoint(
     // read in model from a checkpoint file
     guard
         let header_data = try handle.read(upToCount: 256 * MemoryLayout<Int32>.size)
-        else { throw LlmSwiftError.apiReturnedNil(api: "read (in \(#function))") }
+        else { throw LlmDotSwiftError.apiReturnedNil(api: "read (in \(#function))") }
     let model_header = header_data.withUnsafeBytes { (header_data: UnsafeRawBufferPointer) -> [Int] in
         header_data.bindMemory(to: Int32.self).map { Int($0) }
     }
@@ -1089,7 +1089,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     // ensure the model was initialized or error out
     guard
         model.pointee.params_memory != nil
-    else { throw LlmSwiftError.wrongApiUsage(api: "\(#function)") }
+    else { throw LlmDotSwiftError.wrongApiUsage(api: "\(#function)") }
 
     // convenience parameters
     let V = model.pointee.config.vocab_size
@@ -1100,9 +1100,9 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
 
     // validate inputs, all indices must be in the range [0, V]
     for i in 0..<B * T {
-        if !(0..<V ~= Int(inputs[i])) { throw LlmSwiftError.outOfBounds }
+        if !(0..<V ~= Int(inputs[i])) { throw LlmDotSwiftError.outOfBounds }
         if let targets = targets {
-            if !(0..<V ~= Int(targets[i])) { throw LlmSwiftError.outOfBounds }
+            if !(0..<V ~= Int(targets[i])) { throw LlmDotSwiftError.outOfBounds }
         }
     }
 
@@ -1129,7 +1129,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         // validate B,T are not larger than the values used at initialisation
         // (smaller B,T are okay for inference only)
         if B > model.pointee.batch_size || T > model.pointee.seq_len {
-            throw LlmSwiftError.wrongApiUsage(api: "\(#function)")
+            throw LlmDotSwiftError.wrongApiUsage(api: "\(#function)")
         }
     }
 
@@ -1287,7 +1287,7 @@ func gpt2_zero_grad(_ model: UnsafeMutablePointer<GPT2>) {
 public func gpt2_backward(_ model: UnsafeMutablePointer<GPT2>) async throws {
     // double check we forwarded previously, with targets
     if model.pointee.mean_loss == -1 {
-        throw LlmSwiftError.wrongApiUsage(api: "\(#function)") // must call gpt2_forward with `targets´ before this API
+        throw LlmDotSwiftError.wrongApiUsage(api: "\(#function)") // must call gpt2_forward with `targets´ before this API
     }
 
     // lazily allocate the memory for gradients of the weights and activations, if needed
