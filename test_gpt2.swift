@@ -43,7 +43,7 @@ func check_tensor(
 }
 
 // swiftlint:disable:next function_body_length
-func test_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws {
+public func test_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws {
     let cwd = FileManager.default.currentDirectoryPath
     defer { FileManager.default.changeCurrentDirectoryPath(cwd) }
     if let folder = folder {

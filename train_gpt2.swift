@@ -1080,7 +1080,7 @@ func gpt2_build_from_checkpoint(
 }
 
 // swiftlint:disable:next function_parameter_count
-public func gpt2_forward( // swiftlint:disable:this function_body_length
+func gpt2_forward( // swiftlint:disable:this function_body_length
     _ model: UnsafeMutablePointer<GPT2>,
     _ inputs: UnsafePointer<Int32>,
     _ targets: UnsafePointer<Int32>?,
@@ -1484,7 +1484,7 @@ func sample_mult(_ probabilities: UnsafeMutablePointer<Float>, _ n: Int, _ coin:
 // ----------------------------------------------------------------------------
 // main training loop
 // swiftlint:disable:next function_body_length
-func train_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws {
+public func train_gpt2(_ folder: URL?, _ stdlog: ((String) -> Void)? = nil) async throws {
     let cwd = FileManager.default.currentDirectoryPath
     defer { FileManager.default.changeCurrentDirectoryPath(cwd) }
     if let folder = folder {
