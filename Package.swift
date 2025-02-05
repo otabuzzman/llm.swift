@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "llm.swift",
     platforms: [
-        .iOS("17.4")
+        .iOS("17"), .macOS("14")
     ],
     products: [
         .library(
@@ -23,9 +23,11 @@ let package = Package(
                 "Glob",
             ],
             path: ".",
+            #if os(iOS)
             exclude: [
                 "dev/metal/DefaultLibrary.metal",
             ],
+            #endif
             sources: [
                 "llmc",
                 "dev/metal",
