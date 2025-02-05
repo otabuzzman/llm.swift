@@ -984,7 +984,7 @@ func malloc_and_point_activations(
     return acts_memory
 }
 
-struct GPT2 {
+public struct GPT2 {
     var config = GPT2Config()
     // the weights (parameters) of the model, and their sizes
     var params = ParameterTensors()
