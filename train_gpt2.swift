@@ -13,7 +13,7 @@ public enum LlmSwiftError: Error {
 }
 
 extension LlmSwiftError: LocalizedError {
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .wrongApiUsage(let api):
             return NSLocalizedString("Wrong \(api) API usage", comment: "")

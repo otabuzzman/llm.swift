@@ -3,14 +3,14 @@
 
 import Metal
 
-enum LaunchPadError: Error {
+public enum LaunchPadError: Error {
     case apiException(api: String, error: Error)
     case apiReturnedNil(api: String)
     case miscellaneous(info: String)
 }
 
 extension LaunchPadError: LocalizedError {
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .apiException(let api, let error):
             return NSLocalizedString("API \(api) threw error:\n\(error)", comment: "")
@@ -45,9 +45,9 @@ extension UnsafeMutableRawPointer: KernelParam {}
 extension Float: KernelParam {}
 extension Int32: KernelParam {}
 
-struct LaunchPadDescriptor {}
+public struct LaunchPadDescriptor {}
 
-struct LaunchPad {
+public struct LaunchPad {
     private var descriptor = LaunchPadDescriptor()
 
     public let device: MTLDevice
