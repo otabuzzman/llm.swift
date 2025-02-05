@@ -5,7 +5,7 @@ import Foundation
 import Accelerate
 import System
 
-enum LlmSwiftError: Error {
+public enum LlmSwiftError: Error {
     case wrongApiUsage(api: String)
     case apiReturnedNil(api: String)
     case outOfBounds
@@ -31,7 +31,7 @@ extension LlmSwiftError: LocalizedError {
 private let matmul_forward = matmul_forward_default
 
 // metal support
-var launchPad: LaunchPad?
+public var launchPad: LaunchPad?
 
 // ----------------------------------------------------------------------------
 // all the individual layers' forward and backward passes
@@ -1080,7 +1080,7 @@ func gpt2_build_from_checkpoint(
 }
 
 // swiftlint:disable:next function_parameter_count
-func gpt2_forward( // swiftlint:disable:this function_body_length
+public func gpt2_forward( // swiftlint:disable:this function_body_length
     _ model: UnsafeMutablePointer<GPT2>,
     _ inputs: UnsafePointer<Int32>,
     _ targets: UnsafePointer<Int32>?,
@@ -1140,23 +1140,23 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
     }
 
     let kernels = [
-        "encoder_forward_kernel1",
-        "encoder_forward_kernel2",
+//        "encoder_forward_kernel1",
+//        "encoder_forward_kernel2",
         "encoder_forward_kernel3",
         "layernorm_forward_kernel1",
-        "matmul_forward_kernel1",
-        "add_bias_kernel1",
+//        "matmul_forward_kernel1",
+//        "add_bias_kernel1",
         "attention_query_key_kernel1",
         "attention_softmax_kernel1",
         "attention_value_kernel1",
-        "residual_forward_kernel1",
+//        "residual_forward_kernel1",
         "residual_forward_kernel2",
-        "gelu_forward_kernel1",
+//        "gelu_forward_kernel1",
         "gelu_forward_kernel2",
-        "softmax_forward_kernel1",
-        "softmax_forward_kernel4",
+//        "softmax_forward_kernel1",
+//        "softmax_forward_kernel4",
         "softmax_forward_kernel7",
-        "softmax_forward_kernel8",
+//        "softmax_forward_kernel8",
         "crossentropy_forward_kernel1"
     ]
     for kernel in kernels {
@@ -1241,7 +1241,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         try residual_forward2(l_residual2, residual, l_attproj, B * T * C)
         try layernorm_forward1(l_ln2, l_ln2_mean, l_ln2_rstd, l_residual2, l_ln2w, l_ln2b, B, T, C)
         try matmul_forward2(l_fch, l_ln2, l_fcw, l_fcb, B, T, C, 4 * C)
-        try gelu_forward1(l_fch_gelu, l_fch, B * T * 4 * C)
+        try gelu_forward2(l_fch_gelu, l_fch, B * T * 4 * C)
         try matmul_forward2(l_fcproj, l_fch_gelu, l_fcprojw, l_fcprojb, B, T, 4 * C, C)
         try residual_forward2(l_residual3, l_residual2, l_fcproj, B * T * C)
     }
@@ -1251,7 +1251,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
 //    await softmax_forward(acts.probs, acts.logits, B, T, V, Vp)
     try layernorm_forward1(acts.lnf, acts.lnf_mean, acts.lnf_rstd, residual, params.lnfw, params.lnfb, B, T, C)
     try matmul_forward2(acts.logits, acts.lnf, params.wte, nil, B, T, C, Vp)
-    try softmax_forward8(acts.probs, acts.logits, B, T, V, Vp, 512)
+    try softmax_forward7(acts.probs, acts.logits, B, T, V, Vp, 512)
 
     // also forward the cross-entropy loss function if we have the targets
     if let targets = targets {
@@ -1284,7 +1284,7 @@ func gpt2_zero_grad(_ model: UnsafeMutablePointer<GPT2>) {
 }
 
 // swiftlint:disable:next function_body_length
-func gpt2_backward(_ model: UnsafeMutablePointer<GPT2>) async throws {
+public func gpt2_backward(_ model: UnsafeMutablePointer<GPT2>) async throws {
     // double check we forwarded previously, with targets
     if model.pointee.mean_loss == -1 {
         throw LlmSwiftError.wrongApiUsage(api: "\(#function)") // must call gpt2_forward with `targets´ before this API
