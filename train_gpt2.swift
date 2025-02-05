@@ -1124,6 +1124,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         model.pointee.targets!.update(from: targets, count: B * T)
     }
 
+    let start = Date()
     // forward pass
     let params = model.pointee.params // for brevity
     let acts = model.pointee.acts
@@ -1194,6 +1195,8 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         // if we don't have targets, we don't have a loss
         model.pointee.mean_loss = -1
     }
+    let end = Date()
+    stdlog?("forward layers took \(String(format: "%.2f", end.timeIntervalSince(start) * 1e3)) ms\n")
 }
 
 func gpt2_zero_grad(_ model: UnsafeMutablePointer<GPT2>) {
