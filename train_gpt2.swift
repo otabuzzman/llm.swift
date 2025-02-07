@@ -1178,10 +1178,10 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
 //    var gpuTraceFile = FileManager.default.homeDirectoryForCurrentUser
 //    let time = String(format: "%012d", Int(Date().timeIntervalSince1970))
 //    gpuTraceFile = gpuTraceFile.appendingPathComponent("default-\(time).gputrace")
-//    launchPad?.startCapture(gpuTraceFile)
+//    try launchPad?.startCapture(gpuTraceFile)
 
     // open trace in Xcode when finished
-//    launchPad?.startCapture()
+//    try launchPad?.startCapture()
     try launchPad?.makeCommandBuffer()
 
     let start = Date()
