@@ -60,35 +60,28 @@ func attention_forward1(
 
     let param_preatt = UnsafeMutableRawPointer(preatt)
     let param_inp = UnsafeMutableRawPointer(mutating: inp)
-    var params: [KernelParam] = [
-        param_preatt, param_inp,
-        Int32(B), Int32(T), Int32(C), Int32(NH)]
 
     try launchPad?.dispatchKernel(
         name: "attention_query_key_kernel1",
         context: context,
-        params: params)
+        params: param_preatt, param_inp,
+        Int32(B), Int32(T), Int32(C), Int32(NH))
 
     context = KernelContext(threadsPerGrid: B * T * NH, threadsPerGroup: block_size)
 
     let param_att = UnsafeMutableRawPointer(att)
-    params = [
-        param_att, param_preatt,
-        Int32(B), Int32(T), Int32(NH)]
 
     try launchPad?.dispatchKernel(
         name: "attention_softmax_kernel1",
         context: context,
-        params: params)
-
-    params = [
-        UnsafeMutableRawPointer(out), param_att, param_inp,
-        Int32(B), Int32(T), Int32(C), Int32(NH)]
+        params: param_att, param_preatt,
+        Int32(B), Int32(T), Int32(NH))
 
     try launchPad?.dispatchKernel(
         name: "attention_value_kernel1",
         context: context,
-        params: params)
+        params: UnsafeMutableRawPointer(out), param_att, param_inp,
+        Int32(B), Int32(T), Int32(C), Int32(NH))
 }
 
 // version dispatcher

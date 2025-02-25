@@ -28,16 +28,13 @@ func residual_forward1(
     _ block_size: Int = 0) throws {
     let context = KernelContext(threadsPerGrid: N, threadsPerGroup: block_size)
 
-    let params: [KernelParam] = [
-        UnsafeMutableRawPointer(out),
-        UnsafeMutableRawPointer(mutating: inp1),
-        UnsafeMutableRawPointer(mutating: inp2),
-        Int32(N)]
-
     try launchPad?.dispatchKernel(
         name: "residual_forward_kernel1",
         context: context,
-        params: params)
+        params: UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: inp1),
+        UnsafeMutableRawPointer(mutating: inp2),
+        Int32(N))
 }
 
 // shader specific launch stub
@@ -49,16 +46,13 @@ func residual_forward2(
     _ block_size: Int = 0) throws {
     let context = KernelContext(threadsPerGrid: N / 4, threadsPerGroup: block_size)
 
-    let params: [KernelParam] = [
-        UnsafeMutableRawPointer(out),
-        UnsafeMutableRawPointer(mutating: inp1),
-        UnsafeMutableRawPointer(mutating: inp2),
-        Int32(N)]
-
     try launchPad?.dispatchKernel(
         name: "residual_forward_kernel2",
         context: context,
-        params: params)
+        params: UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: inp1),
+        UnsafeMutableRawPointer(mutating: inp2),
+        Int32(N))
 }
 
 // version dispatcher

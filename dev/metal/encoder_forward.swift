@@ -34,17 +34,14 @@ func encoder_forward1(
     _ block_size: Int = 0) throws {
     let context = KernelContext(threadsPerGrid: B * T, threadsPerGroup: block_size)
 
-    let params: [KernelParam] = [
-        UnsafeMutableRawPointer(out),
-        UnsafeMutableRawPointer(mutating: inp),
-        UnsafeMutableRawPointer(mutating: wte),
-        UnsafeMutableRawPointer(mutating: wpe),
-        Int32(B), Int32(T), Int32(C)]
-
     try launchPad?.dispatchKernel(
         name: "encoder_forward_kernel1",
         context: context,
-        params: params)
+        params: UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: inp),
+        UnsafeMutableRawPointer(mutating: wte),
+        UnsafeMutableRawPointer(mutating: wpe),
+        Int32(B), Int32(T), Int32(C))
 }
 
 // shader specific launch stub
@@ -58,17 +55,14 @@ func encoder_forward2(
     _ block_size: Int = 0) throws {
     let context = KernelContext(threadsPerGrid: B * T * C, threadsPerGroup: block_size)
 
-    let params: [KernelParam] = [
-        UnsafeMutableRawPointer(out),
-        UnsafeMutableRawPointer(mutating: inp),
-        UnsafeMutableRawPointer(mutating: wte),
-        UnsafeMutableRawPointer(mutating: wpe),
-        Int32(B), Int32(T), Int32(C)]
-
     try launchPad?.dispatchKernel(
         name: "encoder_forward_kernel2",
         context: context,
-        params: params)
+        params: UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: inp),
+        UnsafeMutableRawPointer(mutating: wte),
+        UnsafeMutableRawPointer(mutating: wpe),
+        Int32(B), Int32(T), Int32(C))
 }
 
 // shader specific launch stub
@@ -82,17 +76,14 @@ func encoder_forward3(
     _ block_size: Int = 0) throws {
     let context = KernelContext(threadsPerGrid: (B * T * C) / 4, threadsPerGroup: block_size)
 
-    let params: [KernelParam] = [
-        UnsafeMutableRawPointer(out),
-        UnsafeMutableRawPointer(mutating: inp),
-        UnsafeMutableRawPointer(mutating: wte),
-        UnsafeMutableRawPointer(mutating: wpe),
-        Int32(B), Int32(T), Int32(C)]
-
     try launchPad?.dispatchKernel(
         name: "encoder_forward_kernel3",
         context: context,
-        params: params)
+        params: UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: inp),
+        UnsafeMutableRawPointer(mutating: wte),
+        UnsafeMutableRawPointer(mutating: wpe),
+        Int32(B), Int32(T), Int32(C))
 }
 
 // version dispatcher

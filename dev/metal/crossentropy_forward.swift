@@ -27,16 +27,13 @@ func crossentropy_forward1(
     _ block_size: Int = 0) throws {
     let context = KernelContext(threadsPerGrid: B * T, threadsPerGroup: block_size)
 
-    let params: [KernelParam] = [
-        UnsafeMutableRawPointer(losses),
-        UnsafeMutableRawPointer(mutating: probs),
-        UnsafeMutableRawPointer(mutating: targets),
-        Int32(B), Int32(T), Int32(V)]
-
     try launchPad?.dispatchKernel(
         name: "crossentropy_forward_kernel1",
         context: context,
-        params: params)
+        params: UnsafeMutableRawPointer(losses),
+        UnsafeMutableRawPointer(mutating: probs),
+        UnsafeMutableRawPointer(mutating: targets),
+        Int32(B), Int32(T), Int32(V))
 }
 
 // version dispatcher

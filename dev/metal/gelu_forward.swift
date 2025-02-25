@@ -28,15 +28,12 @@ func gelu_forward1(
     _ block_size: Int = 0) throws {
     let context = KernelContext(threadsPerGrid: N, threadsPerGroup: block_size)
 
-    let params: [KernelParam] = [
-        UnsafeMutableRawPointer(out),
-        UnsafeMutableRawPointer(mutating: inp),
-        Int32(N)]
-
     try launchPad?.dispatchKernel(
         name: "gelu_forward_kernel1",
         context: context,
-        params: params)
+        params: UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: inp),
+        Int32(N))
 }
 
 // shader specific launch stub
@@ -47,15 +44,12 @@ func gelu_forward2(
     _ block_size: Int = 0) throws {
     let context = KernelContext(threadsPerGrid: N / 4, threadsPerGroup: block_size)
 
-    let params: [KernelParam] = [
-        UnsafeMutableRawPointer(out),
-        UnsafeMutableRawPointer(mutating: inp),
-        Int32(N)]
-
     try launchPad?.dispatchKernel(
         name: "gelu_forward_kernel2",
         context: context,
-        params: params)
+        params: UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: inp),
+        Int32(N))
 }
 
 // version dispatcher

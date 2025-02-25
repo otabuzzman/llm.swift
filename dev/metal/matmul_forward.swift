@@ -39,27 +39,23 @@ func matmul_forward1(
     let context = KernelContext(threadsPerGrid: B * T * OC, threadsPerGroup: block_size)
 
     let param_out = UnsafeMutableRawPointer(out)
-    var params: [KernelParam] = [
-        param_out,
-        UnsafeMutableRawPointer(mutating: inp),
-        UnsafeMutableRawPointer(mutating: weight),
-        Int32(B * T), Int32(C), Int32(OC)]
 
     try launchPad?.dispatchKernel(
         name: "matmul_forward_kernel1",
         context: context,
-        params: params)
+        params: param_out,
+        UnsafeMutableRawPointer(mutating: inp),
+        UnsafeMutableRawPointer(mutating: weight),
+        Int32(B * T), Int32(C), Int32(OC))
 
     guard let bias = bias else { return }
-    params = [
-        param_out,
-        UnsafeMutableRawPointer(mutating: bias),
-        Int32(B * T), Int32(OC)]
 
     try launchPad?.dispatchKernel(
         name: "add_bias_kernel1",
         context: context,
-        params: params)
+        params: param_out,
+        UnsafeMutableRawPointer(mutating: bias),
+        Int32(B * T), Int32(OC))
 }
 
 // shader specific launch stub
@@ -113,15 +109,12 @@ func matmul_forward2(
     guard let bias = bias else { return }
     let context = KernelContext(threadsPerGrid: BT * OC, threadsPerGroup: block_size)
 
-    let params: [KernelParam] = [
-        param_out,
-        UnsafeMutableRawPointer(mutating: bias),
-        Int32(B * T), Int32(OC)]
-
     try launchPad?.dispatchKernel(
         name: "add_bias_kernel1",
         context: context,
-        params: params)
+        params: param_out,
+        UnsafeMutableRawPointer(mutating: bias),
+        Int32(B * T), Int32(OC))
 }
 
 // version dispatcher

@@ -46,19 +46,16 @@ func layernorm_forward1(
     _ block_size: Int = 0) throws {
     let context = KernelContext(threadsPerGrid: B * T, threadsPerGroup: block_size)
 
-    let params: [KernelParam] = [
-        UnsafeMutableRawPointer(out),
+    try launchPad?.dispatchKernel(
+        name: "layernorm_forward_kernel1",
+        context: context,
+        params: UnsafeMutableRawPointer(out),
         UnsafeMutableRawPointer(mean),
         UnsafeMutableRawPointer(rstd),
         UnsafeMutableRawPointer(mutating: inp),
         UnsafeMutableRawPointer(mutating: weight),
         UnsafeMutableRawPointer(mutating: bias),
-        Int32(B * T), Int32(C)]
-
-    try launchPad?.dispatchKernel(
-        name: "layernorm_forward_kernel1",
-        context: context,
-        params: params)
+        Int32(B * T), Int32(C))
 }
 
 // version dispatcher

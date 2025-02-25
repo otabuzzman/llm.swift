@@ -48,15 +48,12 @@ func softmax_forward1(
     _ block_size: Int = 0) throws {
     let context = KernelContext(threadsPerGrid: B * T, threadsPerGroup: block_size)
 
-    let params: [KernelParam] = [
-        UnsafeMutableRawPointer(out),
-        UnsafeMutableRawPointer(mutating: inp),
-        Int32(B * T), Int32(V), Int32(Vp)]
-
     try launchPad?.dispatchKernel(
         name: "softmax_forward_kernel1",
         context: context,
-        params: params)
+        params: UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: inp),
+        Int32(B * T), Int32(V), Int32(Vp))
 }
 
 // shader specific launch stub
@@ -73,15 +70,12 @@ func softmax_forward4(
             scope: .simdstake,
             units: 1, type: Float.self))
 
-    let params: [KernelParam] = [
-        UnsafeMutableRawPointer(out),
-        UnsafeMutableRawPointer(mutating: inp),
-        Int32(B * T), Int32(V), Int32(Vp)]
-
     try launchPad?.dispatchKernel(
         name: "softmax_forward_kernel4",
         context: context,
-        params: params)
+        params: UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: inp),
+        Int32(B * T), Int32(V), Int32(Vp))
 }
 
 // shader specific launch stub
@@ -98,15 +92,12 @@ func softmax_forward7(
             scope: .simdstake,
             units: 2, type: Float.self))
 
-    let params: [KernelParam] = [
-        UnsafeMutableRawPointer(out),
-        UnsafeMutableRawPointer(mutating: inp),
-        Int32(B * T), Int32(V), Int32(Vp)]
-
     try launchPad?.dispatchKernel(
         name: "softmax_forward_kernel7",
         context: context,
-        params: params)
+        params: UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: inp),
+        Int32(B * T), Int32(V), Int32(Vp))
 }
 
 // shader specific launch stub
@@ -118,15 +109,12 @@ func softmax_forward8(
     _ block_size: Int = 64) throws {
     let context = KernelContext(threadsPerGrid: B * T * 32, threadsPerGroup: block_size)
 
-    let params: [KernelParam] = [
-        UnsafeMutableRawPointer(out),
-        UnsafeMutableRawPointer(mutating: inp),
-        Int32(B * T), Int32(V), Int32(Vp)]
-
     try launchPad?.dispatchKernel(
         name: "softmax_forward_kernel8",
         context: context,
-        params: params)
+        params: UnsafeMutableRawPointer(out),
+        UnsafeMutableRawPointer(mutating: inp),
+        Int32(B * T), Int32(V), Int32(Vp))
 }
 
 // version dispatcher

@@ -148,14 +148,15 @@ extension LaunchPad {
         throw LaunchPadError.miscellaneous(info: "\(#function): no buffer found")
     }
 
-    func dispatchKernel(name: String, context: KernelContext, params: [KernelParam]) throws {
+    // swiftlint:disable:next function_body_length
+    func dispatchKernel<each KernelParam>(name: String, context: KernelContext, params: repeat each KernelParam) throws {
         guard
             let kernel = self.kernel[name]
         else { throw LaunchPadError.miscellaneous(info: "\(#function): kernel \(name) not registered") }
         encoder?.setComputePipelineState(kernel)
 
         var index = 0 // argument location index, for MSL kernel functions
-        for param in params {
+        for param in repeat each params {
             switch param {
             case is UnsafeMutableRawPointer:
                 let address = (param as? UnsafeMutableRawPointer)!
