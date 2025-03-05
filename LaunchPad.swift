@@ -152,7 +152,7 @@ extension LaunchPad {
         self.function[name] = function
     }
 
-    mutating func registerKernel(name: String, functions: String..., preserve: Bool = true, customize: ((MTLComputePipelineState) -> Void)? = nil) throws {
+    mutating func registerKernel(name: String, functions: String..., customize: ((MTLComputePipelineState) -> Void)? = nil, preserve: Bool = true) throws {
         if preserve {
             if kernel.contains(where: { $0.0 == name }) { return }
         }
@@ -167,11 +167,11 @@ extension LaunchPad {
                 guard
                     let function = self.function[name]
                 else { throw LaunchPadError.miscellaneous(info: "\(#function): function \(name) not registered") }
-                linkedFunctions!.functions.append(function)
+                linkedFunctions!.functions?.append(function)
             }
         }
 
-        var descriptor = MTLComputePipelineDescriptor()
+        let descriptor = MTLComputePipelineDescriptor()
         descriptor.computeFunction = function[name]
         descriptor.linkedFunctions = linkedFunctions
 
