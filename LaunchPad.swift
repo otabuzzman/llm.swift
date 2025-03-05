@@ -110,7 +110,7 @@ extension LaunchPad {
         return (command, encoder)
     }
 
-    mutating func registerFunction<each Constant>(name: String, _ preserve: Bool = true, constants: repeat each Constant) throws {
+    mutating func registerFunction<each Constant>(name: String, constants: repeat each Constant, preserve: Bool = true) throws {
         if preserve {
             if function.contains(where: { $0.0 == name }) { return }
         }
@@ -152,16 +152,37 @@ extension LaunchPad {
         self.function[name] = function
     }
 
-    mutating func registerKernel(name: String, _ preserve: Bool = true) throws {
+    mutating func registerKernel(name: String, functions: String..., preserve: Bool = true, customize: ((MTLComputePipelineState) -> Void)? = nil) throws {
         if preserve {
             if kernel.contains(where: { $0.0 == name }) { return }
         }
+
         try registerFunction(name: name, constants: ())
-        let pipeline = try device.makeComputePipelineState(function: function[name]!)
+
+        var linkedFunctions: MTLLinkedFunctions?
+        if functions.count > 0 {
+            linkedFunctions = MTLLinkedFunctions()
+            linkedFunctions!.functions = []
+            for name in functions {
+                guard
+                    let function = self.function[name]
+                else { throw LaunchPadError.miscellaneous(info: "\(#function): function \(name) not registered") }
+                linkedFunctions!.functions.append(function)
+            }
+        }
+
+        var descriptor = MTLComputePipelineDescriptor()
+        descriptor.computeFunction = function[name]
+        descriptor.linkedFunctions = linkedFunctions
+
+        let pipeline = try device.makeComputePipelineState(descriptor: descriptor, options: MTLPipelineOption(), reflection: nil)
+
+        customize?(pipeline)
+
         kernel[name] = pipeline
     }
 
-    mutating func registerBuffer(address: UnsafeMutableRawPointer, length: Int, _ preserve: Bool = true) throws {
+    mutating func registerBuffer(address: UnsafeMutableRawPointer, length: Int, preserve: Bool = true) throws {
         if preserve {
             if (try? lookupBuffer(for: address)) != nil { return }
         }
