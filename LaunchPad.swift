@@ -28,7 +28,7 @@ struct ThreadgroupMemoryDescriptor {
         case simdgroup // `threads_per_simdgroup' * ...
         case simdstake // `simdgroups_per_threadgroup' * ...
     }
-    
+
     let scope: Scope
     let units: Int
     let type: Any.Type
@@ -52,20 +52,20 @@ public struct LaunchPadDescriptor {}
 
 public struct LaunchPad {
     private var descriptor = LaunchPadDescriptor()
-    
+
     public let device: MTLDevice
     private let queue: MTLCommandQueue
-    
+
     private let library: MTLLibrary
     private var function = [String: MTLFunction]()
-    
+
     private var kernel = [String: MTLComputePipelineState]()
     private var buffer = [MTLBuffer?]()
-    
+
     // transient objects
     private var command = [MTLCommandBuffer]()
     private var encoder: MTLComputeCommandEncoder? // of command.last
-    
+
     // capture GPU workload
     private var manager: MTLCaptureManager?
 }
@@ -73,7 +73,7 @@ public struct LaunchPad {
 extension LaunchPad {
     public init(descriptor: LaunchPadDescriptor? = nil) throws {
         if let descriptor = descriptor { self.descriptor = descriptor }
-        
+
         guard let device = MTLCreateSystemDefaultDevice() else {
             throw LaunchPadError.apiReturnedNil(api: "MTLCreateSystemDefaultDevice")
         }
@@ -92,7 +92,7 @@ extension LaunchPad {
             #endif
         } catch { throw LaunchPadError.apiException(api: "makeLibrary", error: error) }
     }
-    
+
     @discardableResult
     mutating func makeCommandBuffer(createEncoder: Bool = true) throws -> (MTLCommandBuffer, MTLComputeCommandEncoder?) {
         if let encoder = encoder { encoder.endEncoding() } // reset to nil in self.commit()
@@ -100,33 +100,36 @@ extension LaunchPad {
             throw LaunchPadError.apiReturnedNil(api: "makeCommandBuffer")
         }
         self.command.append(command)
-        
+
         if !createEncoder { encoder = nil ; return (command, nil) }
-        
+
         guard let encoder = command.makeComputeCommandEncoder() else {
             throw LaunchPadError.apiReturnedNil(api: "makeComputeCommandEncoder")
         }
         self.encoder = encoder
         return (command, encoder)
     }
-    
+
     mutating func registerFunction<each Constant>(name: String, _ preserve: Bool = true, constants: repeat each Constant) throws {
         if preserve {
             if function.contains(where: { $0.0 == name }) { return }
         }
-        
+
         let constantValues = MTLFunctionConstantValues()
-        
+
         var index = -1 // constant location index, for MSL functions
         for constant in repeat each constants {
             switch constant {
             case is Float:
+                // swiftlint:disable:next force_cast
                 var constant: Float = constant as! Float // avoid compiler warning
                 constantValues.setConstantValue(&constant, type: .float, index: index + 1)
             case is Int32:
+                // swiftlint:disable:next force_cast
                 var constant: Int32 = constant as! Int32
                 constantValues.setConstantValue(&constant, type: .int, index: index + 1)
             case is UInt32:
+                // swiftlint:disable:next force_cast
                 var constant: UInt32 = constant as! UInt32
                 constantValues.setConstantValue(&constant, type: .uint, index: index + 1)
             default:
@@ -134,7 +137,7 @@ extension LaunchPad {
             }
             index += 1
         }
-        
+
         let function: MTLFunction?
         if index == -1 { // no constants given
             function = library.makeFunction(name: name)
@@ -148,7 +151,7 @@ extension LaunchPad {
         }
         self.function[name] = function
     }
-    
+
     mutating func registerKernel(name: String, _ preserve: Bool = true) throws {
         if preserve {
             if kernel.contains(where: { $0.0 == name }) { return }
@@ -157,7 +160,7 @@ extension LaunchPad {
         let pipeline = try device.makeComputePipelineState(function: function[name]!)
         kernel[name] = pipeline
     }
-    
+
     mutating func registerBuffer(address: UnsafeMutableRawPointer, length: Int, _ preserve: Bool = true) throws {
         if preserve {
             if (try? lookupBuffer(for: address)) != nil { return }
@@ -171,11 +174,11 @@ extension LaunchPad {
             self.buffer.append(buffer)
         }
     }
-    
+
     mutating func unregisterBuffer(address: UnsafeMutableRawPointer) {
         if let (index, _) = try? lookupBuffer(for: address) { buffer[index] = nil }
     }
-    
+
     func lookupBuffer(for address: UnsafeMutableRawPointer) throws -> (Int, MTLBuffer) {
         for index in 0..<buffer.count {
             if let buffer = self.buffer[index] {
@@ -188,14 +191,14 @@ extension LaunchPad {
         }
         throw LaunchPadError.miscellaneous(info: "\(#function): no buffer found")
     }
-    
+
     // swiftlint:disable:next function_body_length
     func dispatchKernel<each KernelParam>(name: String, context: KernelContext, params: repeat each KernelParam) throws {
         guard
             let kernel = self.kernel[name]
         else { throw LaunchPadError.miscellaneous(info: "\(#function): kernel \(name) not registered") }
         encoder?.setComputePipelineState(kernel)
-        
+
         var index = 0 // argument location index, for MSL kernel functions
         for param in repeat each params {
             switch param {
@@ -215,13 +218,13 @@ extension LaunchPad {
             }
             index += 1
         }
-        
+
         // switch to MSL specification names
         let threads_per_grid = MTLSize(context.threadsPerGrid)
         var threads_per_threadgroup: MTLSize // CUDA blockDim
         let threads_per_simdgroup = kernel.threadExecutionWidth // CUDA warp size
         var simdgroups_per_threadgroup: Int // CUDA blockDim / 32
-        
+
         // using 1D grid and threadgroups
         if context.threadsPerGroup > 0 {
             simdgroups_per_threadgroup = context.threadsPerGroup / threads_per_simdgroup
@@ -230,9 +233,9 @@ extension LaunchPad {
             simdgroups_per_threadgroup = kernel.maxTotalThreadsPerThreadgroup / threads_per_simdgroup
             threads_per_threadgroup = MTLSize(simdgroups_per_threadgroup * threads_per_simdgroup)
         }
-        
+
         assert(threads_per_threadgroup.width % threads_per_simdgroup == 0)
-        
+
         index = 0 // argument location index, for MSL threadgroup arguments
         if let threadgroupMemory = context.threadgroupMemory {
             var threadgroupMemoryLength = MemoryLayout.size(ofValue: threadgroupMemory.type)
@@ -246,39 +249,39 @@ extension LaunchPad {
             }
             encoder?.setThreadgroupMemoryLength(threadgroupMemoryLength, index: index)
         }
-        
+
         encoder?.dispatchThreads(threads_per_grid, threadsPerThreadgroup: threads_per_threadgroup)
     }
-    
+
     mutating func commit(wait: Bool = false) throws {
         guard let latest = command.last else { return }
-        
+
         encoder?.endEncoding()
         encoder = nil // checked in makeCommandBuffer()
-        
+
         for buffer in command { buffer.commit() }
         command.removeAll(keepingCapacity: true)
         try makeCommandBuffer()
-        
+
         if wait { latest.waitUntilCompleted() }
     }
-    
+
     mutating func startCapture(_ gpuTraceFile: URL? = nil) throws {
         let control = MTLCaptureDescriptor()
         control.captureObject = device
-        
+
         if let gpuTraceFile = gpuTraceFile {
             control.destination = .gpuTraceDocument
             control.outputURL = gpuTraceFile
         } else {
             control.destination = .developerTools
         }
-        
+
         if manager == nil { manager = MTLCaptureManager.shared() }
-        
+
         try manager?.startCapture(with: control)
     }
-    
+
     func closeCapture() {
         guard let manager = manager, manager.isCapturing else { return }
         manager.stopCapture()
