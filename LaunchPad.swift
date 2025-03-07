@@ -93,21 +93,17 @@ extension LaunchPad {
         } catch { throw LaunchPadError.apiException(api: "makeLibrary", error: error) }
     }
 
-    @discardableResult
-    mutating func makeCommandBuffer(createEncoder: Bool = true) throws -> (MTLCommandBuffer, MTLComputeCommandEncoder?) {
+    mutating func makeCommandBuffer(customize: ((MTLCommandBuffer) -> Void)? = nil) throws {
         if let encoder = encoder { encoder.endEncoding() } // reset to nil in self.commit()
         guard let command = queue.makeCommandBuffer() else {
             throw LaunchPadError.apiReturnedNil(api: "makeCommandBuffer")
         }
         self.command.append(command)
-
-        if !createEncoder { encoder = nil ; return (command, nil) }
-
+        if let customize = customize { encoder = nil ; customize(command) ; return }
         guard let encoder = command.makeComputeCommandEncoder() else {
             throw LaunchPadError.apiReturnedNil(api: "makeComputeCommandEncoder")
         }
         self.encoder = encoder
-        return (command, encoder)
     }
 
     mutating func registerFunction<each Constant>(name: String, constants: repeat each Constant, preserve: Bool = true) throws {
@@ -214,11 +210,14 @@ extension LaunchPad {
     }
 
     // swiftlint:disable:next function_body_length
-    func dispatchKernel<each KernelParam>(name: String, context: KernelContext, params: repeat each KernelParam) throws {
+    func dispatchKernel<each KernelParam>(name: String, context: KernelContext, params: repeat each KernelParam, customize: ((MTLComputeCommandEncoder) -> Void)? = nil) throws {
         guard
             let kernel = self.kernel[name]
         else { throw LaunchPadError.miscellaneous(info: "\(#function): kernel \(name) not registered") }
-        encoder?.setComputePipelineState(kernel)
+        guard
+            let encoder = encoder
+        else { throw LaunchPadError.miscellaneous(info: "\(#function): encoder not set") }
+        encoder.setComputePipelineState(kernel)
 
         var index = 0 // argument location index, for MSL kernel functions
         for param in repeat each params {
@@ -227,18 +226,20 @@ extension LaunchPad {
                 let address = (param as? UnsafeMutableRawPointer)!
                 let (bufferIndex, bufferObject) = try lookupBuffer(for: address)
                 let offset = address - bufferObject.contents()
-                encoder?.setBuffer(buffer[bufferIndex], offset: offset, index: index)
+                encoder.setBuffer(buffer[bufferIndex], offset: offset, index: index)
             case is Float:
                 var scalar = (param as? Float)!
-                encoder?.setBytes(&scalar, length: MemoryLayout<Float>.stride, index: index)
+                encoder.setBytes(&scalar, length: MemoryLayout<Float>.stride, index: index)
             case is Int32:
                 var scalar = (param as? Int32)!
-                encoder?.setBytes(&scalar, length: MemoryLayout<Int32>.stride, index: index)
+                encoder.setBytes(&scalar, length: MemoryLayout<Int32>.stride, index: index)
             default:
                 continue
             }
             index += 1
         }
+
+        customize?(encoder)
 
         // switch to MSL specification names
         let threads_per_grid = MTLSize(context.threadsPerGrid)
@@ -268,10 +269,10 @@ extension LaunchPad {
             case .simdstake:
                 threadgroupMemoryLength *= simdgroups_per_threadgroup * threadgroupMemory.units
             }
-            encoder?.setThreadgroupMemoryLength(threadgroupMemoryLength, index: index)
+            encoder.setThreadgroupMemoryLength(threadgroupMemoryLength, index: index)
         }
 
-        encoder?.dispatchThreads(threads_per_grid, threadsPerThreadgroup: threads_per_threadgroup)
+        encoder.dispatchThreads(threads_per_grid, threadsPerThreadgroup: threads_per_threadgroup)
     }
 
     mutating func commit(wait: Bool = false) throws {
