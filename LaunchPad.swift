@@ -93,17 +93,21 @@ extension LaunchPad {
         } catch { throw LaunchPadError.apiException(api: "makeLibrary", error: error) }
     }
 
-    mutating func makeCommandBuffer(customize: ((MTLCommandBuffer) -> Void)? = nil) throws {
+    mutating func makeCommandBuffer(createEncoder: Bool = true, customize: ((MTLCommandBuffer, MTLComputeCommandEncoder?) -> Void)? = nil) throws {
         if let encoder = encoder { encoder.endEncoding() } // reset to nil in self.commit()
         guard let command = queue.makeCommandBuffer() else {
             throw LaunchPadError.apiReturnedNil(api: "makeCommandBuffer")
         }
         self.command.append(command)
-        if let customize = customize { encoder = nil ; customize(command) ; return }
-        guard let encoder = command.makeComputeCommandEncoder() else {
-            throw LaunchPadError.apiReturnedNil(api: "makeComputeCommandEncoder")
+        if createEncoder {
+            guard let encoder = command.makeComputeCommandEncoder() else {
+                throw LaunchPadError.apiReturnedNil(api: "makeComputeCommandEncoder")
+            }
+            self.encoder = encoder
+        } else {
+            encoder = nil
         }
-        self.encoder = encoder
+        customize?(command, encoder)
     }
 
     mutating func registerFunction<each Constant>(name: String, constants: repeat each Constant, preserve: Bool = true) throws {
