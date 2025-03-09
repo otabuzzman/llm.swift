@@ -41,12 +41,14 @@ struct KernelContext {
 }
 
 protocol Constant {}
+extension Float: Constant {}
+extension Int32: Constant {}
 extension UInt32: Constant {}
 
 protocol KernelParam {}
 extension UnsafeMutableRawPointer: KernelParam {}
-extension Float: Constant, KernelParam {}
-extension Int32: Constant, KernelParam {}
+extension Float: KernelParam {}
+extension Int32: KernelParam {}
 
 public struct LaunchPadDescriptor {}
 

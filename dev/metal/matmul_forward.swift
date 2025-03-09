@@ -101,7 +101,7 @@ func matmul_forward2(
     kernel.batchSize = 1
     kernel.batchStart = 0
 
-        try launchPad!.makeCommandBuffer(createEncoder: false) { command, _ in
+    try launchPad!.makeCommandBuffer(createEncoder: false) { command, _ in
         kernel.encode(commandBuffer: command, leftMatrix: inpMatrix, rightMatrix: weightMatrix, resultMatrix: outMatrix)
     }
 
