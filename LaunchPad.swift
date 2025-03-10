@@ -363,13 +363,6 @@ extension LaunchPad {
     }
 }
 
-// for compatibility
-extension LaunchPad {
-    mutating func makeCommandBuffer() throws {
-        try makeCommandBuffer(computePassDescriptor: MTLComputePassDescriptor())
-    }
-}
-
 // for brevity
 extension MTLSize {
     init(_ width: Int, _ height: Int = 1, _ depth: Int = 1) {

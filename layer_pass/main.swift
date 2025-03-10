@@ -30,7 +30,7 @@ else { fatalError("\(layerPassName): unknown") }
 
 do {
     if launchPad == nil { launchPad = try LaunchPad() }
-    try launchPad?.makeCommandBuffer(computePassDescriptor: MTLComputePassDescriptor())
+    try launchPad?.makeCommandBuffer()
 
     try await layerPassFunc(argc, Array(argv[argvRange]))
 } catch let error as LlmDotSwiftError {

@@ -105,7 +105,7 @@ func matmul_forward2(
         kernel.encode(commandBuffer: command, leftMatrix: inpMatrix, rightMatrix: weightMatrix, resultMatrix: outMatrix)
     }
 
-    try launchPad!.makeCommandBuffer(computePassDescriptor: MTLComputePassDescriptor())
+    try launchPad!.makeCommandBuffer()
 
     guard let bias = bias else { return }
     let context = KernelContext(threadsPerGrid: BT * OC, threadsPerGroup: block_size)

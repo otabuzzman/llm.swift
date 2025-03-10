@@ -27,6 +27,13 @@ extension LlmDotSwiftError: LocalizedError {
     }
 }
 
+// compatibility with previous LaunchPad versions
+extension LaunchPad {
+    mutating func makeCommandBuffer() throws {
+        try makeCommandBuffer(computePassDescriptor: MTLComputePassDescriptor())
+    }
+}
+
 // matmul_forward_default, matmul_forward_cblas or matmul_forward_naive
 private let matmul_forward = matmul_forward_default
 
@@ -1182,7 +1189,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
 
     // open trace in Xcode when finished
 //    try launchPad?.startCapture()
-    try launchPad?.makeCommandBuffer(computePassDescriptor: MTLComputePassDescriptor())
+    try launchPad?.makeCommandBuffer()
 
     let start = Date()
 //    encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
