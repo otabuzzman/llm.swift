@@ -50,7 +50,9 @@ extension UnsafeMutableRawPointer: KernelParam {}
 extension Float: KernelParam {}
 extension Int32: KernelParam {}
 
-public struct LaunchPadDescriptor {}
+public struct LaunchPadDescriptor {
+    var shaderPixelFormat: MTLPixelFormat = .rgba8Uint
+}
 
 public struct LaunchPad {
     private var descriptor = LaunchPadDescriptor()
@@ -62,6 +64,7 @@ public struct LaunchPad {
     private var function = [String: MTLFunction]()
 
     private var kernel = [String: MTLComputePipelineState]()
+    private var shader = [String: MTLRenderPipelineState]()
     private var buffer = [MTLBuffer?]()
 
     // transient objects
@@ -197,6 +200,26 @@ extension LaunchPad {
         kernel[name] = pipeline
     }
 
+    mutating func registerShader(vertex: String, fragment: String, customize: ((MTLRenderPipelineState) -> Void)? = nil) throws {
+        if !shader.contains(where: { $0.0 == vertex }) {
+            try registerFunction(name: vertex, constants: ())
+        }
+        if !shader.contains(where: { $0.0 == fragment }) {
+            try registerFunction(name: fragment, constants: ())
+        }
+
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = function[vertex]
+        descriptor.fragmentFunction = function[fragment]
+        descriptor.colorAttachments[0].pixelFormat = self.descriptor.shaderPixelFormat
+
+        let pipeline = try device.makeRenderPipelineState(descriptor: descriptor, options: MTLPipelineOption(), reflection: nil)
+
+        customize?(pipeline)
+
+        shader[vertex] = pipeline
+    }
+
     mutating func registerBuffer(address: UnsafeMutableRawPointer, length: Int, preserve: Bool = true) throws {
         if preserve {
             if (try? lookupBuffer(for: address)) != nil { return }
@@ -292,6 +315,18 @@ extension LaunchPad {
         }
 
         encoder.dispatchThreads(threads_per_grid, threadsPerThreadgroup: threads_per_threadgroup)
+    }
+
+    func dispatchShader(name: String, customize: ((MTLRenderCommandEncoder) -> Void)? = nil) throws {
+        guard
+            let shader = self.shader[name]
+        else { throw LaunchPadError.miscellaneous(info: "\(#function): shader \(name) not registered") }
+        guard
+            let encoder = encoder as? MTLRenderCommandEncoder
+        else { throw LaunchPadError.miscellaneous(info: "\(#function): encoder not set") }
+        encoder.setRenderPipelineState(shader)
+
+        customize?(encoder)
     }
 
     mutating func commit(wait: Bool = false) throws {
