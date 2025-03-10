@@ -66,7 +66,7 @@ public struct LaunchPad {
 
     // transient objects
     private var command = [MTLCommandBuffer]()
-    private var encoder: MTLComputeCommandEncoder? // of command.last
+    private var encoder: MTLCommandEncoder? // of command.last
 
     // capture GPU workload
     private var manager: MTLCaptureManager?
@@ -95,21 +95,34 @@ extension LaunchPad {
         } catch { throw LaunchPadError.apiException(api: "makeLibrary", error: error) }
     }
 
-    mutating func makeCommandBuffer(createEncoder: Bool = true, customize: ((MTLCommandBuffer, MTLComputeCommandEncoder?) -> Void)? = nil) throws {
+    mutating func makeCommandBuffer(computePassDescriptor descriptor: MTLComputePassDescriptor?, customize: ((MTLCommandBuffer, MTLComputeCommandEncoder?) -> Void)? = nil) throws {
         if let encoder = encoder { encoder.endEncoding() } // reset to nil in self.commit()
         guard let command = queue.makeCommandBuffer() else {
             throw LaunchPadError.apiReturnedNil(api: "makeCommandBuffer")
         }
         self.command.append(command)
-        if createEncoder {
-            guard let encoder = command.makeComputeCommandEncoder() else {
+        if let descriptor = descriptor {
+            guard let encoder = command.makeComputeCommandEncoder(descriptor: descriptor) else {
                 throw LaunchPadError.apiReturnedNil(api: "makeComputeCommandEncoder")
             }
             self.encoder = encoder
         } else {
             encoder = nil
         }
-        customize?(command, encoder)
+        customize?(command, encoder as? MTLComputeCommandEncoder)
+    }
+
+    mutating func makeCommandBuffer(renderPassDescriptor descriptor: MTLRenderPassDescriptor, customize: ((MTLCommandBuffer, MTLRenderCommandEncoder) -> Void)? = nil) throws {
+        if let encoder = encoder { encoder.endEncoding() } // reset to nil in self.commit()
+        guard let command = queue.makeCommandBuffer() else {
+            throw LaunchPadError.apiReturnedNil(api: "makeCommandBuffer")
+        }
+        self.command.append(command)
+        guard let encoder = command.makeRenderCommandEncoder(descriptor: descriptor) else {
+            throw LaunchPadError.apiReturnedNil(api: "makeRenderCommandEncoder")
+        }
+        self.encoder = encoder
+        customize?(command, encoder as MTLRenderCommandEncoder)
     }
 
     mutating func registerFunction<each Constant>(name: String, constants: repeat each Constant, preserve: Bool = true) throws {
@@ -221,7 +234,7 @@ extension LaunchPad {
             let kernel = self.kernel[name]
         else { throw LaunchPadError.miscellaneous(info: "\(#function): kernel \(name) not registered") }
         guard
-            let encoder = encoder
+            let encoder = encoder as? MTLComputeCommandEncoder
         else { throw LaunchPadError.miscellaneous(info: "\(#function): encoder not set") }
         encoder.setComputePipelineState(kernel)
 
@@ -289,7 +302,6 @@ extension LaunchPad {
 
         for buffer in command { buffer.commit() }
         command.removeAll(keepingCapacity: true)
-        try makeCommandBuffer()
 
         if wait { latest.waitUntilCompleted() }
     }
@@ -313,6 +325,13 @@ extension LaunchPad {
     func closeCapture() {
         guard let manager = manager, manager.isCapturing else { return }
         manager.stopCapture()
+    }
+}
+
+// for compatibility
+extension LaunchPad {
+    mutating func makeCommandBuffer() throws {
+        try makeCommandBuffer(computePassDescriptor: MTLComputePassDescriptor())
     }
 }
 

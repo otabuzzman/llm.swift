@@ -132,6 +132,7 @@ func crossentropy_forward(_ argc: Int, _ argv: [String]) throws {
             print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
             try crossentropy_forward(kernel_num, out_gpu, losses, targets, B, T, V, block_size)
             try launchPad?.commit(wait: true)
+            try launchPad?.makeCommandBuffer()
             let tol: Float = 1e-5
             try validate_result(out_gpu, out_cpu, "out", B * T, tol)
         }
@@ -154,6 +155,7 @@ func crossentropy_forward(_ argc: Int, _ argv: [String]) throws {
 
             try crossentropy_forward(kernel_num, out_gpu, losses, targets, B, T, V, block_size)
             try launchPad?.commit(wait: true)
+            try launchPad?.makeCommandBuffer()
         }
         let end = Date()
         elapsed_time = end.timeIntervalSince(start)

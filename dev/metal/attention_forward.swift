@@ -196,6 +196,7 @@ func attention_forward(_ argc: Int, _ argv: [String]) async throws {
             print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
             try attention_forward(kernel_num, out_gpu, preatt_gpu, att_gpu, inp, B, T, C, NH, block_size)
             try launchPad?.commit(wait: true)
+            try launchPad?.makeCommandBuffer()
             let accuracy_threshold: Float = kernel_num <= 4 ? 1e-3 : 1e-2
             try validate_result(out_gpu, out_cpu, "out", B * T * C, accuracy_threshold)
             if kernel_num != 2 && kernel_num < 5 {
@@ -226,6 +227,7 @@ func attention_forward(_ argc: Int, _ argv: [String]) async throws {
 
             try attention_forward(kernel_num, out_gpu, preatt_gpu, att_gpu, inp, B, T, C, NH, block_size)
             try launchPad?.commit(wait: true)
+            try launchPad?.makeCommandBuffer()
         }
         let end = Date()
         elapsed_time = end.timeIntervalSince(start)

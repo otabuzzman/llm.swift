@@ -228,6 +228,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
             print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
             try softmax_forward(kernel_num, out_gpu, inp, B, T, V, V, block_size)
             try launchPad?.commit(wait: true)
+            try launchPad?.makeCommandBuffer()
             let tol: Float = 1e-4
             try validate_result(out_gpu, out_cpu, "out", B * T * V, tol)
         }
@@ -250,6 +251,7 @@ func softmax_forward(_ argc: Int, _ argv: [String]) async throws {
 
             try softmax_forward(kernel_num, out_gpu, inp, B, T, V, V, block_size)
             try launchPad?.commit(wait: true)
+            try launchPad?.makeCommandBuffer()
         }
         let end = Date()
         elapsed_time = end.timeIntervalSince(start)

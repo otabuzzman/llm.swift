@@ -153,6 +153,7 @@ func residual_forward(_ argc: Int, _ argv: [String]) throws {
             print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
             try residual_forward(kernel_num, out_gpu, inp1, inp2, B * T * C, block_size)
             try launchPad?.commit(wait: true)
+            try launchPad?.makeCommandBuffer()
             // #if !defined(ENABLE_BF16) && !defined(ENABLE_FP16)
             let tol: Float = 1e-5
             // #else
@@ -179,6 +180,7 @@ func residual_forward(_ argc: Int, _ argv: [String]) throws {
 
             try residual_forward(kernel_num, out_gpu, inp1, inp2, B * T * C, block_size)
             try launchPad?.commit(wait: true)
+            try launchPad?.makeCommandBuffer()
         }
         let end = Date()
         elapsed_time = end.timeIntervalSince(start)

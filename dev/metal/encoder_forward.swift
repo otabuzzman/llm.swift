@@ -197,6 +197,7 @@ func encoder_forward(_ argc: Int, _ argv: [String]) throws {
             print("Checking block size \(block_size)\(block_size == 0 ? " (computed)" : "")")
             try encoder_forward(kernel_num, out_gpu, inp, wte, wpe, B, T, C, block_size)
             try launchPad?.commit(wait: true)
+            try launchPad?.makeCommandBuffer()
             let tol: Float = 1e-5
             try validate_result(out_gpu, out_cpu, "out", B * T * C, tol)
         }
@@ -219,6 +220,7 @@ func encoder_forward(_ argc: Int, _ argv: [String]) throws {
 
             try encoder_forward(kernel_num, out_gpu, inp, wte, wpe, B, T, C, block_size)
             try launchPad?.commit(wait: true)
+            try launchPad?.makeCommandBuffer()
         }
         let end = Date()
         elapsed_time = end.timeIntervalSince(start)

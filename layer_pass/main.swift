@@ -1,6 +1,7 @@
 #if LAYER_PASS_STANDALONE
 
 import Foundation
+import Metal
 
 let argv = CommandLine.arguments
 let argc = argv.count
@@ -29,7 +30,7 @@ else { fatalError("\(layerPassName): unknown") }
 
 do {
     if launchPad == nil { launchPad = try LaunchPad() }
-    try launchPad?.makeCommandBuffer()
+    try launchPad?.makeCommandBuffer(computePassDescriptor: MTLComputePassDescriptor())
 
     try await layerPassFunc(argc, Array(argv[argvRange]))
 } catch let error as LlmDotSwiftError {

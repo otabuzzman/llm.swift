@@ -101,11 +101,11 @@ func matmul_forward2(
     kernel.batchSize = 1
     kernel.batchStart = 0
 
-    try launchPad!.makeCommandBuffer(createEncoder: false) { command, _ in
+    try launchPad!.makeCommandBuffer(computePassDescriptor: nil) { command, _ in
         kernel.encode(commandBuffer: command, leftMatrix: inpMatrix, rightMatrix: weightMatrix, resultMatrix: outMatrix)
     }
 
-    try launchPad!.makeCommandBuffer()
+    try launchPad!.makeCommandBuffer(computePassDescriptor: MTLComputePassDescriptor())
 
     guard let bias = bias else { return }
     let context = KernelContext(threadsPerGrid: BT * OC, threadsPerGroup: block_size)
@@ -231,6 +231,7 @@ func matmul_forward(_ argc: Int, _ argv: [String]) async throws {
             print("Checking block size \(sqrt_block_size)\(sqrt_block_size == 0 ? " (computed)" : "")")
             try matmul_forward(kernel_num, out_gpu, inp, weight, biasOrNil, B, T, C, OC, sqrt_block_size)
             try launchPad?.commit(wait: true)
+            try launchPad?.makeCommandBuffer()
             let tol: Float = 1e-5
             try validate_result(out_gpu, out_cpu, "out", B * T * OC, tol)
         }
@@ -253,6 +254,7 @@ func matmul_forward(_ argc: Int, _ argv: [String]) async throws {
 
             try matmul_forward(kernel_num, out_gpu, inp, weight, biasOrNil, B, T, C, OC, sqrt_block_size)
             try launchPad?.commit(wait: true)
+            try launchPad?.makeCommandBuffer()
         }
         let end = Date()
         elapsed_time = end.timeIntervalSince(start)

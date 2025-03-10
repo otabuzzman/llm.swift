@@ -1182,7 +1182,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
 
     // open trace in Xcode when finished
 //    try launchPad?.startCapture()
-    try launchPad?.makeCommandBuffer()
+    try launchPad?.makeCommandBuffer(computePassDescriptor: MTLComputePassDescriptor())
 
     let start = Date()
 //    encoder_forward(acts.encoded, inputs, params.wte, params.wpe, B, T, C) // encoding goes into residual[0]
@@ -1258,6 +1258,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
 //        crossentropy_forward(acts.losses, acts.probs, targets, B, T, Vp)
         try crossentropy_forward1(acts.losses, acts.probs, targets, B, T, Vp)
         try launchPad?.commit(wait: true)
+        try launchPad?.makeCommandBuffer()
         // for convenience also evaluate the mean loss
         var mean_loss: Float = 0
         for i in 0..<B * T { mean_loss += acts.losses[i] }
@@ -1265,6 +1266,7 @@ func gpt2_forward( // swiftlint:disable:this function_body_length
         model.pointee.mean_loss = mean_loss
     } else {
         try launchPad?.commit(wait: true)
+        try launchPad?.makeCommandBuffer()
         // if we don't have targets, we don't have a loss
         model.pointee.mean_loss = -1
     }
